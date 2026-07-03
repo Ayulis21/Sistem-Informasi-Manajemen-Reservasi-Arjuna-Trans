@@ -56,6 +56,7 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
             </div>
 
             {/* Select Tipe Armada */}
+            {/* Select Tipe Armada - REVISI: Resmi Dipecah Menjadi 4 Opsi Sesuai Database Baru */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     TIPE ARMADA
@@ -63,7 +64,7 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                 <div className="relative">
                     <select
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
-                        value={busForm?.tipe_armada || "Bus"}
+                        value={busForm?.tipe_armada || "Big Bus"}
                         onChange={(e) =>
                             setBusForm({
                                 ...busForm,
@@ -71,7 +72,9 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                             })
                         }
                     >
-                        <option value="Bus">Big Bus / Medium Bus</option>
+                        {/* KUNCI SAKRAL: Nilai value wajib kembar identik dengan enum database baru kita */}
+                        <option value="Big Bus">Big Bus</option>
+                        <option value="Medium Bus">Medium Bus</option>
                         <option value="Elf">Elf / Hiace</option>
                         <option value="Mobil">Mobil Pribadi</option>
                     </select>

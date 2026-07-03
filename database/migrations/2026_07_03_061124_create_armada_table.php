@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('armada', function (Blueprint $table) {
             $table->id('id_armada');
             $table->string('nama_armada', 50);
-            $table->enum('tipe_armada', ['Bus', 'Elf', 'Mobil']);
+            $table->enum('tipe_armada', ['Big Bus', 'Medium Bus', 'Elf', 'Mobil']);
             $table->string('nopol', 15);
             $table->integer('kapasitas');
             $table->text('fasilitas')->nullable();

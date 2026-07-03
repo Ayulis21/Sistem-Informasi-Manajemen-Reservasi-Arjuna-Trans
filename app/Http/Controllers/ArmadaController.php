@@ -19,7 +19,7 @@ class ArmadaController extends Controller
     {
         $request->validate([
             'nama_armada' => 'required|string|max:50',
-            'tipe_armada' => 'required|in:Bus,Elf,Mobil',
+            'tipe_armada' => 'required|in:Big Bus,Medium Bus,Elf,Mobil',
             'nopol' => 'required|string|max:15|unique:armada,nopol',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',
