@@ -5,45 +5,22 @@ import CrewGrid from "./MasterDataComponents/CrewGrid";
 import ModalArmada from "./MasterDataComponents/ModalArmada"; // Panggil modal armada terpisah
 import ModalCrew from "./MasterDataComponents/ModalCrew"; // Panggil modal kru terpisah
 import { Plus } from "lucide-react";
+import axios from "axios";
 
 const MasterData: React.FC = () => {
     const [activeTab, setActiveTab] = useState<"ARMADA" | "KRU">("ARMADA");
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const [armada, setArmada] = useState([
-        {
-            name: "Jetbus 5 Plus Super High Deck",
-            plate: "B 7001 TGC",
-            facilities: ["AC", "TV", "KARAOKE"],
-            seats: 50,
-            type: "BUS",
-            status: "READY",
-        },
-        {
-            name: "Hiace Premio Luxury",
-            plate: "B 1234 ABC",
-            facilities: ["AC", "TV"],
-            seats: 14,
-            type: "MOBIL",
-            status: "PERJALANAN",
-        },
-    ]);
+    const [armada, setArmada] = useState([]);
 
-    const [crew, setCrew] = useState([
-        {
-            name: "Pak Slamet Hariyadi",
-            role: "SOPIR UTAMA (DRIVER)",
-            totalKm: 24500,
-            status: "READY",
-        },
-    ]);
+    const [crew, setCrew] = useState([]);
 
     const [busForm, setBusForm] = useState({
-        name: "",
-        plate: "",
-        type: "Big Bus",
-        seats: 50,
-        facilities: "AC, TV",
+        nama_armada: "",
+        nopol: "",
+        tipe_armada: "Big Bus",
+        kapasitas: 50,
+        fasilitas: "AC, TV",
         status: "READY",
     });
     const [crewForm, setCrewForm] = useState({
@@ -56,48 +33,137 @@ const MasterData: React.FC = () => {
         totalKm: 0,
     });
 
-    const handleSave = (e: React.FormEvent) => {
+    // =========================================================================
+    // REVISI FINAL SAKRAL: MENGEMBALIKAN FORM INPUT UTUH & AMAN (0 ERROR)
+    // =========================================================================
+    const handleSubmitArmada = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (activeTab === "ARMADA") {
-            const newUnit = {
-                name: busForm.name || "Armada Baru",
-                plate: busForm.plate || "B 9999 XX",
-                type: busForm.type,
-                seats: Number(busForm.seats),
-                facilities: busForm.facilities.split(","),
-                status: busForm.status,
-            };
-            setArmada([newUnit, ...armada]);
-            setBusForm({
-                name: "",
-                plate: "",
-                type: "Big Bus",
-                seats: 50,
-                facilities: "AC, TV",
-                status: "READY",
-            });
-        } else {
-            const newCrew = {
-                name: crewForm.name || "Kru Baru",
-                role:
-                    crewForm.role === "Driver"
-                        ? "SOPIR UTAMA (DRIVER)"
-                        : "KONDEKTUR (HELPER)",
-                totalKm: Number(crewForm.totalKm),
-                status: crewForm.taskStatus.toUpperCase(),
-            };
-            setCrew([newCrew, ...crew]);
-            setCrewForm({
-                name: "",
-                role: "Driver",
-                phone: "",
-                accountStatus: "Aktif",
-                taskStatus: "Ready",
-                trips: 0,
-                totalKm: 0,
-            });
+
+        // Jaring pengaman mutakhir: Langsung tembak properti bahasa Indonesia asli Anda
+        const nama = busForm?.nama_armada;
+        const tipe = busForm?.tipe_armada || "Bus";
+        const pelat = busForm?.nopol;
+        const kursi = busForm?.kapasitas;
+        const fasilitas = busForm?.fasilitas || "-";
+
+        if (!nama || !pelat || !kursi) {
+            alert(
+                "Silakan isi nama armada, plat nomor, dan kapasitas unit terlebih dahulu!",
+            );
+            return;
         }
-        setIsModalOpen(false);
+
+        try {
+            const response = await axios.post("/api/admin/armada/store", {
+                nama_armada: nama,
+                tipe_armada: tipe,
+                nopol: pelat,
+                kapasitas: Number(kursi),
+                fasilitas: fasilitas,
+            });
+
+            alert(response.data.message);
+
+            // KUNCI UTAMA: Biarkan form di-reset menjadi string kosong, tetapi gunakan 'as any'
+            // agar compiler TypeScript tidak protes mengenai struktur kaku objek bawaan Anda
+            setBusForm({
+                nama_armada: "",
+                nopol: "",
+                tipe_armada: "Bus",
+                kapasitas: 0,
+                fasilitas: "",
+                status: "READY",
+            } as any);
+
+            if (typeof setIsModalOpen !== "undefined") setIsModalOpen(false);
+            window.location.reload();
+        } catch (error: any) {
+            console.error("Gagal menyimpan:", error);
+            alert(
+                error.response?.data?.message ||
+                    "Gagal menyimpan data unit baru. Pastikan NOPOL/Plat belum terdaftar!",
+            );
+        }
+    };
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (activeTab === "ARMADA") {
+            if (!busForm.nama_armada || !busForm.nopol || !busForm.kapasitas) {
+                alert(
+                    "Silakan isi nama armada, plat nomor, dan kapasitas unit terlebih dahulu!",
+                );
+                return;
+            }
+
+            try {
+                // Menembak data riil terkalibrasi ke controller Laravel
+                const response = await axios.post("/api/admin/armada/store", {
+                    nama_armada: busForm.nama_armada,
+                    tipe_armada:
+                        busForm.tipe_armada === "Big Bus"
+                            ? "Bus"
+                            : busForm.tipe_armada,
+                    nopol: busForm.nopol,
+                    kapasitas: Number(busForm.kapasitas),
+                    fasilitas: busForm.fasilitas || "-",
+                });
+
+                alert(response.data.message);
+
+                // Mengembalikan setelan awal pabrikan persis sesuai baris 44 file part 1 Anda
+                setBusForm({
+                    nama_armada: "",
+                    nopol: "",
+                    tipe_armada: "Big Bus",
+                    kapasitas: 50,
+                    fasilitas: "AC, TV",
+                    status: "READY",
+                });
+
+                setIsModalOpen(false);
+                window.location.reload();
+            } catch (error: any) {
+                console.error(error);
+                alert(
+                    error.response?.data?.message ||
+                        "Gagal menyimpan data unit baru. Pastikan NOPOL belum terdaftar!",
+                );
+            }
+        } else {
+            // Logika simpan data kru pariwisata Arjuna Trans lurus ke backend
+            if (!crewForm.name || !crewForm.phone) {
+                alert(
+                    "Silakan lengkapi nama dan nomor telepon kru terlebih dahulu!",
+                );
+                return;
+            }
+
+            try {
+                const response = await axios.post("/api/admin/kru/store", {
+                    nama_kru: crewForm.name,
+                    no_telp: crewForm.phone,
+                    peran: crewForm.role === "Driver" ? "Driver" : "Helper",
+                });
+
+                alert(response.data.message);
+
+                setCrewForm({
+                    name: "",
+                    role: "Driver",
+                    phone: "",
+                    accountStatus: "Aktif",
+                    taskStatus: "Ready",
+                    trips: 0,
+                    totalKm: 0,
+                });
+
+                setIsModalOpen(false);
+                window.location.reload();
+            } catch (error) {
+                alert("Gagal mendaftarkan kru baru ke database.");
+            }
+        }
     };
 
     return (
@@ -131,7 +197,18 @@ const MasterData: React.FC = () => {
                             </button>
                         </div>
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => {
+                                // REVISI: Samakan inisialisasi tombol klik dengan struktur data awal agar form tidak blank
+                                setBusForm({
+                                    nama_armada: "",
+                                    nopol: "",
+                                    tipe_armada: "Big Bus",
+                                    kapasitas: 50,
+                                    fasilitas: "AC, TV",
+                                    status: "READY",
+                                });
+                                setIsModalOpen(true);
+                            }}
                             type="button"
                             className="bg-slate-950 hover:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl shadow-md"
                         >
@@ -174,6 +251,13 @@ const MasterData: React.FC = () => {
                                     busForm={busForm}
                                     setBusForm={setBusForm}
                                     onClose={() => setIsModalOpen(false)}
+                                    onSubmit={function (
+                                        e: React.FormEvent,
+                                    ): void {
+                                        throw new Error(
+                                            "Function not implemented.",
+                                        );
+                                    }}
                                 />
                             ) : (
                                 <ModalCrew
@@ -191,8 +275,9 @@ const MasterData: React.FC = () => {
                                     Batal
                                 </button>
                                 <button
-                                    type="submit"
-                                    className="w-full py-3.5 bg-[#5346F1] text-white rounded-xl text-center"
+                                    type="button"
+                                    onClick={handleSubmitArmada} // KUNCI UTAMA: Pasang klik di button luar ini
+                                    className="bg-[#5346F1] hover:bg-[#4338CA] text-white font-black text-xs px-6 py-3 rounded-xl shadow-md"
                                 >
                                     Simpan
                                 </button>

@@ -1,103 +1,117 @@
 import React from "react";
 
 interface ModalArmadaProps {
-    busForm: any;
+    busForm: {
+        nama_armada: string;
+        nopol: string;
+        tipe_armada: string;
+        kapasitas: number;
+        fasilitas: string;
+        status: string;
+    };
     setBusForm: (data: any) => void;
     onClose: () => void;
+    onSubmit: (e: React.FormEvent) => void;
 }
 
-const ModalArmada: React.FC<ModalArmadaProps> = ({
+export const ModalArmada: React.FC<ModalArmadaProps> = ({
     busForm,
     setBusForm,
     onClose,
+    onSubmit,
 }) => {
     return (
-        <div className="space-y-4 text-[9px] font-black uppercase tracking-widest text-[#94A3B8] animate-in fade-in duration-200">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="pl-1">Nama Bus</label>
-                    <input
-                        type="text"
-                        placeholder="Nama Bus"
-                        value={busForm.name}
-                        onChange={(e) =>
-                            setBusForm({ ...busForm, name: e.target.value })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        required
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="pl-1">Plat Nomor</label>
-                    <input
-                        type="text"
-                        placeholder="PLAT"
-                        value={busForm.plate}
-                        onChange={(e) =>
-                            setBusForm({ ...busForm, plate: e.target.value })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        required
-                    />
-                </div>
+        /* KUNCI SAKRAL VISUAL: Mengembalikan struktur layout boks input form yang hilang */
+        <div className="space-y-5 pt-2">
+            {/* Input Nama Armada */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    NAMA ARMADA
+                </label>
+                <input
+                    type="text"
+                    placeholder="Contoh: Jetbus 5 Plus"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
+                    value={busForm?.nama_armada || ""}
+                    onChange={(e) =>
+                        setBusForm({ ...busForm, nama_armada: e.target.value })
+                    }
+                />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="pl-1">Tipe</label>
+
+            {/* Input Nomor Polisi / NOPOL */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    NOMOR POLISI (NOPOL)
+                </label>
+                <input
+                    type="text"
+                    placeholder="Contoh: S 1234 XN"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
+                    value={busForm?.nopol || ""}
+                    onChange={(e) =>
+                        setBusForm({ ...busForm, nopol: e.target.value })
+                    }
+                />
+            </div>
+
+            {/* Select Tipe Armada */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    TIPE ARMADA
+                </label>
+                <div className="relative">
                     <select
-                        value={busForm.type}
-                        onChange={(e) =>
-                            setBusForm({ ...busForm, type: e.target.value })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer"
-                    >
-                        <option>Big Bus</option>
-                        <option>Medium Bus</option>
-                    </select>
-                </div>
-                <div className="space-y-1.5">
-                    <label className="pl-1">Kapasitas (Seat)</label>
-                    <input
-                        type="number"
-                        value={busForm.seats}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
+                        value={busForm?.tipe_armada || "Bus"}
                         onChange={(e) =>
                             setBusForm({
                                 ...busForm,
-                                seats: Number(e.target.value),
+                                tipe_armada: e.target.value,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
-                    />
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="pl-1">Fasilitas (Gunakan Koma)</label>
-                    <input
-                        type="text"
-                        value={busForm.facilities}
-                        onChange={(e) =>
-                            setBusForm({
-                                ...busForm,
-                                facilities: e.target.value,
-                            })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="pl-1">Status</label>
-                    <select
-                        value={busForm.status}
-                        onChange={(e) =>
-                            setBusForm({ ...busForm, status: e.target.value })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer"
                     >
-                        <option value="READY">Ready</option>
-                        <option value="MAINTENANCE">Servis</option>
+                        <option value="Bus">Big Bus / Medium Bus</option>
+                        <option value="Elf">Elf / Hiace</option>
+                        <option value="Mobil">Mobil Pribadi</option>
                     </select>
                 </div>
+            </div>
+
+            {/* Input Kapasitas (Seat) */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    KAPASITAS (SEAT)
+                </label>
+                <input
+                    type="number"
+                    placeholder="Contoh: 50"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
+                    value={busForm?.kapasitas || ""}
+                    onChange={(e) =>
+                        setBusForm({
+                            ...busForm,
+                            kapasitas: e.target.value
+                                ? parseInt(e.target.value)
+                                : 0,
+                        })
+                    }
+                />
+            </div>
+
+            {/* Textarea Fasilitas */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    FASILITAS (GUNAKAN KOMA)
+                </label>
+                <textarea
+                    placeholder="AC, TV, Karaoke"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 resize-none h-[60px]"
+                    value={busForm?.fasilitas || ""}
+                    onChange={(e) =>
+                        setBusForm({ ...busForm, fasilitas: e.target.value })
+                    }
+                />
             </div>
         </div>
     );

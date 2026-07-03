@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\CustomerScheduleController;
+use App\Http\Controllers\ArmadaController;
+use App\Http\Controllers\KruController;
+use App\Models\Armada;
+use App\Models\Kru;
 
 
 // Rute Halaman Portal Pelanggan Arjuna Trans
@@ -19,7 +23,23 @@ Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadB
 // Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
 Route::get('/api/customer-schedule', [CustomerScheduleController::class, 'getSchedule']);
 
+// Rute API Internal Admin: Kelola Master Data Armada Bus
+Route::get('/api/admin/armada', [ArmadaController::class, 'index']);
+Route::post('/api/admin/armada/store', [ArmadaController::class, 'store']);
 
+// Rute API Internal Admin: Kelola Master Data Kru (Sopir & Kernet)
+Route::get('/api/admin/kru', [KruController::class, 'index']);
+Route::post('/api/admin/kru/store', [KruController::class, 'store']);
+
+
+// Ubah rute Master Data Admin Anda menjadi seperti ini:
+Route::get('/admin/master-data', function () {
+    return Inertia::render('MasterData', [
+        // KUNCI UTAMA: Data ditarik dari DB sejak admin klik menu, langsung dikirim ke React
+        'armadaFromBackend' => Armada::orderBy('created_at', 'desc')->get(),
+        'crewFromBackend' => Kru::orderBy('created_at', 'desc')->get()
+    ]);
+});
 
 
 
