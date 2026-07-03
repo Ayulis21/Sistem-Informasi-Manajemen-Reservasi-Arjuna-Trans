@@ -1,0 +1,180 @@
+import React from "react";
+import { MapPin, Calendar, Bus, Phone, Layers } from "lucide-react";
+
+interface OrderMainFormProps {
+    formData: any;
+    setFormData: (data: any) => void;
+}
+
+const OrderMainForm: React.FC<OrderMainFormProps> = ({
+    formData,
+    setFormData,
+}) => {
+    return (
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">
+            {/* PANEL SEBELAH KIRI: DATA UTAMA & LOKASI */}
+            <div className="space-y-4">
+                <h4 className="flex items-center gap-1.5 text-[#5346F1] border-b border-slate-50 pb-1.5">
+                    <Layers size={13} /> Data Utama
+                </h4>
+                <div className="space-y-1">
+                    <label className="pl-1">ID Pesanan</label>
+                    <input
+                        type="text"
+                        readOnly
+                        value={formData.id}
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-400 outline-none cursor-not-allowed"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="pl-1">Nama Pelanggan</label>
+                    <input
+                        type="text"
+                        value={formData.customerName}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                customerName: e.target.value,
+                            })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="pl-1">WhatsApp</label>
+                    <div className="relative">
+                        <Phone
+                            size={12}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                        />
+                        <input
+                            type="text"
+                            value={formData.whatsapp}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    whatsapp: e.target.value,
+                                })
+                            }
+                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        />
+                    </div>
+                </div>
+
+                <h4 className="flex items-center gap-1.5 text-slate-500 pt-2 border-b border-slate-50 pb-1.5">
+                    <MapPin size={13} /> Lokasi
+                </h4>
+                <div className="space-y-1">
+                    <label className="pl-1">Tujuan Utama</label>
+                    <input
+                        type="text"
+                        value={formData.destination}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                destination: e.target.value,
+                            })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="pl-1">Titik Jemput</label>
+                    <input
+                        type="text"
+                        value={formData.pickup}
+                        onChange={(e) =>
+                            setFormData({ ...formData, pickup: e.target.value })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="pl-1">
+                        Jarak Tempuh (Kilometer - KM)
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: 150"
+                        value={formData.distance}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                distance: e.target.value,
+                            })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    />
+                </div>
+            </div>
+
+            {/* PANEL TENGAH: LOGISTIK PERJALANAN & WAKTU */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
+                    <h4 className="flex items-center gap-1.5 text-slate-500">
+                        <Bus size={13} /> Logistik Perjalanan
+                    </h4>
+                    <span className="text-[8px] text-indigo-600 font-black cursor-pointer hover:underline">
+                        TAMBAH +
+                    </span>
+                </div>
+
+                {/* Kuota Kebutuhan Fleet Unit */}
+                <div className="space-y-2">
+                    <label className="pl-1">Kebutuhan Armada</label>
+                    <div className="flex items-center gap-2">
+                        <select className="flex-1 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer">
+                            <option>Bus</option>
+                        </select>
+                        <input
+                            type="number"
+                            defaultValue="1"
+                            className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <select className="flex-1 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer">
+                            <option>Elf</option>
+                        </select>
+                        <input
+                            type="number"
+                            defaultValue="1"
+                            className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2">
+                    <label className="pl-1">Waktu Berangkat</label>
+                    <input
+                        type="text"
+                        value={formData.departureDate}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                departureDate: e.target.value,
+                            })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="pl-1">Waktu Pulang</label>
+                    <input
+                        type="text"
+                        value={formData.returnDate}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                returnDate: e.target.value,
+                            })
+                        }
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default OrderMainForm;
