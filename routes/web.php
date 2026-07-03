@@ -41,6 +41,12 @@ Route::get('/admin/master-data', function () {
     ]);
 });
 
+// Rute API Internal Admin: Update Data Master Armada Bus
+Route::put('/api/admin/armada/update/{id}', [ArmadaController::class, 'update']);
+// Rute API Internal Admin: Hapus Aset Master Data Armada Bus
+Route::delete('/api/admin/armada/delete/{id}', [ArmadaController::class, 'destroy']);
+
+
 
 
 

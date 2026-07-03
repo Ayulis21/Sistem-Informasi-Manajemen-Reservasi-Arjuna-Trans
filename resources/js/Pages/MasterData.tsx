@@ -10,6 +10,8 @@ import axios from "axios";
 const MasterData: React.FC = () => {
     const [activeTab, setActiveTab] = useState<"ARMADA" | "KRU">("ARMADA");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
 
     const [armada, setArmada] = useState([]);
 
@@ -34,81 +36,25 @@ const MasterData: React.FC = () => {
     });
 
     // =========================================================================
-    // REVISI FINAL SAKRAL: MENGEMBALIKAN FORM INPUT UTUH & AMAN (0 ERROR)
-    // =========================================================================
-    // const handleSubmitArmada = async (e: React.FormEvent) => {
-    //     e.preventDefault();
-
-    //     // Jaring pengaman mutakhir: Langsung tembak properti bahasa Indonesia asli Anda
-    //     const nama = busForm?.nama_armada;
-    //     const tipe = busForm?.tipe_armada || "Bus";
-    //     const pelat = busForm?.nopol;
-    //     const kursi = busForm?.kapasitas;
-    //     const fasilitas = busForm?.fasilitas || "-";
-
-    //     if (!nama || !pelat || !kursi) {
-    //         alert(
-    //             "Silakan isi nama armada, plat nomor, dan kapasitas unit terlebih dahulu!",
-    //         );
-    //         return;
-    //     }
-
-    //     try {
-    //         const response = await axios.post("/api/admin/armada/store", {
-    //             nama_armada: nama,
-    //             tipe_armada: tipe,
-    //             nopol: pelat,
-    //             kapasitas: Number(kursi),
-    //             fasilitas: fasilitas,
-    //         });
-
-    //         alert(response.data.message);
-
-    //         // KUNCI UTAMA: Biarkan form di-reset menjadi string kosong, tetapi gunakan 'as any'
-    //         // agar compiler TypeScript tidak protes mengenai struktur kaku objek bawaan Anda
-    //         setBusForm({
-    //             nama_armada: "",
-    //             nopol: "",
-    //             tipe_armada: "",
-    //             kapasitas: 0,
-    //             fasilitas: "",
-    //             status: "READY",
-    //         } as any);
-
-    //         if (typeof setIsModalOpen !== "undefined") setIsModalOpen(false);
-    //         window.location.reload();
-    //     } catch (error: any) {
-    //         console.error("Gagal menyimpan:", error);
-    //         alert(
-    //             error.response?.data?.message ||
-    //                 "Gagal menyimpan data unit baru. Pastikan NOPOL/Plat belum terdaftar!",
-    //         );
-    //     }
-    // };
-    // =========================================================================
     // REVISI VALIDASI DETAI L: INFORMATIF & TO THE POINT BERI TAHU SALAHNYA DI MANA
+    // =========================================================================
+    // =========================================================================
+    // REVISI URUTAN VARIABEL: CAKUPAN LURUS BEBAS ERROR TYP EScRIPT (0 ERROR)
     // =========================================================================
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (activeTab === "ARMADA") {
-            // Saringan menangkap data properti bahasa Indonesia maupun bahasa Inggris
-            const nama = (busForm?.nama_armada || (busForm as any)?.name || "")
-                .toString()
-                .trim();
-            const pelat = (busForm?.nopol || (busForm as any)?.plate || "")
-                .toString()
-                .trim();
-            const kursiRaw =
-                busForm?.kapasitas !== undefined
-                    ? busForm.kapasitas
-                    : (busForm as any)?.seats;
+            // KUNCI SAKRAL 1: Deklarasi saringan variabel diletakkan di bagian paling atas fungsi
+            const nama = busForm?.nama_armada || (busForm as any)?.name || "";
+            const pelat = busForm?.nopol || (busForm as any)?.plate || "";
+            const kursi = busForm?.kapasitas || (busForm as any)?.seats || 0;
             const tipe =
                 busForm?.tipe_armada || (busForm as any)?.type || "Big Bus";
             const fasilitas =
                 busForm?.fasilitas || (busForm as any)?.facilities || "-";
 
-            // 1. CEK SATU PER SATU BIAR USER TIDAK BINGUNG
+            // Validasi pengecekan interaktif front-end Anda tetap terjaga
             if (!nama) {
                 alert("❌ Gagal Simpan: Kolom 'NAMA ARMADA' belum diisi!");
                 return;
@@ -119,36 +65,35 @@ const MasterData: React.FC = () => {
                 );
                 return;
             }
-
-            // KUNCI SAKRAL DETEKSI RENTANG/KOSONG: Jika kursiRaw bernilai null, undefined, 0, atau mengandung karakter bukan angka murni
-            if (
-                kursiRaw === null ||
-                kursiRaw === undefined ||
-                kursiRaw === "" ||
-                Number(kursiRaw) === 0
-            ) {
+            if (!kursi || Number(kursi) === 0) {
                 alert(
-                    "⚠️ Peringatan Input: Kolom 'KAPASITAS (SEAT)' wajib diisi dengan ANGKA MURNI saja (Contoh: 50).\n\nJika Anda baru saja mengetik format rentang (seperti 40-59) atau huruf acak, browser otomatis memblokirnya karena bukan angka murni!",
-                );
-                return;
-            }
-
-            // Jaring pengaman akhir memastikan data berupa angka murni untuk MySQL Integer
-            if (isNaN(Number(kursiRaw))) {
-                alert(
-                    "❌ Gagal Simpan: Format salah! Kolom kapasitas wajib berupa angka murni saja.",
+                    "⚠️ Peringatan Input: Kolom 'KAPASITAS (SEAT)' wajib diisi dengan ANGKA MURNI saja!",
                 );
                 return;
             }
 
             try {
-                const response = await axios.post("/api/admin/armada/store", {
+                // KUNCI SAKRAL 2: Sekarang variabel payload di dalam blok try aman membaca data dari atas
+                const payload = {
                     nama_armada: nama,
                     tipe_armada: tipe,
                     nopol: pelat,
-                    kapasitas: Number(kursiRaw),
+                    kapasitas: Number(kursi),
                     fasilitas: fasilitas,
-                });
+                };
+
+                let response;
+                if (isEditMode) {
+                    response = await axios.put(
+                        `/api/admin/armada/update/${selectedId}`,
+                        payload,
+                    );
+                } else {
+                    response = await axios.post(
+                        "/api/admin/armada/store",
+                        payload,
+                    );
+                }
 
                 alert("✨ Sukses: " + response.data.message);
 
@@ -165,13 +110,11 @@ const MasterData: React.FC = () => {
                 window.location.reload();
             } catch (error: any) {
                 console.error("Gagal menyimpan ke database:", error);
-
-                // Menangkap eror validasi unik dari database Laravel MySQL
                 if (error.response && error.response.status === 422) {
                     const dbErrors = error.response.data.errors;
                     if (dbErrors.nopol) {
                         alert(
-                            `🚫 Gagal Database: Nomor Polisi/Plat Nomor '${pelat}' sudah pernah terdaftar di sistem Arjuna Trans! Gunakan nopol lain.`,
+                            `🚫 Gagal Database: Nomor Polisi/Plat Nomor '${pelat}' sudah pernah terdaftar di sistem!`,
                         );
                         return;
                     }
@@ -183,7 +126,7 @@ const MasterData: React.FC = () => {
             }
         } else {
             // =========================================================================
-            // VALIDASI SPESIFIK UNTUK MENU KELOLA DATA KRU
+            // VALIDASI LOGIKA BACKEND UNTUK MENU KELOLA DATA KRU LAPANGAN
             // =========================================================================
             const namaKru = crewForm.name || "";
             const noTelp = crewForm.phone || "";
@@ -195,9 +138,7 @@ const MasterData: React.FC = () => {
                 return;
             }
             if (!noTelp.trim()) {
-                alert(
-                    "❌ Gagal Simpan: Kolom 'NOMOR TELEPON' wajib diisi untuk koordinasi lapangan!",
-                );
+                alert("❌ Gagal Simpan: Kolom 'NOMOR TELEPON' wajib diisi!");
                 return;
             }
 
@@ -262,10 +203,11 @@ const MasterData: React.FC = () => {
                         </div>
                         <button
                             onClick={() => {
+                                setIsEditMode(false); // Kunci mode tambah baru
                                 setBusForm({
                                     nama_armada: "",
                                     nopol: "",
-                                    tipe_armada: "Big Bus", // Sesuaikan nilai awal di sini
+                                    tipe_armada: "Big Bus",
                                     kapasitas: 50,
                                     fasilitas: "AC, TV",
                                     status: "READY",
@@ -285,8 +227,69 @@ const MasterData: React.FC = () => {
                 </div>
 
                 <div className="pt-2">
+                    {/* ========================================================================= */}
+                    {/* REVISI PEMICU KLIK PENSIL: MENANGKAP DATA UNTUK DI LEMPAR KE MODAL POPUP    */}
+                    {/* ========================================================================= */}
                     {activeTab === "ARMADA" ? (
-                        <ArmadaGrid armadaList={armada} />
+                        <ArmadaGrid
+                            armadaList={armada}
+                            // Fungsi magis yang membuat tombol pensil fiks Anda langsung merespons membuka form
+                            onEditTrigger={(item: any) => {
+                                setSelectedId(item.id_armada || item.id);
+                                setIsEditMode(true); // Mengunci status ke mode EDIT
+
+                                setBusForm({
+                                    nama_armada:
+                                        item.nama_armada || item.name || "",
+                                    nopol: item.nopol || item.plate || "",
+                                    tipe_armada:
+                                        item.tipe_armada ||
+                                        item.type ||
+                                        "Big Bus",
+                                    kapasitas: Number(
+                                        item.kapasitas || item.seats || 50,
+                                    ),
+                                    fasilitas:
+                                        typeof item.fasilitas === "string"
+                                            ? item.fasilitas
+                                            : item.facilities
+                                              ? Array.isArray(item.facilities)
+                                                  ? item.facilities.join(", ")
+                                                  : item.facilities
+                                              : "AC, TV",
+                                    status:
+                                        item.status_ketersediaan ||
+                                        item.status ||
+                                        "READY",
+                                });
+
+                                setIsModalOpen(true); // Membuka jendela boks formulir visual Anda
+                            }}
+                            // Logika hapus data armada tetap diamankan di bawahnya
+                            onDeleteTrigger={async (
+                                id: number,
+                                namaBus: string,
+                            ) => {
+                                if (
+                                    confirm(
+                                        `Apakah Anda yakin ingin menghapus unit "${namaBus}" secara permanen?`,
+                                    )
+                                ) {
+                                    try {
+                                        const response = await axios.delete(
+                                            `/api/admin/armada/delete/${id}`,
+                                        );
+                                        alert(
+                                            "✨ Sukses: " +
+                                                response.data.message,
+                                        );
+                                        window.location.reload();
+                                    } catch (error) {
+                                        alert("❌ Gagal menghapus unit.");
+                                    }
+                                }
+                            }}
+                        />
                     ) : (
                         <CrewGrid crewList={crew} />
                     )}
@@ -339,7 +342,7 @@ const MasterData: React.FC = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleSave} // KUNCI UTAMA: Pasang klik di button luar ini
+                                    onClick={handleSave}
                                     className="bg-[#5346F1] hover:bg-[#4338CA] text-white font-black text-xs px-6 py-3 rounded-xl shadow-md"
                                 >
                                     Simpan

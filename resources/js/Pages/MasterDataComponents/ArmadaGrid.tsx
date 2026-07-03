@@ -7,7 +7,17 @@ interface ArmadaGridProps {
     armadaList: any[];
 }
 
-export const ArmadaGrid: React.FC<ArmadaGridProps> = ({ armadaList }) => {
+interface ArmadaGridProps {
+    armadaList: any[];
+    onEditTrigger: (item: any) => void;
+    onDeleteTrigger: (id: number, namaBus: string) => void;
+}
+
+const ArmadaGrid: React.FC<ArmadaGridProps> = ({
+    armadaList,
+    onEditTrigger,
+    onDeleteTrigger,
+}) => {
     // =========================================================================
     // BACKEND CONTROL LOGIC: PENARIK DATA ARMADA RIIL DARI LARAVEL DATABASE
     // =========================================================================
@@ -50,14 +60,24 @@ export const ArmadaGrid: React.FC<ArmadaGridProps> = ({ armadaList }) => {
                             <Bus size={20} />
                         </div>
                         <div className="flex gap-1.5 text-slate-300">
+                            {/* KUNCI SAKRAL EDIT: Pasang onClick di button pensil ini */}
                             <button
                                 type="button"
+                                onClick={() => onEditTrigger(item)}
                                 className="p-1.5 hover:bg-slate-50 hover:text-slate-600 rounded-lg transition-colors"
                             >
                                 <Edit2 size={13} />
                             </button>
+
+                            {/* Tombol Hapus Tempat Sampah Di bawahnya */}
                             <button
                                 type="button"
+                                onClick={() =>
+                                    onDeleteTrigger(
+                                        item.id_armada || (item as any).id,
+                                        item.nama_armada || item.name,
+                                    )
+                                }
                                 className="p-1.5 hover:bg-slate-50 hover:text-red-500 rounded-lg transition-colors"
                             >
                                 <Trash2 size={13} />

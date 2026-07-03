@@ -36,4 +36,38 @@ class ArmadaController extends Controller
 
         return response()->json(['message' => 'Unit armada baru berhasil didaftarkan!', 'data' => $armada]);
     }
+
+    // Fungsi memperbarui data armada yang sudah ada di database
+    public function update(Request $request, int $id)
+    {
+        $armada = Armada::findOrFail($id);
+
+        $request->validate([
+            'nama_armada' => 'required|string|max:50',
+            'tipe_armada' => 'required|in:Big Bus,Medium Bus,Elf,Mobil',
+            // Pastikan nopol unik, kecuali untuk nopol milik armada itu sendiri yang sedang diedit
+            'nopol' => 'required|string|max:15|unique:armada,nopol,' . $id . ',id_armada',
+            'kapasitas' => 'required|integer|min:1',
+            'fasilitas' => 'nullable|string',
+        ]);
+
+        $armada->update([
+            'nama_armada' => $request->nama_armada,
+            'tipe_armada' => $request->tipe_armada,
+            'nopol' => $request->nopol,
+            'kapasitas' => $request->kapasitas,
+            'fasilitas' => $request->fasilitas,
+        ]);
+
+        return response()->json(['message' => 'Data unit armada berhasil diperbarui!']);
+    }
+
+    // Fungsi menghapus data armada secara permanen dari database
+    public function destroy(int $id)
+    {
+        $armada = Armada::findOrFail($id);
+        $armada->delete();
+
+        return response()->json(['message' => 'Unit armada berhasil dihapus dari database!']);
+    }
 }
