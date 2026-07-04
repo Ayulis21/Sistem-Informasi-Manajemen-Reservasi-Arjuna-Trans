@@ -1,50 +1,73 @@
 import React from "react";
 
 interface ModalCrewProps {
-    crewForm: any;
+    crewForm: {
+        name: string;
+        role: string;
+        phone: string;
+        accountStatus?: string;
+        taskStatus?: string;
+        trips?: number;
+        totalKm?: number;
+    };
     setCrewForm: (data: any) => void;
+    onClose: () => void; // Menambahkan pendaftaran fungsi penutup modal agar error onClose sirna
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
     return (
         <div className="space-y-3 text-[9px] font-black uppercase tracking-widest text-[#94A3B8] animate-in fade-in duration-200">
-            <div className="space-y-1">
-                <label className="pl-1">Nama Lengkap</label>
+            {/* Input Nama Lengkap Kru */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    NAMA LENGKAP KRU
+                </label>
                 <input
                     type="text"
-                    placeholder="Masukkan nama lengkap kru"
-                    value={crewForm.name}
+                    placeholder="Contoh: Pak Slamet Hariyadi"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
+                    value={crewForm?.name || ""}
                     onChange={(e) =>
                         setCrewForm({ ...crewForm, name: e.target.value })
                     }
-                    className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
-                    required
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <label className="pl-1">Peran</label>
-                    <select
-                        value={crewForm.role}
-                        onChange={(e) =>
-                            setCrewForm({ ...crewForm, role: e.target.value })
-                        }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer"
-                    >
-                        <option value="Driver">Driver</option>
-                        <option value="Helper">Helper</option>
-                    </select>
+                {/* Pilihan Dropdown Peran Tugas */}
+                <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                        PERAN TUGAS
+                    </label>
+                    <div className="relative">
+                        <select
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
+                            value={crewForm?.role || "Driver"}
+                            onChange={(e) =>
+                                setCrewForm({
+                                    ...crewForm,
+                                    role: e.target.value,
+                                })
+                            }
+                        >
+                            <option value="Driver">SOPIR UTAMA (DRIVER)</option>
+                            <option value="Helper">KONDEKTUR (HELPER)</option>
+                        </select>
+                    </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="pl-1">No Telepon</label>
+                {/* Input Kontak No Telepon */}
+                <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                        NOMOR TELEPON (WHATSAPP)
+                    </label>
                     <input
                         type="text"
-                        placeholder="08xxxx"
-                        value={crewForm.phone}
+                        placeholder="Contoh: 081234567xxx"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
+                        value={crewForm?.phone || ""}
                         onChange={(e) =>
                             setCrewForm({ ...crewForm, phone: e.target.value })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
                     />
                 </div>
             </div>
@@ -83,32 +106,41 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <label className="pl-1">Total Perjalanan (Trips)</label>
+                {/* Input Total Perjalanan (Trips) - REVISI: DI KUNCI DISABLE OTOMATIS */}
+                <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                        TOTAL PERJALANAN (TRIPS)
+                    </label>
                     <input
                         type="number"
-                        value={crewForm.trips}
+                        disabled // ← KUNCI SAKRAL: Membuat boks input otomatis terkunci dan tidak bisa diklik/diketik
+                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah background slate-100 agar estetikanya sinkron pasif
+                        value={crewForm?.trips ?? 0}
                         onChange={(e) =>
                             setCrewForm({
                                 ...crewForm,
-                                trips: Number(e.target.value),
+                                trips: parseInt(e.target.value) || 0,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
                     />
                 </div>
-                <div className="space-y-1">
-                    <label className="pl-1">Total Jarak (KM)</label>
+
+                {/* Input Total Jarak (KM) - REVISI: DI KUNCI DISABLE OTOMATIS */}
+                <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                        TOTAL JARAK (KM)
+                    </label>
                     <input
                         type="number"
-                        value={crewForm.totalKm}
+                        disabled // ← KUNCI SAKRAL: Membuat boks input otomatis terkunci dan tidak bisa diklik/diketik
+                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah background slate-100 agar estetikanya sinkron pasif
+                        value={crewForm?.totalKm ?? 0}
                         onChange={(e) =>
                             setCrewForm({
                                 ...crewForm,
-                                totalKm: Number(e.target.value),
+                                totalKm: parseInt(e.target.value) || 0,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
                     />
                 </div>
             </div>

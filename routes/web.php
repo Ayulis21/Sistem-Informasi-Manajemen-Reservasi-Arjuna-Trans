@@ -45,7 +45,8 @@ Route::get('/admin/master-data', function () {
 Route::put('/api/admin/armada/update/{id}', [ArmadaController::class, 'update']);
 // Rute API Internal Admin: Hapus Aset Master Data Armada Bus
 Route::delete('/api/admin/armada/delete/{id}', [ArmadaController::class, 'destroy']);
-
+// Rute API Internal Admin: Simpan Data Master Kru Lapangan
+Route::post('/api/admin/kru/store', [KruController::class, 'store']);
 
 
 

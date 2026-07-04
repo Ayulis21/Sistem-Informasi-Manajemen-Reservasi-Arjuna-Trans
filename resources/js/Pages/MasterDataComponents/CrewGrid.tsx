@@ -11,7 +11,7 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
             {crewList.map((c, idx) => (
                 <div
                     key={idx}
-                    className="bg-white rounded-[2.5rem] border border-slate-100/90 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-6 space-y-4 flex flex-col justify-between min-h-[200px]"
+                    className="bg-white rounded-[2.5rem] border border-slate-100/90 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-6 space-y-4 flex flex-col justify-between min-h-[220px]"
                 >
                     <div className="flex justify-between items-start">
                         <div className="w-10 h-10 bg-emerald-50 border border-emerald-100/50 rounded-2xl flex items-center justify-center text-emerald-500">
@@ -34,11 +34,21 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                     </div>
 
                     <div className="space-y-0.5">
+                        {/* REVISI: Membaca nama_kru (Database) atau .name (Dummy) */}
                         <h4 className="text-base font-black text-slate-800 tracking-tight leading-none">
-                            {c.name}
+                            {c.nama_kru || c.name || "Nama Tidak Terdaftar"}
                         </h4>
+                        {/* REVISI: Membaca peran (Database) atau .role (Dummy) */}
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                            {c.role}
+                            {c.peran === "Driver"
+                                ? "SOPIR UTAMA (DRIVER)"
+                                : c.peran === "Helper"
+                                  ? "KONDEKTUR (HELPER)"
+                                  : c.role || "KRU"}
+                        </p>
+                        {/* TAMBAHAN INFO KONTAK: Menampilkan Nomor Telepon di bawah Peran */}
+                        <p className="text-[8px] font-bold text-slate-400 italic">
+                            WhatsApp: {c.no_telp || c.phone || "-"}
                         </p>
                     </div>
 
@@ -47,20 +57,26 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                         <span>
                             Jam Terbang:{" "}
                             <strong className="text-slate-700">
-                                {c.totalKm.toLocaleString()} KM
+                                {Number(
+                                    c.totalKm || c.total_km || 0,
+                                ).toLocaleString()}{" "}
+                                KM
                             </strong>
                         </span>
                     </div>
 
                     <div>
+                        {/* REVISI: Menyelaraskan pewarnaan status kaku kapital/huruf kecil */}
                         <span
                             className={`inline-block px-3 py-1 border rounded-lg text-[8px] font-black uppercase tracking-wider ${
-                                c.status === "READY"
+                                c.status === "READY" ||
+                                c.status === "Ready" ||
+                                c.status_tugas === "Ready"
                                     ? "bg-emerald-50 text-emerald-500 border-emerald-100"
                                     : "bg-amber-50 text-amber-500 border-amber-100"
                             }`}
                         >
-                            {c.status}
+                            {c.status || c.status_tugas || "READY"}
                         </span>
                     </div>
                 </div>

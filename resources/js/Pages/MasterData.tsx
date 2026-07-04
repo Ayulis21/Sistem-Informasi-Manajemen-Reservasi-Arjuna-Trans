@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import ArmadaGrid from "./MasterDataComponents/ArmadaGrid";
 import CrewGrid from "./MasterDataComponents/CrewGrid";
@@ -34,6 +34,26 @@ const MasterData: React.FC = () => {
         trips: 0,
         totalKm: 0,
     });
+    // =========================================================================
+    // KUNCI SAKRAL KRU: MENARIK DATA RIIL DARI DATABASE MYSQL SE CARA OTOMATIS
+    // =========================================================================
+    React.useEffect(() => {
+        // Hanya menarik data dari database jika admin sedang berada di tab KRU
+        if (activeTab === "KRU") {
+            axios
+                .get("/api/admin/kru")
+                .then((response) => {
+                    // Menyiram data dari database MySQL masuk ke dalam state crew Anda
+                    setCrew(response.data);
+                })
+                .catch((error) => {
+                    console.error(
+                        "Gagal menarik data kru dari database:",
+                        error,
+                    );
+                });
+        }
+    }, [activeTab]); // Otomatis terpicu segar setiap kali admin mengklik perpindahan tab menu
 
     // =========================================================================
     // REVISI VALIDASI DETAI L: INFORMATIF & TO THE POINT BERI TAHU SALAHNYA DI MANA
@@ -126,10 +146,11 @@ const MasterData: React.FC = () => {
             }
         } else {
             // =========================================================================
-            // VALIDASI LOGIKA BACKEND UNTUK MENU KELOLA DATA KRU LAPANGAN
+            // SINKRONISASI TRANSMISI DATA: LURUS LANGSUNG MASUK KE KRU CONTROLLER
             // =========================================================================
             const namaKru = crewForm.name || "";
             const noTelp = crewForm.phone || "";
+            const peranKru = crewForm.role || "Driver"; // Mengambil nilai string murni 'Driver' atau 'Helper'
 
             if (!namaKru.trim()) {
                 alert(
@@ -146,7 +167,7 @@ const MasterData: React.FC = () => {
                 const response = await axios.post("/api/admin/kru/store", {
                     nama_kru: namaKru,
                     no_telp: noTelp,
-                    peran: crewForm.role === "Driver" ? "Driver" : "Helper",
+                    peran: peranKru, // Kirim 'Driver' atau 'Helper' sesuai isi select option Anda
                 });
 
                 alert("✨ Sukses: " + response.data.message);
@@ -329,6 +350,8 @@ const MasterData: React.FC = () => {
                                 <ModalCrew
                                     crewForm={crewForm}
                                     setCrewForm={setCrewForm}
+                                    onClose={() => setIsModalOpen(false)} // Menyembuhkan error onClose
+                                    onSubmit={handleSave} // Menyembuhkan error onSubmit
                                 />
                             )}
 
