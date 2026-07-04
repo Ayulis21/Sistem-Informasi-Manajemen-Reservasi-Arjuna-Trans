@@ -6,6 +6,7 @@ import ModalArmada from "./MasterDataComponents/ModalArmada"; // Panggil modal a
 import ModalCrew from "./MasterDataComponents/ModalCrew"; // Panggil modal kru terpisah
 import { Plus } from "lucide-react";
 import axios from "axios";
+import { router } from "@inertiajs/react";
 
 const MasterData: React.FC = () => {
     const [activeTab, setActiveTab] = useState<"ARMADA" | "KRU">("ARMADA");
@@ -34,6 +35,18 @@ const MasterData: React.FC = () => {
         trips: 0,
         totalKm: 0,
     });
+
+    const fetchCrewData = () => {
+        axios
+            .get("/api/admin/kru")
+            .then((response) => {
+                // Menyiram langsung data teranyar database ke kartu grid kru Anda
+                setCrew(response.data);
+            })
+            .catch((error) => {
+                console.error("Gagal menarik data kru:", error);
+            });
+    };
     // =========================================================================
     // KUNCI SAKRAL KRU: MENARIK DATA RIIL DARI DATABASE MYSQL SE CARA OTOMATIS
     // =========================================================================
@@ -127,7 +140,7 @@ const MasterData: React.FC = () => {
                 } as any);
 
                 setIsModalOpen(false);
-                window.location.reload();
+                fetchCrewData();
             } catch (error: any) {
                 console.error("Gagal menyimpan ke database:", error);
                 if (error.response && error.response.status === 422) {
@@ -196,7 +209,7 @@ const MasterData: React.FC = () => {
                     totalKm: 0,
                 });
                 setIsModalOpen(false);
-                window.location.reload();
+                fetchCrewData();
             } catch (error) {
                 alert(
                     "❌ Gagal: Tidak dapat mendaftarkan kru baru ke database.",
@@ -382,7 +395,7 @@ const MasterData: React.FC = () => {
                                             "✨ Sukses: " +
                                                 response.data.message,
                                         );
-                                        window.location.reload();
+                                        fetchCrewData();
                                     } catch (error) {
                                         alert("❌ Gagal menghapus data kru.");
                                     }
