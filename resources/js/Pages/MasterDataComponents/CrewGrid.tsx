@@ -3,9 +3,15 @@ import { UserCheck, Edit2, Trash2, Award } from "lucide-react";
 
 interface CrewGridProps {
     crewList: any[];
+    onEditTrigger: (item: any) => void;
+    onDeleteTrigger: (id: number, namaKru: string) => void;
 }
 
-const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
+const CrewGrid: React.FC<CrewGridProps> = ({
+    crewList,
+    onEditTrigger,
+    onDeleteTrigger,
+}) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300 text-left">
             {crewList.map((c, idx) => (
@@ -18,14 +24,24 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                             <UserCheck size={20} />
                         </div>
                         <div className="flex gap-1.5 text-slate-300">
+                            {/* KUNCI SAKRAL EDIT: Memasang onClick pemicu lempar data modal */}
                             <button
                                 type="button"
+                                onClick={() => onEditTrigger(c)}
                                 className="p-1.5 hover:bg-slate-50 hover:text-slate-600 rounded-lg transition-colors"
                             >
                                 <Edit2 size={13} />
                             </button>
+
+                            {/* KUNCI SAKRAL HAPUS: Memasang onClick pemicu konfirmasi hapus database */}
                             <button
                                 type="button"
+                                onClick={() =>
+                                    onDeleteTrigger(
+                                        c.id_kru || (c as any).id,
+                                        c.nama_kru || c.name,
+                                    )
+                                }
                                 className="p-1.5 hover:bg-slate-50 hover:text-red-500 rounded-lg transition-colors"
                             >
                                 <Trash2 size={13} />
@@ -34,11 +50,9 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                     </div>
 
                     <div className="space-y-0.5">
-                        {/* REVISI: Membaca nama_kru (Database) atau .name (Dummy) */}
                         <h4 className="text-base font-black text-slate-800 tracking-tight leading-none">
                             {c.nama_kru || c.name || "Nama Tidak Terdaftar"}
                         </h4>
-                        {/* REVISI: Membaca peran (Database) atau .role (Dummy) */}
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
                             {c.peran === "Driver"
                                 ? "SOPIR UTAMA (DRIVER)"
@@ -46,7 +60,6 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                                   ? "KONDEKTUR (HELPER)"
                                   : c.role || "KRU"}
                         </p>
-                        {/* TAMBAHAN INFO KONTAK: Menampilkan Nomor Telepon di bawah Peran */}
                         <p className="text-[8px] font-bold text-slate-400 italic">
                             WhatsApp: {c.no_telp || c.phone || "-"}
                         </p>
@@ -66,17 +79,17 @@ const CrewGrid: React.FC<CrewGridProps> = ({ crewList }) => {
                     </div>
 
                     <div>
-                        {/* REVISI: Menyelaraskan pewarnaan status kaku kapital/huruf kecil */}
                         <span
                             className={`inline-block px-3 py-1 border rounded-lg text-[8px] font-black uppercase tracking-wider ${
                                 c.status === "READY" ||
                                 c.status === "Ready" ||
-                                c.status_tugas === "Ready"
+                                c.status_tugas === "Ready" ||
+                                c.status_ketersediaan === "Ready"
                                     ? "bg-emerald-50 text-emerald-500 border-emerald-100"
                                     : "bg-amber-50 text-amber-500 border-amber-100"
                             }`}
                         >
-                            {c.status || c.status_tugas || "READY"}
+                            {c.status_ketersediaan || c.status || "Ready"}
                         </span>
                     </div>
                 </div>

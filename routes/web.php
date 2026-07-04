@@ -47,6 +47,10 @@ Route::put('/api/admin/armada/update/{id}', [ArmadaController::class, 'update'])
 Route::delete('/api/admin/armada/delete/{id}', [ArmadaController::class, 'destroy']);
 // Rute API Internal Admin: Simpan Data Master Kru Lapangan
 Route::post('/api/admin/kru/store', [KruController::class, 'store']);
+// Rute API Internal Admin: Update dan Hapus Data Master Kru Lapangan
+Route::put('/api/admin/kru/update/{id}', [KruController::class, 'update']);
+Route::delete('/api/admin/kru/delete/{id}', [KruController::class, 'destroy']);
+
 
 
 

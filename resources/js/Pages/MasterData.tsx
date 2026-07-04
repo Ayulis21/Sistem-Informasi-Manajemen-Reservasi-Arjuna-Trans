@@ -164,11 +164,25 @@ const MasterData: React.FC = () => {
             }
 
             try {
-                const response = await axios.post("/api/admin/kru/store", {
-                    nama_kru: namaKru,
-                    no_telp: noTelp,
-                    peran: peranKru, // Kirim 'Driver' atau 'Helper' sesuai isi select option Anda
-                });
+                let response;
+
+                // KUNCI ASINKRONIS EDIT KRU: Deteksi rute PUT update atau POST store
+                if (isEditMode) {
+                    response = await axios.put(
+                        `/api/admin/kru/update/${selectedId}`,
+                        {
+                            nama_kru: namaKru,
+                            no_telp: noTelp,
+                            peran: peranKru,
+                        },
+                    );
+                } else {
+                    response = await axios.post("/api/admin/kru/store", {
+                        nama_kru: namaKru,
+                        no_telp: noTelp,
+                        peran: peranKru,
+                    });
+                }
 
                 alert("✨ Sukses: " + response.data.message);
 
@@ -181,7 +195,6 @@ const MasterData: React.FC = () => {
                     trips: 0,
                     totalKm: 0,
                 });
-
                 setIsModalOpen(false);
                 window.location.reload();
             } catch (error) {
@@ -224,15 +237,29 @@ const MasterData: React.FC = () => {
                         </div>
                         <button
                             onClick={() => {
-                                setIsEditMode(false); // Kunci mode tambah baru
-                                setBusForm({
-                                    nama_armada: "",
-                                    nopol: "",
-                                    tipe_armada: "Big Bus",
-                                    kapasitas: 50,
-                                    fasilitas: "AC, TV",
-                                    status: "READY",
-                                });
+                                if (activeTab === "ARMADA") {
+                                    setIsEditMode(false);
+                                    setBusForm({
+                                        nama_armada: "",
+                                        nopol: "",
+                                        tipe_armada: "Big Bus",
+                                        kapasitas: 50,
+                                        fasilitas: "AC, TV",
+                                        status: "READY",
+                                    });
+                                } else {
+                                    // KUNCI RESET KRU: Pastikan mode edit disetel false saat tambah baru
+                                    setIsEditMode(false);
+                                    setCrewForm({
+                                        name: "",
+                                        role: "Driver",
+                                        phone: "",
+                                        accountStatus: "Aktif",
+                                        taskStatus: "Ready",
+                                        trips: 0,
+                                        totalKm: 0,
+                                    });
+                                }
                                 setIsModalOpen(true);
                             }}
                             type="button"
@@ -312,7 +339,56 @@ const MasterData: React.FC = () => {
                             }}
                         />
                     ) : (
-                        <CrewGrid crewList={crew} />
+                        <CrewGrid
+                            crewList={crew || []}
+                            onEditTrigger={(item: any) => {
+                                // SATU VARIABEL UNTUK SEMUA: Masukkan ID kru ke selectedId bawaan Anda
+                                setSelectedId(item.id_kru || item.id);
+                                setIsEditMode(true);
+
+                                setCrewForm({
+                                    name: item.nama_kru || item.name || "",
+                                    role:
+                                        item.peran === "DRIVER" ||
+                                        item.peran === "Driver"
+                                            ? "Driver"
+                                            : "Helper",
+                                    phone: item.no_telp || item.phone || "",
+                                    accountStatus: item.status || "Aktif",
+                                    taskStatus:
+                                        item.status_ketersediaan || "Ready",
+                                    trips: Number(item.trips || 0),
+                                    totalKm: Number(
+                                        item.totalKm || item.total_km || 0,
+                                    ),
+                                });
+
+                                setIsModalOpen(true);
+                            }}
+                            onDeleteTrigger={async (
+                                id: number,
+                                namaKru: string,
+                            ) => {
+                                if (
+                                    confirm(
+                                        `Apakah Anda yakin ingin menghapus kru "${namaKru}" secara permanen?`,
+                                    )
+                                ) {
+                                    try {
+                                        const response = await axios.delete(
+                                            `/api/admin/kru/delete/${id}`,
+                                        );
+                                        alert(
+                                            "✨ Sukses: " +
+                                                response.data.message,
+                                        );
+                                        window.location.reload();
+                                    } catch (error) {
+                                        alert("❌ Gagal menghapus data kru.");
+                                    }
+                                }
+                            }}
+                        />
                     )}
                 </div>
 

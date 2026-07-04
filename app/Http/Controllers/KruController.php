@@ -37,4 +37,33 @@ class KruController extends Controller
 
         return response()->json(['message' => 'Data kru baru berhasil didaftarkan ke sistem Arjuna Trans!']);
     }
+
+    // Fungsi memperbarui data kru yang sudah ada di database
+    public function update(Request $request, int $id)
+    {
+        $kru = Kru::findOrFail($id);
+
+        $request->validate([
+            'nama_kru' => 'required|string|max:255',
+            'no_telp'  => 'required|string|max:15',
+            'peran'    => 'required|in:Driver,Helper',
+        ]);
+
+        $kru->update([
+            'nama_kru' => $request->nama_kru,
+            'no_telp'  => $request->no_telp,
+            'peran'    => $request->peran,
+        ]);
+
+        return response()->json(['message' => 'Data profil kru berhasil diperbarui!']);
+    }
+
+    // Fungsi menghapus data kru secara permanen dari database
+    public function destroy(int $id)
+    {
+        $kru = Kru::findOrFail($id);
+        $kru->delete();
+
+        return response()->json(['message' => 'Data kru berhasil dihapus dari sistem!']);
+    }
 }
