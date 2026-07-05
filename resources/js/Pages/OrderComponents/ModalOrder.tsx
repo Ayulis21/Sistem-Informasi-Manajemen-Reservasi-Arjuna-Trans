@@ -9,6 +9,7 @@ interface ModalOrderProps {
     formData: any;
     setFormData: (data: any) => void;
     onSubmit: (e: React.FormEvent) => void;
+    fetchOrdersData: () => void;
 }
 
 const ModalOrder: React.FC<ModalOrderProps> = ({
@@ -17,6 +18,7 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
     formData,
     setFormData,
     onSubmit,
+    fetchOrdersData,
 }) => {
     if (!isOpen) return null;
 
@@ -61,6 +63,9 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                     <OrderFinanceForm
                         formData={formData}
                         setFormData={setFormData}
+                        fetchOrdersData={function (): void {
+                            throw new Error("Function not implemented.");
+                        }}
                     />
                 </div>
 

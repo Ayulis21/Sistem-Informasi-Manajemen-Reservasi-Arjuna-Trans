@@ -5,6 +5,7 @@ import axios from "axios";
 interface OrderFinanceFormProps {
     formData: any;
     setFormData: (data: any) => void;
+    fetchOrdersData: () => void;
 }
 
 const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
@@ -18,11 +19,23 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     // Fungsi lokal untuk menembak status verifikasi pembayaran lurus ke Laravel
+    // =========================================================================
+    // REVISI SUPER PROTEKTIF: WAJIB INPUT NOMINAL & ANTI-BENTURAN NOTIF GANDA
+    // =========================================================================
     const handleVerifyPayment = async (statusBaru: string) => {
         const idPesanan = formData.id_pesanan || formData.id;
         if (!idPesanan) {
             alert(
                 "⚠️ Keterangan: ID Pesanan tidak terdeteksi dalam mode tambah baru.",
+            );
+            return;
+        }
+
+        // KUNCI SAKRAL 1: Validasi kaku wajib mengisi nominal uang pembayaran terlebih dahulu!
+        const nominalUang = Number(formData.paidAmount || 0);
+        if (nominalUang <= 0) {
+            alert(
+                "❌ Gagal Validasi: Nominal uang pembayaran (Rp) tidak boleh kosong atau Rp 0 untuk dapat disetujui/ditolak!",
             );
             return;
         }
@@ -39,15 +52,19 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                         status_pembayaran: statusBaru,
                     },
                 );
+
                 alert("✨ Sukses: " + response.data.message);
 
-                // Memperbarui status pembayaran di state form agar visual ikut berubah
+                // Mengunci perubahan status lokal di form agar visual teks dan gembok langsung berubah instan
                 setFormData({ ...formData, paymentStatus: statusBaru });
+
+                // CATATAN: Pemicu fetchOrdersData() sengaja dilepas dari baris ini agar anti-benturan transmisi ganda!
             } catch (error) {
                 alert("❌ Gagal memperbarui status bukti pembayaran.");
             }
         }
     };
+
     return (
         <div className="space-y-4 text-[10px] font-black uppercase tracking-widest text-[#94A3B8] text-left">
             <h4 className="flex items-center gap-1.5 text-slate-500 border-b border-slate-50 pb-1.5">
@@ -175,25 +192,30 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                     <input
                         type="text"
                         placeholder="Misal: DP Sewa Bus Pariwisata"
-                        value={formData.paymentNotes || ""}
+                        // KUNCI SAKRAL: Diubah mengikat variabel catatan_pembayaran yang anti-bocor!
+                        value={formData.catatan_pembayaran || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
-                                paymentNotes: e.target.value,
+                                catatan_pembayaran: e.target.value,
                             })
                         }
                         className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 text-xs outline-none"
                     />
                 </div>
-                {/* AREA STATUS BUKTI OPERASIONAL DI PANEL PEMBAYARAN KANAN ANDA */}
-                <div className="pt-2 border-t border-slate-100 space-y-2">
-                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-slate-400">
+                {/* ========================================================================= */}
+                {/* REVISI PROTEKSI: ANTI-DUPLIKAT & LOCK STATUS JIKA SUDAH DISETUJUI / DITOLAK */}
+                {/* ========================================================================= */}
+                <div className="pt-3 border-t border-slate-200/60 space-y-2">
+                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider text-slate-400">
                         <span>Status Bukti</span>
                         <span
-                            className={`px-1.5 py-0.5 rounded text-[8px] ${
+                            className={`px-1.5 py-0.5 rounded text-[7px] ${
                                 formData.paymentStatus === "Disetujui"
-                                    ? "bg-emerald-50 text-emerald-500"
-                                    : "bg-amber-50 text-amber-500"
+                                    ? "bg-emerald-50 text-emerald-500 border border-emerald-100"
+                                    : formData.paymentStatus === "Ditolak"
+                                      ? "bg-red-50 text-red-500 border border-red-100"
+                                      : "bg-amber-50 text-amber-500 border border-amber-100"
                             }`}
                         >
                             {formData.paymentStatus || "Pending"}
@@ -201,13 +223,10 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                        {/* ========================================================================= */}
-                        {/* KUNCI SAKRAL PREVIEW: MENAMPILKAN FOTO REAL DARI SEBELUM & SESUDAH SIMPAN */}
-                        {/* ========================================================================= */}
                         <button
                             type="button"
                             onClick={() => {
-                                // KONDISI 1: Jika admin baru saja klik upload file gambar baru dari laptop (Preview Berjalan Mulus)
+                                // Kondisi 1: Jika admin baru saja klik upload file gambar baru dari laptop
                                 if (
                                     formData.evidenceFile &&
                                     typeof formData.evidenceFile !== "string"
@@ -218,7 +237,7 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                         ),
                                     );
                                 }
-                                // KONDISI 2: Jika data sudah disimpan, baca file fisiknya dari folder publik upload Laravel Anda!
+                                // Kondisi 2: Jika data sudah disimpan dan memiliki file fisik asli di database MySQL
                                 else if (
                                     formData.bukti_transfer &&
                                     formData.bukti_transfer !==
@@ -228,60 +247,92 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                         `/uploads/bukti_transfer/${formData.bukti_transfer}`,
                                     );
                                 }
-                                // KONDISI 3: Fallback darurat jika data struk di database masih kosong polos bawaan sistem
+                                // Kondisi 3: Jika belum ada gambar sama sekali, setel string penanda khusus
                                 else {
-                                    const svgString = `<svg xmlns="http://w3.org" width="300" height="400" viewBox="0 0 300 400"><rect width="100%" height="100%" fill="#F8FAFC"/><text x="50%" y="45%" font-family="sans-serif" font-weight='bold' font-size='14' fill='#64748B' text-anchor='middle'>STRUK BELUM DIUPLOAD</text><text x='50%' y='53%' font-family='sans-serif' font-size='10' fill='%2394A3B8' text-anchor='middle'>PO. ARJUNA TRANS</text></svg>`;
-                                    setPreviewUrl(
-                                        `data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`,
-                                    );
+                                    setPreviewUrl("BELUM_ADA_GAMBAR");
                                 }
                             }}
                             className="p-2 bg-indigo-50 text-[#5346F1] rounded-xl hover:bg-indigo-100 transition-all flex items-center justify-center"
+                            title="Lihat Bukti Transfer"
                         >
                             <Eye size={12} />
                         </button>
 
-                        {/* 2. TOMBOL SESUAI HIJAU MEWAH ANDA */}
-                        <button
-                            type="button"
-                            onClick={() => handleVerifyPayment("Disetujui")}
-                            className="flex-1 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center"
-                        >
-                            Sesuai
-                        </button>
+                        {/* JIKA STATUS MASIH PENDING, TAMPILKAN TOMBOL AKSI VERIFIKASI AKTIF */}
+                        {!formData.paymentStatus ||
+                        formData.paymentStatus === "Pending" ? (
+                            <>
+                                {/* 2. TOMBOL SESUAI - REVISI ANTI TRIGGER GANDA */}
+                                <button
+                                    type="button" // Mengunci tipe button kaku agar tidak memicu submit form utama
+                                    onClick={(e) => {
+                                        e.preventDefault(); // Memotong aksi bawaan browser
+                                        e.stopPropagation(); // Menghentikan gelembung aksi naik ke form induk
+                                        handleVerifyPayment("Disetujui");
+                                    }}
+                                    className="flex-1 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center"
+                                >
+                                    Sesuai
+                                </button>
 
-                        {/* 3. TOMBOL TOLAK MERAH MUDA ANDA */}
-                        <button
-                            type="button"
-                            onClick={() => handleVerifyPayment("Ditolak")}
-                            className="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center"
-                        >
-                            Tolak
-                        </button>
+                                {/* 3. TOMBOL TOLAK - REVISI ANTI TRIGGER GANDA */}
+                                <button
+                                    type="button" // Mengunci tipe button kaku agar tidak memicu submit form utama
+                                    onClick={(e) => {
+                                        e.preventDefault(); // Memotong aksi bawaan browser
+                                        e.stopPropagation(); // Menghentikan gelembung aksi naik ke form induk
+                                        handleVerifyPayment("Ditolak");
+                                    }}
+                                    className="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center"
+                                >
+                                    Tolak
+                                </button>
+                            </>
+                        ) : (
+                            // JIKA STATUS SUDAH 'DISETUJUI' ATAU 'DITOLAK', KUNCI MATI FORM & BERI LABEL NOTIFIKASI AMAN
+                            <div className="flex-1 py-2 bg-slate-50 text-slate-400 rounded-xl text-[8px] font-black uppercase tracking-widest text-center border border-slate-100 cursor-not-allowed">
+                                🔒 VERIFIKASI FINAL KUNCI
+                            </div>
+                        )}
                     </div>
                 </div>
-
-                {/* OVERLAY POPUP MELAYANG PREVIEW FOTO STRUK DARI DALAM FORM KANAN */}
+                {/* OVERLAY POPUP MELAYANG PREVIEW FOTO STRUK ARJUNA TRANS (100% KEMBAR PERSIS GAMBAR ANDA) */}
                 {previewUrl && (
                     <div
-                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
                         onClick={() => setPreviewUrl(null)}
                     >
+                        {/* Box Putih Melayang Lebar Melengkung Cantik Mengikuti Skala Gambar Anda */}
                         <div
-                            className="bg-white p-3 rounded-[2rem] max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200"
+                            className="bg-white p-6 rounded-[2.5rem] max-w-sm w-full relative shadow-[0_20px_50px_rgba(0,0,0,0.2)] text-center animate-in zoom-in-95 duration-200"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* KUNCI SAKRAL UTAMA: Pastikan tag src membaca variabel 'previewUrl' lokal Anda! */}
-                            <img
-                                src={previewUrl} // ← KUNCI PENYEMBUHAN MUTLAK GAMBAR KELUAR
-                                alt="Struk Transfer PO Arjuna Trans"
-                                className="w-full h-auto rounded-[1.5rem] object-contain max-h-[60vh]"
-                            />
+                            {/* KONDISI CEK GAMBAR DINAMIS */}
+                            {previewUrl === "BELUM_ADA_GAMBAR" ? (
+                                // TAMPILAN TEXT KETERANGAN JIKA BELUM ADA GAMBAR (DESAIN BERSIH & RAPI)
+                                <div className="py-16 flex flex-col items-center justify-center space-y-2">
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                        Belum Ada Berkas Gambar
+                                    </p>
+                                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider block">
+                                        Silakan Upload Bukti Transfer Terlebih
+                                        Dahulu
+                                    </span>
+                                </div>
+                            ) : (
+                                // TAMPILAN GAMBAR FISIK STRUK / DENAH PLOT JIKA DATA SUDAH TERSEDIA NYATA
+                                <img
+                                    src={previewUrl}
+                                    alt="Struk Transfer PO Arjuna Trans"
+                                    className="w-full h-auto rounded-[1.5rem] object-contain max-h-[55vh] mb-4 border border-slate-50"
+                                />
+                            )}
 
+                            {/* TOMBOL HITAM GENDUT SAKRAL "TUTUP STRUK" BAWAAN TEMPLATE ASLI ANDA */}
                             <button
                                 type="button"
                                 onClick={() => setPreviewUrl(null)}
-                                className="mt-3 w-full py-2 bg-slate-950 text-white rounded-xl text-[9px] font-black uppercase tracking-widest"
+                                className="w-full py-3.5 bg-slate-950 hover:bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md mt-2"
                             >
                                 Tutup Struk
                             </button>
@@ -306,3 +357,6 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
 };
 
 export default OrderFinanceForm;
+function fetchOrdersData() {
+    throw new Error("Function not implemented.");
+}

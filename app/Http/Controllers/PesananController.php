@@ -44,7 +44,7 @@ class PesananController extends Controller
             'destination'   => 'required|string|max:255',
             'departureDate' => 'required',
             'totalPrice'    => 'required|numeric|min:0',
-            'whatsapp'      => 'required|string|max:15',
+            'whatsapp'      => 'nullable|string|max:15',
         ]);
 
         // 2. OTOMATISASI GENERATOR ID PESANAN UNIK
@@ -54,7 +54,17 @@ class PesananController extends Controller
         DB::transaction(function () use ($request, $idPesananUnik) {
 
             // Mengubah string kiriman armada JSON dari frontend React menjadi array php
-            $fleet = json_decode($request->fleetRequirements, true) ?? [];
+            $fleetInput = $request->fleetRequirements;
+            $fleet = [];
+
+            if (is_string($fleetInput)) {
+                // Jika kiriman dari React berbentuk teks string JSON (Saat Tambah Baru)
+                $decoded = json_decode($fleetInput, true);
+                $fleet = is_array($decoded) ? ($decoded[0] ?? $decoded) : [];
+            } else if (is_array($fleetInput)) {
+                // Jika kiriman dari React sudah berwujud objek array asli (Saat Edit Data)
+                $fleet = $fleetInput[0] ?? $fleetInput;
+            }
 
             // 1. INJEKSI PERTAMA: MASUKKAN DATA UTAMA KE TABEL PESANAN
             DB::table('pesanan')->insert([
@@ -68,8 +78,8 @@ class PesananController extends Controller
                 'tujuan_main'         => $request->destination,
                 'rute'                => $request->routeNotes ?? '-',
                 'estimasi_jarak'      => intval($request->distance ?? 0),
-                'tipe_unit_diminta'   => $fleet[0]['type'] ?? 'Bus',
-                'jumlah_unit_diminta' => intval($fleet[0]['qty'] ?? 1),
+                'tipe_unit_diminta'   => $fleet['type'] ?? 'Bus',
+                'jumlah_unit_diminta' => intval($fleet['qty'] ?? 1),
                 'harga_sewa'          => $request->totalPrice,
                 'status_pesanan'      => 'Pending', // Patuh kaku menggunakan 'Pending' sesuai enum migrasi Anda
                 'lain_lain'           => $request->routeNotes ?? '-', // Mengosongkan sisa json lama dari kolom lain_lain
@@ -107,11 +117,6 @@ class PesananController extends Controller
     }
 
     /**
-     * =========================================================================
-     * PERBARUI DATA: PERBAIKAN DATA DETAIL DI KEDUA TABEL RELASI SE CARA SERENTAK
-     * =========================================================================
-     */
-    /**
      * Memperbarui detail data transaksi di kedua tabel sekaligus (FIX EDIT GAMBAR)
      */
     public function updateFull(Request $request, string $id)
@@ -121,6 +126,7 @@ class PesananController extends Controller
             'destination'   => 'required|string|max:255',
             'departureDate' => 'required',
             'totalPrice'    => 'required|numeric|min:0',
+            'whatsapp'      => 'nullable|string|max:15',
         ]);
 
         DB::transaction(function () use ($request, $id) {
@@ -130,47 +136,49 @@ class PesananController extends Controller
             if ($request->hasFile('evidenceFile')) {
                 $fileFile = $request->file('evidenceFile');
                 $namaFotoKunci = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileFile->getClientOriginalExtension();
-                $fileFile->move(public_path('uploads/bukti_transfer'), $namaFotoKunci); // Foto mendarat fisik di laptop Anda
+                $fileFile->move(public_path('uploads/bukti_transfer'), $namaFotoKunci);
             }
 
             // MENGUBAH STRING KIRIMAN ARMADA JSON KEMBALI MENJADI ARRAY PHP
-            $fleet = json_decode($request->fleetRequirements, true) ?? [];
-
-            // 2. KUNCI EMAS BACKEND: UPDATE BARIS DATA DI TABEL PESANAN UTAMA
-            $dataPesananUpdate = [
-                'nama_pemesan'        => $request->customerName,
-                'no_telp'             => $request->whatsapp,
-                'tgl_berangkat'       => date('Y-m-d H:i:s', strtotime($request->departureDate)),
-                'tgl_selesai'         => $request->returnDate ? date('Y-m-d H:i:s', strtotime($request->returnDate)) : now()->addDays(1),
-                'alamat_penjemputan'  => $request->pickup ?? '-',
-                'tujuan_main'         => $request->destination,
-                'rute'                => $request->routeNotes ?? '-',
-                'estimasi_jarak'      => intval($request->distance ?? 0),
-                'tipe_unit_diminta'   => $fleet['type'] ?? 'Bus',
-                'jumlah_unit_diminta' => intval($fleet['qty'] ?? 1),
-                'harga_sewa'          => $request->totalPrice,
-                'updated_at'          => now(),
-            ];
-
-            // SINKRONISASI: Jika admin mengupload foto baru saat edit, ikut masukkan namanya ke tabel pesanan
-            if ($namaFotoKunci) {
-                $dataPesananUpdate['bukti_transfer'] = $namaFotoKunci;
+            $fleetInput = $request->fleetRequirements;
+            $fleetData = [];
+            if (is_string($fleetInput)) {
+                $fleetData = json_decode($fleetInput, true) ?? [];
+            } else if (is_array($fleetInput)) {
+                $fleetData = $fleetInput;
             }
+            $fleet = isset($fleetData[0]) ? $fleetData[0] : $fleetData;
 
-            DB::table('pesanan')->where('id_pesanan', $id)->update($dataPesananUpdate);
+            // 2. KUNCI EMAS BACKEND: UPDATE BARIS DATA DI TABEL PESANAN UTAMA (TANPA BUKTI_TRANSFER!)
+            DB::table('pesanan')
+                ->where('id_pesanan', $id)
+                ->update([
+                    'nama_pemesan'        => $request->customerName,
+                    'no_telp'             => $request->whatsapp,
+                    'tgl_berangkat'       => date('Y-m-d H:i:s', strtotime($request->departureDate)),
+                    'tgl_selesai'         => $request->returnDate ? date('Y-m-d H:i:s', strtotime($request->returnDate)) : now()->addDays(1),
+                    'alamat_penjemputan'  => $request->pickup ?? '-',
+                    'tujuan_main'         => $request->destination,
+                    'rute'                => $request->routeNotes ?? '-',
+                    'estimasi_jarak'      => intval($request->distance ?? 0),
+                    'tipe_unit_diminta'   => $fleet['type'] ?? 'Bus',
+                    'jumlah_unit_diminta' => intval($fleet['qty'] ?? 1),
+                    'harga_sewa'          => $request->totalPrice,
+                    'updated_at'          => now(),
+                ]);
 
-            // 3. MEMPERBARUI ATAU MENYUNTIKKAN DATA BARU DI TABEL RIWAYAT_PEMBAYARAN
+            // 3. MEMPERBARUI ATAU MENYUNTIKKAN DATA BARU DI TABEL RIWAYAT_PEMBAYARAN (RUMAH ASLI BUKTI_TRANSFER)
             $pembayaranAda = DB::table('riwayat_pembayaran')->where('id_pesanan', $id)->exists();
 
             if ($pembayaranAda) {
                 $updateData = [
                     'nominal'            => floatval($request->paidAmount ?? 0),
                     'tipe_keterangan'    => $request->paymentType ?? 'DP',
-                    'catatan_pembayaran' => $request->paymentNotes ?? 'Pembaruan Data Keuangan',
+                    'catatan_pembayaran' => $request->catatan_pembayaran ?? 'Pembaruan Data Keuangan',
                     'updated_at'         => now(),
                 ];
 
-                // Jika admin mengganti upload file struknya, ikut perbarui kolom gambar riwayat pembayaran
+                // SINKRONISASI: Nama foto baru hanya boleh dimasukkan ke dalam tabel riwayat_pembayaran!
                 if ($namaFotoKunci) {
                     $updateData['bukti_transfer'] = $namaFotoKunci;
                 }
@@ -182,9 +190,9 @@ class PesananController extends Controller
                     'nominal'            => floatval($request->paidAmount),
                     'tgl_bayar'          => $request->paymentDate ? date('Y-m-d H:i:s', strtotime($request->paymentDate)) : now(),
                     'tipe_keterangan'    => $request->paymentType ?? 'DP',
-                    'bukti_transfer'     => $namaFotoKunci ?? 'bukti_default.jpg',
+                    'bukti_transfer'     => $namaFotoKunci ?? 'bukti_default.jpg', // Berdiri di sini secara sah
                     'status_pembayaran'  => 'Pending',
-                    'catatan_pembayaran' => $request->paymentNotes ?? 'Pembayaran Awal Sewa Bus',
+                    'catatan_pembayaran' => $request->catatan_pembayaran ?? 'Pembayaran Awal Sewa Bus',
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ]);
@@ -193,6 +201,7 @@ class PesananController extends Controller
 
         return response()->json(['message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
     }
+
 
     /**
      * Mengubah status pesanan operasional
@@ -221,14 +230,18 @@ class PesananController extends Controller
     /**
      * Memproses tombol verifikasi "SESUAI" atau "TOLAK" dari admin
      */
-    public function verifikasiPembayaran(Request $request, int $id)
+    /**
+     * Memproses tombol verifikasi "SESUAI" atau "TOLAK" dari admin
+     */
+    // REVISI FIX BACKEND: Menegaskan tipe data 'string $id' agar serasi dengan kode ORD-... Anda
+    public function verifikasiPembayaran(Request $request, string $id)
     {
         $request->validate([
             'status_pembayaran' => 'required|in:Disetujui,Ditolak'
         ]);
 
         $affected = DB::table('riwayat_pembayaran')
-            ->where('id_pesanan', $id) // Dicocokkan berdasarkan ID Pesanan relasi Anda
+            ->where('id_pesanan', $id)
             ->update([
                 'status_pembayaran' => $request->status_pembayaran,
                 'updated_at'        => now()

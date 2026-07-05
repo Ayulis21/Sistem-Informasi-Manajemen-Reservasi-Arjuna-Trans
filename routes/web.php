@@ -57,6 +57,7 @@ Route::get('/api/admin/pesanan', [PesananController::class, 'index']);
 Route::post('/api/admin/pesanan/store', [PesananController::class, 'store']);
 Route::put('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
 Route::post('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
+Route::put('/api/admin/pembayaran/verifikasi/{id}', [PesananController::class, 'verifikasiPembayaran'])->where('id', '.*');
 
 
 

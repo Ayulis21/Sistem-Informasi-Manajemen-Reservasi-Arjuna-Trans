@@ -37,10 +37,11 @@ const Orders: React.FC = () => {
         fleetRequirements: [{ type: "Bus", qty: 1 }],
         paymentType: "DP",
         paymentDate: new Date().toISOString().substring(0, 10),
-        paymentNotes: "",
+        // paymentNotes: "",
         evidenceFile: null as File | null,
         bukti_transfer: "bukti_default.jpg",
         paymentStatus: "Pending",
+        catatan_pembayaran: "",
     });
 
     const [isOpenModal, setIsOpenModal] = useState(false);
@@ -99,7 +100,8 @@ const Orders: React.FC = () => {
             dataBiner.append("dueDate", formData.dueDate);
             dataBiner.append("paymentType", formData.paymentType);
             dataBiner.append("paymentDate", formData.paymentDate);
-            dataBiner.append("paymentNotes", formData.paymentNotes);
+            // dataBiner.append("paymentNotes", formData.paymentNotes);
+            dataBiner.append("catatan_pembayaran", formData.catatan_pembayaran);
             dataBiner.append(
                 "fleetRequirements",
                 JSON.stringify(formData.fleetRequirements),
@@ -153,11 +155,12 @@ const Orders: React.FC = () => {
                 dueDate: "",
                 paymentType: "DP",
                 paymentDate: new Date().toISOString().substring(0, 10),
-                paymentNotes: "",
+                // paymentNotes: "",
                 evidenceFile: null,
                 fleetRequirements: [{ type: "Bus", qty: 1 }],
                 bukti_transfer: "bukti_default.jpg",
                 paymentStatus: "Pending",
+                catatan_pembayaran: "",
             });
 
             setIsOpenModal(false);
@@ -403,13 +406,12 @@ const Orders: React.FC = () => {
                                     <button className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors">
                                         <Phone size={12} />
                                     </button>
-                                    {/* KUNCI SAKRAL EDIT: Melengkapi struktur properti agar lolos sensor tipe data TypeScript */}
-                                    {/* KUNCI SAKRAL PREVIEW: Menyuntikkan nama file foto dari database ke form modal */}
+                                    {/* KUNCI SAKRAL PENYEMBUHAN: Menyisipkan evidenceFile agar TypeScript kembali 0 Problems */}
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setSelectedId(o.id_pesanan || o.id);
-                                            setIsEditMode(true);
+                                            setIsEditMode(true); // Mengunci status ke mode EDIT
 
                                             setFormData({
                                                 id_pesanan: o.id_pesanan || "",
@@ -472,22 +474,18 @@ const Orders: React.FC = () => {
                                                     : new Date()
                                                           .toISOString()
                                                           .substring(0, 10),
-                                                paymentNotes:
-                                                    o.catatan_pembayaran ||
-                                                    o.lain_lain ||
-                                                    "",
-                                                evidenceFile: null,
-
-                                                // KUNCI SINKRONISASI PASCA-SIMPAN: Membaca data riwayat transfer asli database Anda
                                                 bukti_transfer:
                                                     o.bukti_transfer ||
                                                     "bukti_default.jpg",
                                                 paymentStatus:
                                                     o.status_pembayaran ||
                                                     "Pending",
+                                                catatan_pembayaran:
+                                                    o.catatan_pembayaran || "",
+                                                evidenceFile: null,
                                             });
 
-                                            setIsOpenModal(true);
+                                            setIsOpenModal(true); // Membuka boks popup modal mewah tiga panel Anda
                                         }}
                                         className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors"
                                     >
@@ -620,11 +618,17 @@ const Orders: React.FC = () => {
             {/* ========================================================================= */}
             <ModalOrder
                 isOpen={isOpenModal}
-                onClose={() => setIsOpenModal(false)}
                 formData={formData}
                 setFormData={setFormData}
-                // Cukup ganti kata onSave menjadi onSubmit di baris ini!
                 onSubmit={handleSaveOrder}
+                // KUNCI SAKRAL: Menyegarkan kartu luar secara aman dan real-time tepat saat boks modal ditutup!
+                onClose={() => {
+                    setIsOpenModal(false);
+                    fetchOrdersData(); // Menyegarkan data depan instan tanpa benturan ganda
+                }}
+                fetchOrdersData={function (): void {
+                    throw new Error("Function not implemented.");
+                }}
             />
         </AdminLayout>
     );
