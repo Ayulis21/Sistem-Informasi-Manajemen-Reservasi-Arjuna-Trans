@@ -114,41 +114,111 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     <h4 className="flex items-center gap-1.5 text-slate-500">
                         <Bus size={13} /> Logistik Perjalanan
                     </h4>
-                    <span className="text-[8px] text-indigo-600 font-black cursor-pointer hover:underline">
+
+                    {/* KUNCI PEMICU TAMBAH BARIS: Menyuntikkan pilihan armada baru saat diklik */}
+                    <span
+                        onClick={() => {
+                            const currentFleet =
+                                formData.fleetRequirements || [];
+                            setFormData({
+                                ...formData,
+                                fleetRequirements: [
+                                    ...currentFleet,
+                                    { type: "Bus", qty: 1 },
+                                ],
+                            });
+                        }}
+                        className="text-[8px] text-indigo-600 font-black cursor-pointer hover:underline"
+                    >
                         TAMBAH +
                     </span>
                 </div>
 
                 {/* Kuota Kebutuhan Fleet Unit */}
+                {/* ========================================================================= */}
+                {/* REVISI MULTI-INPUT FLEET: BISA TAMBAH & HAPUS BARIS KOLOM ARMADA DINAMIS   */}
+                {/* ========================================================================= */}
+                {/* ========================================================================= */}
+                {/* REVISI FIX S SAKRAL: SINKRONISASI TIPE DATA ANTARA PANEL (0 ERROR TYPESCRIPT) */}
+                {/* ========================================================================= */}
                 <div className="space-y-2">
                     <label className="pl-1">Kebutuhan Armada</label>
-                    <div className="flex items-center gap-2">
-                        <select className="flex-1 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer">
-                            <option>Bus</option>
-                        </select>
-                        <input
-                            type="number"
-                            defaultValue="1"
-                            className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none"
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <select className="flex-1 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer">
-                            <option>Elf</option>
-                        </select>
-                        <input
-                            type="number"
-                            defaultValue="1"
-                            className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none"
-                        />
-                    </div>
+
+                    {/* PERBAIKAN: Mengganti kurung siku typo, dan menegaskan tipe data (fleet: any, index: number) */}
+                    {(
+                        formData.fleetRequirements || [{ type: "Bus", qty: 1 }]
+                    ).map((fleet: any, index: number) => (
+                        <div
+                            key={index}
+                            className="flex items-center gap-2 animate-in fade-in duration-200"
+                        >
+                            <select
+                                value={fleet.type}
+                                onChange={(e) => {
+                                    const updatedFleet = [
+                                        ...formData.fleetRequirements,
+                                    ];
+                                    updatedFleet[index].type = e.target.value;
+                                    setFormData({
+                                        ...formData,
+                                        fleetRequirements: updatedFleet,
+                                    });
+                                }}
+                                className="flex-1 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer text-xs"
+                            >
+                                <option value="Bus">Bus</option>
+                                <option value="Medium Bus">Medium Bus</option>
+                                <option value="Elf">Elf</option>
+                                <option value="Mobil">Mobil</option>
+                            </select>
+                            <input
+                                type="number"
+                                min="1"
+                                value={fleet.qty}
+                                onChange={(e) => {
+                                    const updatedFleet = [
+                                        ...formData.fleetRequirements,
+                                    ];
+                                    updatedFleet[index].qty =
+                                        parseInt(e.target.value) || 1;
+                                    setFormData({
+                                        ...formData,
+                                        fleetRequirements: updatedFleet,
+                                    });
+                                }}
+                                className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none text-xs"
+                            />
+
+                            {/* TOMBOL HAPUS BARIS: Menegaskan tipe data data filter (_: any, i: number) */}
+                            {(formData.fleetRequirements || []).length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const updatedFleet =
+                                            formData.fleetRequirements.filter(
+                                                (_: any, i: number) =>
+                                                    i !== index,
+                                            );
+                                        setFormData({
+                                            ...formData,
+                                            fleetRequirements: updatedFleet,
+                                        });
+                                    }}
+                                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all font-black"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    ))}
                 </div>
 
+                {/* REVISI: Mengubah tipe menjadi datetime-local agar memunculkan kalender & jam interaktif */}
                 <div className="space-y-1.5 pt-2">
                     <label className="pl-1">Waktu Berangkat</label>
                     <input
-                        type="text"
-                        value={formData.departureDate}
+                        type="datetime-local" // ← KUNCI WAKTU INTERAKTIF
+                        value={formData.departureDate || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
@@ -161,8 +231,8 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                 <div className="space-y-1.5">
                     <label className="pl-1">Waktu Pulang</label>
                     <input
-                        type="text"
-                        value={formData.returnDate}
+                        type="datetime-local" // ← KUNCI WAKTU INTERAKTIF
+                        value={formData.returnDate || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,

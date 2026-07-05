@@ -37,12 +37,12 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
             <div className="space-y-1">
                 <label className="pl-1">Jatuh Tempo</label>
                 <input
-                    type="text"
-                    value={formData.dueDate}
+                    type="date" // ← KUNCI SAKRAL KALENDER INTERAKTIF
+                    value={formData.dueDate || ""}
                     onChange={(e) =>
                         setFormData({ ...formData, dueDate: e.target.value })
                     }
-                    className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                    className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs"
                 />
             </div>
 

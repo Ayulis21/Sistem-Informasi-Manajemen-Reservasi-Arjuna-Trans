@@ -7,6 +7,7 @@ use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\CustomerScheduleController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
+use App\Http\Controllers\PesananController;
 use App\Models\Armada;
 use App\Models\Kru;
 
@@ -50,6 +51,13 @@ Route::post('/api/admin/kru/store', [KruController::class, 'store']);
 // Rute API Internal Admin: Update dan Hapus Data Master Kru Lapangan
 Route::put('/api/admin/kru/update/{id}', [KruController::class, 'update']);
 Route::delete('/api/admin/kru/delete/{id}', [KruController::class, 'destroy']);
+
+// Rute API Internal Admin: Kelola Transaksi Pesanan Masuk Arjuna Trans
+Route::get('/api/admin/pesanan', [PesananController::class, 'index']);
+// Rute API Internal Admin: Simpan Data Reservasi/Pesanan Baru ke Database
+Route::post('/api/admin/pesanan/store', [PesananController::class, 'store']);
+Route::put('/api/admin/pesanan/update-status/{id}', [PesananController::class, 'updateStatus']);
+
 
 
 

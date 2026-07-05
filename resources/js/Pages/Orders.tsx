@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
+import axios from "axios";
 import ModalOrder from "./OrderComponents/ModalOrder";
 import {
     Search,
@@ -20,109 +21,122 @@ import {
 } from "lucide-react";
 
 const Orders: React.FC = () => {
-    const [isOpenModal, setIsOpenModal] = useState(false);
-    const [activeOrder, setActiveOrder] = useState({
-        id: "ORD4",
-        customerName: "Karang Taruna",
-        destination: "Anyer",
-        totalPrice: 11500000,
-        paidAmount: 5000000,
+    const [formData, setFormData] = useState({
+        customerName: "",
+        whatsapp: "",
+        destination: "",
+        pickup: "",
+        distance: "",
+        departureDate: "",
+        returnDate: "",
+        routeNotes: "",
+        totalPrice: 0,
+        paidAmount: 0,
+        dueDate: "",
+        // KUNCI DINAMIS: Nilai awal default membawa 1 baris pilihan Bus
+        fleetRequirements: [{ type: "Bus", qty: 1 }],
     });
-    // DATA STATIS MURNI: 100% PERSIS SEPERTI DATA DI GAMBAR ANDA
-    const [orders, setOrders] = useState([
-        {
-            id: "ORD7",
-            title: "Rombongan Arisan Ibu-ibu Komplek Anggrek",
-            rute: "CIWIDEY BANDUNG (KAWAH PUTIH & KEBUN TEH)",
-            date: "1/7/2026",
-            price: 3800000,
-            badge: "BARU",
-            status: "Pending",
-            type: "arisan",
-        },
-        {
-            id: "ORD-8323-WEB",
-            title: "test",
-            rute: "TEST",
-            date: "4/7/2026",
-            price: 0,
-            badge: "BARU",
-            status: "Pending",
-            type: "test",
-        },
-        {
-            id: "ORD8",
-            title: "Rombongan Pernikahan Rian & Siska",
-            rute: "KOTA SOLO (GEDUNG GRAHA SABA BUANA)",
-            date: "26/6/2026",
-            price: 9000000,
-            badge: "ORD8",
-            status: "Approved",
-            type: "nikah",
-        },
-        {
-            id: "ORD5",
-            title: "Jamaah Majelis Taklim Al-Ikhsan (Ziarah Wali)",
-            rute: "SURABAYA & MADURA (ZIARAH WALI SONGO)",
-            date: "15/6/2026",
-            price: 19000000,
-            badge: "ORD5",
-            status: "Ziarah",
-            type: "ziarah",
-        },
-        {
-            id: "ORD6",
-            title: "PT Nusantara Jaya (Tour Dewata Bali)",
-            rute: "PULAU BALI (KUTA, BEDUGUL, ULUWATU)",
-            date: "24/6/2026",
-            price: 28000000,
-            badge: "ORD6",
-            status: "Completed",
-            type: "pt",
-        },
-        {
-            id: "ORD3",
-            title: "Study Tour SD Merdeka Baru",
-            rute: "TAMAN MINI INDONESIA INDAH (TMII) & ANCOL",
-            date: "20/6/2026",
-            price: 7500000,
-            badge: "LUNAS",
-            status: "Completed",
-            type: "school",
-        },
-        {
-            id: "ORD4",
-            title: "Gathering Karang Taruna RW 04",
-            rute: "PANTAI ANYER (COTTAGE & WATERSPORT)",
-            date: "28/6/2026",
-            price: 11500000,
-            badge: "ORD4",
-            status: "Completed",
-            type: "taruna",
-        },
-        {
-            id: "ORD2",
-            title: "Rombongan SMK Pariwisata Harapan",
-            rute: "PANGANDARAN (PANTAI BARAT & GREEN CANYON)",
-            date: "10/7/2026",
-            price: 8500000,
-            badge: "ORD2",
-            status: "Plotting",
-            type: "smk",
-        },
-        {
-            id: "ORD1",
-            title: "PT Maju Jaya Sentosa (Outing Kantor)",
-            rute: "BANDUNG (LEMBANG & DUSUN BAMBU)",
-            date: "5/7/2026",
-            price: 12000000,
-            badge: "ORD1",
-            status: "Plotting",
-            type: "pt2",
-        },
-    ]);
+
+    const [isOpenModal, setIsOpenModal] = useState(false);
+    const [activeOrder, setActiveOrder] = useState({});
+    const [orders, setOrders] = useState<any[]>([]);
 
     const [search, setSearch] = useState("");
+    const fetchOrdersData = () => {
+        axios
+            .get("/api/admin/pesanan")
+            .then((response) => {
+                // Menyiram langsung seluruh baris data dari database MySQL ke state React
+                setOrders(response.data);
+            })
+            .catch((error) => {
+                console.error(
+                    "Gagal memuat data pesanan dari database:",
+                    error,
+                );
+            });
+    };
+    useEffect(() => {
+        fetchOrdersData();
+    }, []);
+
+    const handleSaveOrder = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (
+            !formData.customerName.trim() ||
+            !formData.destination.trim() ||
+            !formData.departureDate.trim()
+        ) {
+            alert(
+                "❌ Gagal Simpan: Mohon lengkapi Nama Pelanggan, Tujuan Utama, dan Waktu Berangkat terlebih dahulu!",
+            );
+            return;
+        }
+
+        try {
+            // TRANSMISI DATA LANGSUNG: Mengirim seluruh isi objek formData asli template Anda
+            const response = await axios.post(
+                "/api/admin/pesanan/store",
+                formData,
+            );
+
+            alert("✨ Sukses: " + response.data.message);
+
+            setFormData({
+                customerName: "",
+                whatsapp: "",
+                destination: "",
+                pickup: "",
+                distance: "",
+                departureDate: "",
+                returnDate: "",
+                routeNotes: "",
+                totalPrice: 0,
+                paidAmount: 0,
+                dueDate: "",
+                fleetRequirements: [{ type: "Bus", qty: 1 }],
+            });
+
+            setIsOpenModal(false);
+            fetchOrdersData(); // Menyegarkan data visual depan secara instan
+        } catch (error) {
+            alert(
+                "❌ Gagal: Tidak dapat menyimpan data pesanan baru ke MySQL.",
+            );
+        }
+    };
+
+    const handleUpdateStatus = async (
+        idPesanan: number,
+        statusBaru: string,
+        namaPenyewa: string,
+    ) => {
+        const pesanKonfirmasi =
+            statusBaru === "DISETUJUI"
+                ? `Apakah Anda yakin ingin MENYETUJUI pemesanan atas nama "${namaPenyewa}"?`
+                : `Apakah Anda yakin ingin MENOLAK pemesanan atas nama "${namaPenyewa}"?`;
+
+        if (confirm(pesanKonfirmasi)) {
+            try {
+                // Menembak lurus ke gerbang PUT API PesananController Laravel Anda
+                const response = await axios.put(
+                    `/api/admin/pesanan/update-status/${idPesanan}`,
+                    {
+                        status_pesanan: statusBaru,
+                    },
+                );
+
+                alert("✨ Sukses: " + response.data.message);
+
+                // Menyegarkan isi tabel secara instan tanpa perlu reload total halaman!
+                fetchOrdersData();
+            } catch (error) {
+                console.error("Gagal memperbarui status pesanan:", error);
+                alert("❌ Gagal: Tidak dapat memperbarui status transaksi.");
+            }
+        }
+    };
 
     const getLeftIcon = (status: string) => {
         switch (status) {
@@ -217,48 +231,68 @@ const Orders: React.FC = () => {
                 <div className="space-y-3">
                     {orders.map((o, idx) => (
                         <div
-                            key={idx}
+                            key={o.id_pesanan || idx}
                             className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100"
                         >
                             {/* Sisi Kiri: Ikon & Detail Rute */}
                             <div className="flex items-start gap-4 flex-1">
-                                {getLeftIcon(o.status)}
+                                {/* Menyelaraskan fungsi icon agar membaca status database (PENDING / DISETUJUI / SELESAI) */}
+                                {getLeftIcon(o.status_pesanan || o.status)}
                                 <div className="space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h4 className="text-sm font-black text-slate-800 tracking-tight leading-tight">
-                                            {o.title}
+                                            {/* SINKRONISASI: Membaca nama pemesan dari database */}
+                                            {o.nama_pemesan ||
+                                                o.title ||
+                                                "Tanpa Nama"}
                                         </h4>
                                         <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md border border-slate-200/40 uppercase tracking-widest">
-                                            {o.id}
+                                            #{o.id_pesanan || o.id}
                                         </span>
-                                        {o.badge === "BARU" && (
-                                            <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-100 text-red-500 rounded-md uppercase tracking-wider">
+                                        {/* Kondisi Badge Dinamis */}
+                                        {(o.status_pesanan === "PENDING" ||
+                                            o.status === "Pending") && (
+                                            <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider">
                                                 BARU
                                             </span>
                                         )}
-                                        {o.badge === "LUNAS" && (
+                                        {(o.status_pesanan === "DISETUJUI" ||
+                                            o.status === "Approved") && (
                                             <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-500 text-white rounded-md uppercase tracking-wider">
                                                 LUNAS
                                             </span>
                                         )}
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-x-3 text-[10px] font-bold text-slate-400">
+                                        {/* 1. SINKRONISASI KOLOM RUTE/TUJUAN UTAMA */}
                                         <p className="flex items-center gap-1">
                                             <MapPin
                                                 size={10}
                                                 className="text-slate-300"
                                             />{" "}
-                                            {o.rute}
+                                            {o.tujuan_main || o.rute || "-"}
                                         </p>
                                         <span className="hidden sm:inline text-slate-200">
                                             |
                                         </span>
+                                        {/* 2. SINKRONISASI KOLOM TANGGAL BERANGKAT DATABSE */}
                                         <p className="flex items-center gap-1">
                                             <Calendar
                                                 size={10}
                                                 className="text-slate-300"
                                             />{" "}
-                                            {o.date}
+                                            {o.tgl_berangkat
+                                                ? new Date(
+                                                      o.tgl_berangkat,
+                                                  ).toLocaleDateString(
+                                                      "id-ID",
+                                                      {
+                                                          day: "numeric",
+                                                          month: "short",
+                                                          year: "numeric",
+                                                      },
+                                                  )
+                                                : "-"}
                                         </p>
                                     </div>
                                 </div>
@@ -270,8 +304,12 @@ const Orders: React.FC = () => {
                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
                                         Total Sewa
                                     </p>
+                                    {/* 3. SINKRONISASI KOLOM HARGA SEWA DATABASE (MENGHILANGKAN Rp 0) */}
                                     <p className="text-sm font-black text-slate-800">
-                                        Rp {o.price.toLocaleString("id-ID")}
+                                        Rp{" "}
+                                        {Number(
+                                            o.harga_sewa || o.total_harga || 0,
+                                        ).toLocaleString("id-ID")}
                                     </p>
                                 </div>
 
@@ -286,44 +324,111 @@ const Orders: React.FC = () => {
                                     >
                                         <Edit2 size={12} />
                                     </button>
-                                    <button className="p-2 hover:bg-slate-50 text-slate-300 hover:text-red-500 rounded-xl transition-colors">
+                                    {/* KUNCI UTAMA HAPUS DATA: Tembak API delete jika pesanan dibatalkan/dihapus */}
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (
+                                                confirm(
+                                                    `Apakah Anda yakin ingin menghapus data pesanan atas nama "${o.nama_pemesan || o.title}" secara permanen?`,
+                                                )
+                                            ) {
+                                                try {
+                                                    // Jika rute backend delete belum ada, kita bisa gunakan endpoint update status ke 'DIBATALKAN' atau buatkan API khusus nanti
+                                                    const response =
+                                                        await axios.put(
+                                                            `/api/admin/pesanan/update-status/${o.id_pesanan || o.id}`,
+                                                            {
+                                                                status_pesanan:
+                                                                    "DIBATALKAN",
+                                                            },
+                                                        );
+                                                    alert(
+                                                        "✨ Sukses: Status pesanan berhasil diubah menjadi DIBATALKAN.",
+                                                    );
+                                                    fetchOrdersData(); // Segarkan data tabel instan
+                                                } catch (err) {
+                                                    alert(
+                                                        "❌ Gagal menghapus atau mengubah status pesanan.",
+                                                    );
+                                                }
+                                            }
+                                        }}
+                                        className="p-2 hover:bg-slate-50 text-slate-300 hover:text-red-500 rounded-xl transition-colors"
+                                    >
                                         <Trash2 size={12} />
                                     </button>
                                     <button className="p-2 bg-slate-900 text-white rounded-xl shadow-sm">
                                         <Printer size={12} />
                                     </button>
 
-                                    {/*  PERBAIKAN SINTAKS PENUTUP TOMBOL AKSI OPERASIONAL */}
-                                    {o.status === "Pending" && (
+                                    {/* INTEGRASI STATUS AKSI TOMBOL OPERASIONAL ARJUNA TRANS */}
+                                    {(o.status_pesanan === "PENDING" ||
+                                        o.status === "Pending") && (
                                         <>
-                                            <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all flex items-center gap-1">
+                                            {/* 1. TOMBOL SETUJUI (Mengubah status menjadi DISETUJUI / LUNAS) */}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        o.id_pesanan || o.id,
+                                                        "DISETUJUI",
+                                                        o.nama_pemesan ||
+                                                            o.title,
+                                                    )
+                                                }
+                                                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all flex items-center gap-1"
+                                            >
                                                 <Check
                                                     size={10}
                                                     strokeWidth={3}
                                                 />{" "}
                                                 SETUJUI
                                             </button>
-                                            <button className="px-3 py-2 bg-white border border-red-200 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-red-50 transition-colors">
+
+                                            {/* 2. TOMBOL TOLAK (Mengubah status menjadi DIBATALKAN / TOLAK) */}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        o.id_pesanan || o.id,
+                                                        "DIBATALKAN",
+                                                        o.nama_pemesan ||
+                                                            o.title,
+                                                    )
+                                                }
+                                                className="px-3 py-2 bg-white border border-red-200 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-red-50 transition-colors"
+                                            >
                                                 × TOLAK
                                             </button>
                                         </>
                                     )}
-                                    {o.status === "Approved" && (
+                                    {(o.status_pesanan === "DISETUJUI" ||
+                                        o.status === "Approved") && (
                                         <>
-                                            <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all flex items-center gap-1">
-                                                → JALAN
+                                            {/* KUNCI OPERASIONAL: Saat bus berangkat/selesai, klik tombol ini untuk mengubah status ke SELESAI */}
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleUpdateStatus(
+                                                        o.id_pesanan || o.id,
+                                                        "SELESAI",
+                                                        o.nama_pemesan ||
+                                                            o.title,
+                                                    )
+                                                }
+                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all flex items-center gap-1"
+                                            >
+                                                → JALAN / SELESAI
                                             </button>
                                             <span className="text-[9px] font-bold text-slate-400 ml-2 cursor-pointer hover:text-indigo-600 uppercase tracking-widest">
                                                 Ubah Plot
                                             </span>
                                         </>
                                     )}
-                                    {o.status === "Ziarah" && (
-                                        <button className="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-xl opacity-90 cursor-default">
-                                            ARSIP
-                                        </button>
-                                    )}
-                                    {o.status === "Completed" && (
+
+                                    {(o.status_pesanan === "SELESAI" ||
+                                        o.status === "Completed") && (
                                         <button className="px-4 py-2 bg-[#5346F1] text-white text-[9px] font-black uppercase tracking-widest rounded-xl opacity-90 cursor-default flex items-center gap-1">
                                             <Check size={10} strokeWidth={3} />{" "}
                                             SELESAI
@@ -340,15 +445,15 @@ const Orders: React.FC = () => {
                     ))}
                 </div>
             </div>
+            {/* ========================================================================= */}
+            {/* KUNCI SAKRAL: MENGHUBUNGKAN STATE LUAR DENGAN PROPS JEROAN MODAL ASLI ANDA */}
+            {/* ========================================================================= */}
             <ModalOrder
                 isOpen={isOpenModal}
                 onClose={() => setIsOpenModal(false)}
-                formData={activeOrder}
-                setFormData={setActiveOrder}
-                onSave={(e) => {
-                    e.preventDefault();
-                    setIsOpenModal(false);
-                }}
+                formData={formData}
+                setFormData={setFormData}
+                onSave={handleSaveOrder}
             />
         </AdminLayout>
     );
