@@ -228,23 +228,22 @@ class PesananController extends Controller
     }
 
     /**
-     * Memproses tombol verifikasi "SESUAI" atau "TOLAK" dari admin
+     * Memproses tombol verifikasi "SESUAI" atau "TOLAK" beserta perekaman teks alasan dari admin
      */
-    /**
-     * Memproses tombol verifikasi "SESUAI" atau "TOLAK" dari admin
-     */
-    // REVISI FIX BACKEND: Menegaskan tipe data 'string $id' agar serasi dengan kode ORD-... Anda
     public function verifikasiPembayaran(Request $request, string $id)
     {
         $request->validate([
-            'status_pembayaran' => 'required|in:Disetujui,Ditolak'
+            'status_pembayaran'  => 'required|in:Disetujui,Ditolak',
+            'catatan_pembayaran' => 'required|string|max:255' // ← VALIDASI KOLOM CATATAN BARU ANDA
         ]);
 
+        // KUNCI SAKRAL BACKEND: Menyimpan pembaruan status beserta alasan penolakan secara serentak ke MySQL
         $affected = DB::table('riwayat_pembayaran')
             ->where('id_pesanan', $id)
             ->update([
-                'status_pembayaran' => $request->status_pembayaran,
-                'updated_at'        => now()
+                'status_pembayaran'  => $request->status_pembayaran,
+                'catatan_pembayaran' => $request->catatan_pembayaran, // Mengunci ketikan alasan admin ke database
+                'updated_at'         => now()
             ]);
 
         return response()->json([

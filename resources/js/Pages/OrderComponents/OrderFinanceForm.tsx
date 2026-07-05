@@ -12,16 +12,21 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
     formData,
     setFormData,
 }) => {
-    // Kalkulasi nilai sisa piutang secara dinamis (Total Sewa dikurangi Uang Masuk)
-    const sisaTagihan =
-        Number(formData.totalPrice || 0) - Number(formData.paidAmount || 0);
+    // =========================================================================
+    // REVISI RUMUS AKUNTANSI: JIKA STATUS 'DITOLAK', TAGIHAN TIDAK AKAN BERKURANG!
+    // =========================================================================
+    const totalSewa = Number(formData.totalPrice || 0);
+    const uangMasuk = Number(formData.paidAmount || 0);
+
+    // Jika status pembayaran ditolak admin, uang masuk otomatis dianggap Rp 0 (Batal/Tidak Sah)
+    const uangSah = formData.paymentStatus === "Ditolak" ? 0 : uangMasuk;
+
+    // Rumus final pengisi boks hitam gendut Anda
+    const sisaTagihan = totalSewa - uangSah;
+
     // State lokal khusus untuk memunculkan popup melayang foto struk di dalam form
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-    // Fungsi lokal untuk menembak status verifikasi pembayaran lurus ke Laravel
-    // =========================================================================
-    // REVISI SUPER PROTEKTIF: WAJIB INPUT NOMINAL & ANTI-BENTURAN NOTIF GANDA
-    // =========================================================================
     const handleVerifyPayment = async (statusBaru: string) => {
         const idPesanan = formData.id_pesanan || formData.id;
         if (!idPesanan) {
@@ -31,13 +36,37 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
             return;
         }
 
-        // KUNCI SAKRAL 1: Validasi kaku wajib mengisi nominal uang pembayaran terlebih dahulu!
         const nominalUang = Number(formData.paidAmount || 0);
         if (nominalUang <= 0) {
             alert(
                 "❌ Gagal Validasi: Nominal uang pembayaran (Rp) tidak boleh kosong atau Rp 0 untuk dapat disetujui/ditolak!",
             );
             return;
+        }
+
+        // =========================================================================
+        // REVISI INPUT ALASAN: MEMINTA KETIKAN TEKS JIKA TOMBOL TOLAK DIKLIK
+        // =========================================================================
+        let catatanFinal =
+            formData.catatan_pembayaran || "Pembayaran Reservasi Bus";
+
+        if (statusBaru === "Ditolak") {
+            const alasanInput = prompt(
+                "❌ ALASAN PENOLAKAN:\nMohon ketik alasan mengapa bukti transfer pembayaran ini ditolak:",
+            );
+
+            // Jika admin menekan tombol 'Cancel' pada boks prompt, batalkan proses verifikasi
+            if (alasanInput === null) return;
+
+            // Jika admin mengosongkan teks ketikan alasan, kunci kaku agar wajib diisi
+            if (alasanInput.trim() === "") {
+                alert(
+                    "❌ Gagal: Alasan penolakan bukti transfer wajib diketik dan tidak boleh kosong!",
+                );
+                return;
+            }
+
+            catatanFinal = `DITOLAK: ${alasanInput.trim()}`;
         }
 
         if (
@@ -50,15 +79,19 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                     `/api/admin/pembayaran/verifikasi/${idPesanan}`,
                     {
                         status_pembayaran: statusBaru,
+                        // Mengirimkan teks alasan penolakan baru secara instan menuju server Laravel
+                        catatan_pembayaran: catatanFinal,
                     },
                 );
 
                 alert("✨ Sukses: " + response.data.message);
 
-                // Mengunci perubahan status lokal di form agar visual teks dan gembok langsung berubah instan
-                setFormData({ ...formData, paymentStatus: statusBaru });
-
-                // CATATAN: Pemicu fetchOrdersData() sengaja dilepas dari baris ini agar anti-benturan transmisi ganda!
+                // Sinkronisasikan isi teks boks catatan dan status di layar visual saat itu juga
+                setFormData({
+                    ...formData,
+                    paymentStatus: statusBaru,
+                    catatan_pembayaran: catatanFinal,
+                });
             } catch (error) {
                 alert("❌ Gagal memperbarui status bukti pembayaran.");
             }
