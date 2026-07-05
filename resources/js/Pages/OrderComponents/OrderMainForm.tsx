@@ -21,23 +21,23 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     <label className="pl-1">ID Pesanan</label>
                     <input
                         type="text"
-                        readOnly
-                        value={formData.id}
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-400 outline-none cursor-not-allowed"
+                        disabled // ← KUNCI SAKRAL: Mengunci boks agar disable/read-only kaku tidak bisa diedit admin
+                        value={formData?.id_pesanan || formData?.id || ""} // ← KUNCI UTAMA: Membaca id_pesanan database Anda
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah text-slate-400 agar estetikanya pasif mengunci
                     />
                 </div>
                 <div className="space-y-1">
                     <label className="pl-1">Nama Pelanggan</label>
                     <input
                         type="text"
-                        value={formData.customerName}
+                        value={formData?.customerName || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
                                 customerName: e.target.value,
                             })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none text-xs"
                     />
                 </div>
                 <div className="space-y-1">
@@ -49,18 +49,17 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                         />
                         <input
                             type="text"
-                            value={formData.whatsapp}
+                            value={formData?.whatsapp || ""}
                             onChange={(e) =>
                                 setFormData({
                                     ...formData,
                                     whatsapp: e.target.value,
                                 })
                             }
-                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none text-xs"
                         />
                     </div>
                 </div>
-
                 <h4 className="flex items-center gap-1.5 text-slate-500 pt-2 border-b border-slate-50 pb-1.5">
                     <MapPin size={13} /> Lokasi
                 </h4>
@@ -68,42 +67,40 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     <label className="pl-1">Tujuan Utama</label>
                     <input
                         type="text"
-                        value={formData.destination}
+                        value={formData?.destination || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
                                 destination: e.target.value,
                             })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none text-xs"
                     />
                 </div>
                 <div className="space-y-1">
                     <label className="pl-1">Titik Jemput</label>
                     <input
                         type="text"
-                        value={formData.pickup}
+                        value={formData?.pickup || ""}
                         onChange={(e) =>
                             setFormData({ ...formData, pickup: e.target.value })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none text-xs"
                     />
                 </div>
                 <div className="space-y-1">
-                    <label className="pl-1">
-                        Jarak Tempuh (Kilometer - KM)
-                    </label>
+                    <label className="pl-1">Jarak Tempuh (KM)</label>
                     <input
                         type="text"
                         placeholder="Contoh: 150"
-                        value={formData.distance}
+                        value={formData?.distance || ""}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
                                 distance: e.target.value,
                             })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none text-xs"
                     />
                 </div>
             </div>
@@ -133,14 +130,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                         TAMBAH +
                     </span>
                 </div>
-
-                {/* Kuota Kebutuhan Fleet Unit */}
-                {/* ========================================================================= */}
-                {/* REVISI MULTI-INPUT FLEET: BISA TAMBAH & HAPUS BARIS KOLOM ARMADA DINAMIS   */}
-                {/* ========================================================================= */}
-                {/* ========================================================================= */}
-                {/* REVISI FIX S SAKRAL: SINKRONISASI TIPE DATA ANTARA PANEL (0 ERROR TYPESCRIPT) */}
-                {/* ========================================================================= */}
                 <div className="space-y-2">
                     <label className="pl-1">Kebutuhan Armada</label>
 

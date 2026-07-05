@@ -22,6 +22,7 @@ import {
 
 const Orders: React.FC = () => {
     const [formData, setFormData] = useState({
+        id_pesanan: "",
         customerName: "",
         whatsapp: "",
         destination: "",
@@ -40,6 +41,8 @@ const Orders: React.FC = () => {
     const [isOpenModal, setIsOpenModal] = useState(false);
     const [activeOrder, setActiveOrder] = useState({});
     const [orders, setOrders] = useState<any[]>([]);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null); // Menggunakan tipe string karena ID pesanan Anda memakai format teks ORD-...
 
     const [search, setSearch] = useState("");
     const fetchOrdersData = () => {
@@ -60,13 +63,19 @@ const Orders: React.FC = () => {
         fetchOrdersData();
     }, []);
 
+    // =========================================================================
+    // PERBAIKAN SAKRAL PENENTU EDIT VS TAMBAH BARU (0 ERROR & ANTI DUPLIKAT)
+    // =========================================================================
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Validasi pembaca nama variabel asli template Anda
         if (
+            !formData.customerName ||
             !formData.customerName.trim() ||
+            !formData.destination ||
             !formData.destination.trim() ||
-            !formData.departureDate.trim()
+            !formData.departureDate
         ) {
             alert(
                 "❌ Gagal Simpan: Mohon lengkapi Nama Pelanggan, Tujuan Utama, dan Waktu Berangkat terlebih dahulu!",
@@ -75,15 +84,28 @@ const Orders: React.FC = () => {
         }
 
         try {
-            // TRANSMISI DATA LANGSUNG: Mengirim seluruh isi objek formData asli template Anda
-            const response = await axios.post(
-                "/api/admin/pesanan/store",
-                formData,
-            );
+            let response;
+
+            // KUNCI SENJATA UTAMA: Memisahkan secara tegas antara rute PUT UPDATE-FULL dengan POST STORE
+            if (isEditMode) {
+                // Jika sedang dalam mode EDIT, tembak rute put update beserta ID pesanan lamanya
+                response = await axios.put(
+                    `/api/admin/pesanan/update-full/${selectedId}`,
+                    formData,
+                );
+            } else {
+                // Jika sedang dalam mode TAMBAH BARU, baru tembak rute store pesanan baru
+                response = await axios.post(
+                    "/api/admin/pesanan/store",
+                    formData,
+                );
+            }
 
             alert("✨ Sukses: " + response.data.message);
 
+            // Mereset isi form kembali bersih kosong mengikuti struktur asli Anda setelah sukses
             setFormData({
+                id_pesanan: "",
                 customerName: "",
                 whatsapp: "",
                 destination: "",
@@ -99,10 +121,12 @@ const Orders: React.FC = () => {
             });
 
             setIsOpenModal(false);
-            fetchOrdersData(); // Menyegarkan data visual depan secara instan
+            setIsEditMode(false); // Kembalikan penanda edit ke false
+            fetchOrdersData(); // Menyegarkan kartu visual depan secara instan / real-time
         } catch (error) {
+            console.error(error);
             alert(
-                "❌ Gagal: Tidak dapat menyimpan data pesanan baru ke MySQL.",
+                "❌ Gagal: Tidak dapat memproses data pesanan ke database MySQL.",
             );
         }
     };
@@ -319,8 +343,69 @@ const Orders: React.FC = () => {
                                         <Phone size={12} />
                                     </button>
                                     <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedId(o.id_pesanan || o.id);
+                                            setIsEditMode(true); // Mengunci status ke mode EDIT
+
+                                            setFormData({
+                                                id_pesanan: o.id_pesanan || "",
+                                                customerName:
+                                                    o.nama_pemesan || "",
+                                                whatsapp: o.no_telp || "",
+                                                destination:
+                                                    o.tujuan_main || "",
+                                                pickup:
+                                                    o.alamat_penjemputan || "",
+                                                distance: String(
+                                                    o.estimasi_jarak || 0,
+                                                ),
+                                                departureDate: o.tgl_berangkat
+                                                    ? o.tgl_berangkat.substring(
+                                                          0,
+                                                          16,
+                                                      )
+                                                    : "", // Memotong format tanggal waktu agar pas dengan kalender
+                                                returnDate: o.tgl_selesai
+                                                    ? o.tgl_selesai.substring(
+                                                          0,
+                                                          16,
+                                                      )
+                                                    : "", // Memotong format tanggal waktu agar pas dengan kalender
+                                                routeNotes: o.rute || "", // Mengalirkan catatan rute bawah
+
+                                                // REVISI TOTAL BERSIH: Membaca nominal DP yang sudah dibayar langsung dari sub-query total_terbayar database
+                                                paidAmount: Number(
+                                                    o.total_terbayar ||
+                                                        o.nominal ||
+                                                        0,
+                                                ),
+                                                totalPrice: Number(
+                                                    o.harga_sewa || 0,
+                                                ),
+                                                dueDate: o.jatuh_tempo || "",
+                                                fleetRequirements:
+                                                    o.tipe_unit_diminta
+                                                        ? [
+                                                              {
+                                                                  type: o.tipe_unit_diminta,
+                                                                  qty: Number(
+                                                                      o.jumlah_unit_diminta ||
+                                                                          1,
+                                                                  ),
+                                                              },
+                                                          ]
+                                                        : [
+                                                              {
+                                                                  type: "Bus",
+                                                                  qty: 1,
+                                                              },
+                                                          ],
+                                            });
+
+                                            setIsOpenModal(true); // Membuka boks popup modal mewah tiga panel Anda
+                                        }}
                                         className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors"
-                                        onClick={() => setIsOpenModal(true)}
                                     >
                                         <Edit2 size={12} />
                                     </button>
@@ -453,7 +538,8 @@ const Orders: React.FC = () => {
                 onClose={() => setIsOpenModal(false)}
                 formData={formData}
                 setFormData={setFormData}
-                onSave={handleSaveOrder}
+                // Cukup ganti kata onSave menjadi onSubmit di baris ini!
+                onSubmit={handleSaveOrder}
             />
         </AdminLayout>
     );

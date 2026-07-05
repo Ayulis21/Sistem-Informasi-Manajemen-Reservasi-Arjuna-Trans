@@ -8,7 +8,7 @@ interface ModalOrderProps {
     onClose: () => void;
     formData: any;
     setFormData: (data: any) => void;
-    onSave: (e: React.FormEvent) => void;
+    onSubmit: (e: React.FormEvent) => void;
 }
 
 const ModalOrder: React.FC<ModalOrderProps> = ({
@@ -16,7 +16,7 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
     onClose,
     formData,
     setFormData,
-    onSave,
+    onSubmit,
 }) => {
     if (!isOpen) return null;
 
@@ -24,10 +24,11 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
             {/* Box Putih Melayang Lebar Mengikuti Skala Layar */}
             <form
-                onSubmit={onSave}
+                onSubmit={onSubmit}
                 className="bg-white w-full max-w-[1024px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)] p-6 md:p-8 space-y-6 text-left animate-in zoom-in-95 duration-300 relative border border-slate-100 custom-scrollbar"
             >
                 {/* Title Header Form */}
+                {/* Title Header Form - REVISI SINKRONISASI ID PESANAN */}
                 <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
                         <div className="w-1 h-6 bg-[#5346F1] rounded-full"></div>
@@ -35,8 +36,10 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                             <h3 className="text-base font-black text-slate-800 uppercase tracking-wider leading-none">
                                 Edit Detail Pesanan
                             </h3>
-                            <span className="text-[9px] font-black text-slate-400 uppercase block mt-1">
-                                {formData.id}
+                            {/* KUNCI SAKRAL: Menampilkan ID Pesanan kaku database secara anggun di bawah judul */}
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md uppercase block mt-1 tracking-wider">
+                                ID:{" "}
+                                {formData?.id_pesanan || formData?.id || "BARU"}
                             </span>
                         </div>
                     </div>
