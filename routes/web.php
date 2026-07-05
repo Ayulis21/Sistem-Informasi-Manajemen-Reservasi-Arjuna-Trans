@@ -54,11 +54,9 @@ Route::delete('/api/admin/kru/delete/{id}', [KruController::class, 'destroy']);
 
 // Rute API Internal Admin: Kelola Transaksi Pesanan Masuk Arjuna Trans
 Route::get('/api/admin/pesanan', [PesananController::class, 'index']);
-// Rute API Internal Admin: Simpan Data Reservasi/Pesanan Baru ke Database
 Route::post('/api/admin/pesanan/store', [PesananController::class, 'store']);
-// REVISI SAKRAL ROUTE: Menambahkan saringan regex agar string ID ORD-... tidak memicu error 404 lagi!
 Route::put('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
-
+Route::post('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
 
 
 

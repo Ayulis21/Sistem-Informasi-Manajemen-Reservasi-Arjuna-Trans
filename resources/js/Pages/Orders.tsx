@@ -34,11 +34,17 @@ const Orders: React.FC = () => {
         totalPrice: 0,
         paidAmount: 0,
         dueDate: "",
-        // KUNCI DINAMIS: Nilai awal default membawa 1 baris pilihan Bus
         fleetRequirements: [{ type: "Bus", qty: 1 }],
+        paymentType: "DP",
+        paymentDate: new Date().toISOString().substring(0, 10),
+        paymentNotes: "",
+        evidenceFile: null as File | null,
+        bukti_transfer: "bukti_default.jpg",
+        paymentStatus: "Pending",
     });
 
     const [isOpenModal, setIsOpenModal] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [activeOrder, setActiveOrder] = useState({});
     const [orders, setOrders] = useState<any[]>([]);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -63,47 +69,75 @@ const Orders: React.FC = () => {
         fetchOrdersData();
     }, []);
 
-    // =========================================================================
-    // PERBAIKAN SAKRAL PENENTU EDIT VS TAMBAH BARU (0 ERROR & ANTI DUPLIKAT)
-    // =========================================================================
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validasi pembaca nama variabel asli template Anda
         if (
-            !formData.customerName ||
             !formData.customerName.trim() ||
-            !formData.destination ||
             !formData.destination.trim() ||
-            !formData.departureDate
+            !formData.departureDate.trim()
         ) {
             alert(
-                "❌ Gagal Simpan: Mohon lengkapi Nama Pelanggan, Tujuan Utama, dan Waktu Berangkat terlebih dahulu!",
+                "❌ Gagal Simpan: Mohon lengkapi Nama Pelanggan, Tujuan Utama, dan Waktu Berangkat!",
             );
             return;
         }
 
         try {
-            let response;
+            // KUNCI BERKAS BINER: Membungkus seluruh inputan ke dalam FormData agar file gambar bisa lolos terkirim
+            const dataBiner = new FormData();
+            dataBiner.append("customerName", formData.customerName);
+            dataBiner.append("whatsapp", formData.whatsapp);
+            dataBiner.append("destination", formData.destination);
+            dataBiner.append("pickup", formData.pickup);
+            dataBiner.append("distance", formData.distance);
+            dataBiner.append("departureDate", formData.departureDate);
+            dataBiner.append("returnDate", formData.returnDate);
+            dataBiner.append("routeNotes", formData.routeNotes);
+            dataBiner.append("totalPrice", String(formData.totalPrice));
+            dataBiner.append("paidAmount", String(formData.paidAmount));
+            dataBiner.append("dueDate", formData.dueDate);
+            dataBiner.append("paymentType", formData.paymentType);
+            dataBiner.append("paymentDate", formData.paymentDate);
+            dataBiner.append("paymentNotes", formData.paymentNotes);
+            dataBiner.append(
+                "fleetRequirements",
+                JSON.stringify(formData.fleetRequirements),
+            );
 
-            // KUNCI SENJATA UTAMA: Memisahkan secara tegas antara rute PUT UPDATE-FULL dengan POST STORE
+            // Jika admin memilih foto bukti transfer, selipkan filenya ke dalam muatan
+            if (formData.evidenceFile) {
+                dataBiner.append("evidenceFile", formData.evidenceFile);
+            }
+
+            // Jika dalam mode edit, tambahkan metode PUT spoofing agar didukung penuh oleh sistem upload Laravel
             if (isEditMode) {
-                // Jika sedang dalam mode EDIT, tembak rute put update beserta ID pesanan lamanya
-                response = await axios.put(
+                dataBiner.append("_method", "PUT");
+            }
+
+            let response;
+            if (isEditMode) {
+                // SINKRONISASI TRANSMISI: Langsung tembak POST murni ke gerbang baru Laravel tanpa spoofing _method
+                response = await axios.post(
                     `/api/admin/pesanan/update-full/${selectedId}`,
-                    formData,
+                    dataBiner,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    },
                 );
             } else {
-                // Jika sedang dalam mode TAMBAH BARU, baru tembak rute store pesanan baru
                 response = await axios.post(
                     "/api/admin/pesanan/store",
-                    formData,
+                    dataBiner,
+                    {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    },
                 );
             }
 
             alert("✨ Sukses: " + response.data.message);
 
-            // Mereset isi form kembali bersih kosong mengikuti struktur asli Anda setelah sukses
+            // Reset seluruh state kembali bersih kosong setelah berhasil
             setFormData({
                 id_pesanan: "",
                 customerName: "",
@@ -117,17 +151,44 @@ const Orders: React.FC = () => {
                 totalPrice: 0,
                 paidAmount: 0,
                 dueDate: "",
+                paymentType: "DP",
+                paymentDate: new Date().toISOString().substring(0, 10),
+                paymentNotes: "",
+                evidenceFile: null,
                 fleetRequirements: [{ type: "Bus", qty: 1 }],
+                bukti_transfer: "bukti_default.jpg",
+                paymentStatus: "Pending",
             });
 
             setIsOpenModal(false);
-            setIsEditMode(false); // Kembalikan penanda edit ke false
-            fetchOrdersData(); // Menyegarkan kartu visual depan secara instan / real-time
+            setIsEditMode(false);
+            fetchOrdersData();
         } catch (error) {
             console.error(error);
-            alert(
-                "❌ Gagal: Tidak dapat memproses data pesanan ke database MySQL.",
-            );
+            alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
+        }
+    };
+    const handleVerifyPayment = async (
+        idPesanan: string,
+        statusBaru: string,
+    ) => {
+        if (
+            confirm(
+                `Apakah Anda yakin ingin menandai bukti transfer ini sebagai ${statusBaru.toUpperCase()}?`,
+            )
+        ) {
+            try {
+                const response = await axios.put(
+                    `/api/admin/pembayaran/verifikasi/${idPesanan}`,
+                    {
+                        status_pembayaran: statusBaru,
+                    },
+                );
+                alert("✨ Sukses: " + response.data.message);
+                fetchOrdersData(); // Segarkan data visual depan instan
+            } catch (error) {
+                alert("❌ Gagal memperbarui status bukti pembayaran.");
+            }
         }
     };
 
@@ -342,11 +403,13 @@ const Orders: React.FC = () => {
                                     <button className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors">
                                         <Phone size={12} />
                                     </button>
+                                    {/* KUNCI SAKRAL EDIT: Melengkapi struktur properti agar lolos sensor tipe data TypeScript */}
+                                    {/* KUNCI SAKRAL PREVIEW: Menyuntikkan nama file foto dari database ke form modal */}
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setSelectedId(o.id_pesanan || o.id);
-                                            setIsEditMode(true); // Mengunci status ke mode EDIT
+                                            setIsEditMode(true);
 
                                             setFormData({
                                                 id_pesanan: o.id_pesanan || "",
@@ -365,23 +428,21 @@ const Orders: React.FC = () => {
                                                           0,
                                                           16,
                                                       )
-                                                    : "", // Memotong format tanggal waktu agar pas dengan kalender
+                                                    : "",
                                                 returnDate: o.tgl_selesai
                                                     ? o.tgl_selesai.substring(
                                                           0,
                                                           16,
                                                       )
-                                                    : "", // Memotong format tanggal waktu agar pas dengan kalender
-                                                routeNotes: o.rute || "", // Mengalirkan catatan rute bawah
-
-                                                // REVISI TOTAL BERSIH: Membaca nominal DP yang sudah dibayar langsung dari sub-query total_terbayar database
+                                                    : "",
+                                                routeNotes: o.rute || "",
+                                                totalPrice: Number(
+                                                    o.harga_sewa || 0,
+                                                ),
                                                 paidAmount: Number(
                                                     o.total_terbayar ||
                                                         o.nominal ||
                                                         0,
-                                                ),
-                                                totalPrice: Number(
-                                                    o.harga_sewa || 0,
                                                 ),
                                                 dueDate: o.jatuh_tempo || "",
                                                 fleetRequirements:
@@ -401,14 +462,38 @@ const Orders: React.FC = () => {
                                                                   qty: 1,
                                                               },
                                                           ],
+                                                paymentType:
+                                                    o.tipe_keterangan || "DP",
+                                                paymentDate: o.tgl_bayar
+                                                    ? o.tgl_bayar.substring(
+                                                          0,
+                                                          10,
+                                                      )
+                                                    : new Date()
+                                                          .toISOString()
+                                                          .substring(0, 10),
+                                                paymentNotes:
+                                                    o.catatan_pembayaran ||
+                                                    o.lain_lain ||
+                                                    "",
+                                                evidenceFile: null,
+
+                                                // KUNCI SINKRONISASI PASCA-SIMPAN: Membaca data riwayat transfer asli database Anda
+                                                bukti_transfer:
+                                                    o.bukti_transfer ||
+                                                    "bukti_default.jpg",
+                                                paymentStatus:
+                                                    o.status_pembayaran ||
+                                                    "Pending",
                                             });
 
-                                            setIsOpenModal(true); // Membuka boks popup modal mewah tiga panel Anda
+                                            setIsOpenModal(true);
                                         }}
                                         className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors"
                                     >
                                         <Edit2 size={12} />
                                     </button>
+
                                     {/* KUNCI UTAMA HAPUS DATA: Tembak API delete jika pesanan dibatalkan/dihapus */}
                                     <button
                                         type="button"
