@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class PesananController extends Controller
 {
     /**
-     * Menarik data pesanan lengkap beserta penjumlahan total uang yang sudah masuk dari database
+     * 1. MENARIK DATA PESANAN UTAMA (0 ERROR)
      */
     public function index()
     {
@@ -29,9 +29,11 @@ class PesananController extends Controller
         return response()->json($pesanan);
     }
 
+    /**
+     * 2. TAMBAH DATA BARU (SANGGUP MENAMPUNG MULTI-CICILAN)
+     */
     public function store(Request $request)
     {
-        // 1. Jalur Validasi Internal Server Laravel Mengikuti Skema Kolom Anda
         $request->validate([
             'customerName'  => 'required|string|max:255',
             'destination'   => 'required|string|max:255',
@@ -40,24 +42,19 @@ class PesananController extends Controller
             'whatsapp'      => 'nullable|string|max:15',
         ]);
 
-        // OTOMATISASI GENERATOR ID PESANAN UNIK
         $idPesananUnik = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
 
-        // Memulai sistem transaksi database agar jika salah satu tabel macet, data otomatis dibatalkan keseluruhan (Aman)
         DB::transaction(function () use ($request, $idPesananUnik) {
-
-            // Mengubah string kiriman armada JSON dari frontend React menjadi array php
             $fleetInput = $request->fleetRequirements;
             $fleet = [];
 
             if (is_string($fleetInput)) {
                 $decoded = json_decode($fleetInput, true);
-                $fleet = is_array($decoded) ? ($decoded[0] ?? $decoded) : [];
+                $fleet = is_array($decoded) ? $decoded : [];
             } else if (is_array($fleetInput)) {
-                $fleet = $fleetInput[0] ?? $fleetInput;
+                $fleet = $fleetInput;
             }
 
-            // INJEKSI PERTAMA: MASUKKAN DATA UTAMA KE TABEL PESANAN
             DB::table('pesanan')->insert([
                 'id_pesanan'          => $idPesananUnik,
                 'nama_pemesan'        => $request->customerName,
@@ -79,50 +76,65 @@ class PesananController extends Controller
                 'updated_at'          => now(),
             ]);
 
-            // =========================================================================
-            // 2. REVISI SAKRAL SINKRONISASI BUNGKUSAN MULTI-CICILAN BARU TAMBAH (0 ERR)
-            // =========================================================================
             $paymentsInput = $request->paymentsData;
             $paymentsArray = is_string($paymentsInput) ? json_decode($paymentsInput, true) : ($paymentsInput ?? []);
-
-            // Hitung total akumulasi uang dari seluruh kolom cicilan yang ditambah admin
-            $totalPaidCalculated = 0;
-            foreach ($paymentsArray as $index => $p) {
-                $totalPaidCalculated += floatval($p['amount'] ?? 0);
+            if (!is_array($paymentsArray)) {
+                $paymentsArray = [];
             }
 
-            // Jika ada pengisian nominal uang, jebolkannya masuk ke riwayat_pembayaran
-            if ($totalPaidCalculated > 0) {
+            // 🎯 KUNCI SAKRAL PROTEKSI 1: Menjamin tidak ada data kosong / crash saat berhitung
+            $totalPaidCalculated = 0;
+            foreach ($paymentsArray as $index => $p) {
+                if (is_array($p)) {
+                    $totalPaidCalculated += floatval($p['amount'] ?? 0);
 
-                // Cek unggahan file fisik gambar struk pertama sebagai berkas utama jika ada
-                $namaFotoKunci = 'bukti_default.jpg';
-                if ($request->hasFile('evidenceFile_0')) {
-                    $fileFile = $request->file('evidenceFile_0');
-                    $namaFotoKunci = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileFile->getClientOriginalExtension();
-                    $fileFile->move(public_path('uploads/bukti_transfer'), $namaFotoKunci);
+                    if ($request->hasFile("evidenceFile_{$index}")) {
+                        $fileCicilan = $request->file("evidenceFile_{$index}");
+                        $namaFotoCicilan = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileCicilan->getClientOriginalExtension();
+                        $fileCicilan->move(public_path('uploads/bukti_transfer'), $namaFotoCicilan);
+                        $paymentsArray[$index]['bukti_transfer'] = $namaFotoCicilan;
+                    }
+                }
+            }
+
+            if ($totalPaidCalculated > 0) {
+                foreach ($paymentsArray as $index => $p) {
+                    if (is_array($p)) {
+                        // Menghapus paksa properti biner evidenceFile agar tidak membengkak di database MySQL
+                        unset($paymentsArray[$index]['evidenceFile']);
+                    }
                 }
 
-                // Ikat barisan objek kolom cicilan menjadi string teks JSON murni Terikat DB
+                // Sekarang array payments dijamin ringan, bersih, polos, dan langsung lolos masuk MySQL!
                 $stringPembayaranJson = json_encode($paymentsArray);
+
+                $tipeTerakhir = 'DP';
+                if (count($paymentsArray) > 0) {
+                    $barisAkhir = end($paymentsArray);
+                    $tipeMentah = is_array($barisAkhir) ? ($barisAkhir['type'] ?? 'DP') : 'DP';
+                    $tipeTerakhir = ($tipeMentah === 'Cicilan' || $tipeMentah === 'Cicil') ? 'Cicil' : $tipeMentah;
+                }
 
                 DB::table('riwayat_pembayaran')->insert([
                     'id_pesanan'         => $idPesananUnik,
-                    'nominal'            => $totalPaidCalculated, // Berisi total gabungan uang masuk
+                    'nominal'            => $totalPaidCalculated,
                     'tgl_bayar'          => now(),
-                    'tipe_keterangan'    => $paymentsArray[0]['type'] ?? 'DP',
-                    'bukti_transfer'     => $namaFotoKunci,
+                    'tipe_keterangan'    => substr($tipeTerakhir, 0, 20),
+                    'bukti_transfer'     => 'bukti_default.jpg',
                     'status_pembayaran'  => 'Pending',
-                    'catatan_pembayaran' => $stringPembayaranJson, // Mengunci riwayat baris cicilan secara abadi
+                    'catatan_pembayaran' => $stringPembayaranJson,
                     'created_at'         => now(),
                     'updated_at'         => now(),
                 ]);
             }
         });
 
-        return response()->json(['message' => 'Reservasi pesanan baru dan seluruh baris riwayat keuangan berhasil disimpan ke sistem Arjuna Trans!']);
+        return response()->json(['message' => 'Reservasi pesanan dan berkas pembayaran awal berhasil disimpan ke sistem Arjuna Trans!']);
     }
 
-    //  Memperbarui detail data transaksi di kedua tabel sekaligus (FIX EDIT GAMBAR)
+    /**
+     * 3. FUNGSI SIMPAN EDIT DATA LAMA (ANTI-ERROR 500 INTERNAL SERVER)
+     */
     public function updateFull(Request $request, string $id)
     {
         $request->validate([
@@ -134,16 +146,6 @@ class PesananController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $id) {
-
-            // PROSES UPLOAD FOTO STRUK TRANSFER UTAMA JIKA ADA (FALBACK)
-            $namaFotoKunci = null;
-            if ($request->hasFile('evidenceFile')) {
-                $fileFile = $request->file('evidenceFile');
-                $namaFotoKunci = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileFile->getClientOriginalExtension();
-                $fileFile->move(public_path('uploads/bukti_transfer'), $namaFotoKunci);
-            }
-
-            // DETEKSI FORMAT ARMADA FLEET REQUIREMENTS
             $fleetInput = $request->fleetRequirements;
             $fleetData = [];
             if (is_string($fleetInput)) {
@@ -151,9 +153,8 @@ class PesananController extends Controller
             } else if (is_array($fleetInput)) {
                 $fleetData = $fleetInput;
             }
-            $fleet = isset($fleetData[0]) ? $fleetData[0] : ($fleetData ?? []);
+            $fleet = is_array($fleetData) ? $fleetData : [];
 
-            // UPDATE DATA UTAMA DI TABEL PESANAN
             DB::table('pesanan')
                 ->where('id_pesanan', $id)
                 ->update([
@@ -171,58 +172,58 @@ class PesananController extends Controller
                     'updated_at'          => now(),
                 ]);
 
-            // =========================================================================
-            // REVISI SAKRAL UPDATEFULL: MENERIMA & MENGUNCI ARRAY GANDA MULTI-CICILAN
-            // =========================================================================
             $paymentsInput = $request->paymentsData;
             $paymentsArray = is_string($paymentsInput) ? json_decode($paymentsInput, true) : ($paymentsInput ?? []);
+            if (!is_array($paymentsArray)) {
+                $paymentsArray = [];
+            }
 
-            // Loop kalkulator pintar untuk mengakumulasikan total nominal uang masuk dari semua baris
             $totalPaidCalculated = 0;
             foreach ($paymentsArray as $index => $p) {
-                $totalPaidCalculated += floatval($p['amount'] ?? 0);
+                if (is_array($p)) {
+                    $totalPaidCalculated += floatval($p['amount'] ?? 0);
 
-                // Proses penyimpanan gambar biner untuk masing-masing baris cicilan yang di-upload baru
-                if ($request->hasFile("evidenceFile_{$index}")) {
-                    $fileCicilan = $request->file("evidenceFile_{$index}");
-                    $namaFotoCicilan = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileCicilan->getClientOriginalExtension();
-                    $fileCicilan->move(public_path('uploads/bukti_transfer'), $namaFotoCicilan);
-                    $paymentsArray[$index]['bukti_transfer'] = $namaFotoCicilan;
+                    // Proses pemindahan file fisik gambar struk cicilan ke folder publik Anda
+                    if ($request->hasFile("evidenceFile_{$index}")) {
+                        $fileCicilan = $request->file("evidenceFile_{$index}");
+                        $namaFotoCicilan = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileCicilan->getClientOriginalExtension();
+                        $fileCicilan->move(public_path('uploads/bukti_transfer'), $namaFotoCicilan);
+
+                        // Kunci teks nama filenya ke dalam array
+                        $paymentsArray[$index]['bukti_transfer'] = $namaFotoCicilan;
+                    }
+
+                    // 🎯 KUNCI SAKRAL PENYEMBUHAN: Wajib membuang objek biner mentah pengganggu dari baris array!
+                    unset($paymentsArray[$index]['evidenceFile']);
                 }
             }
 
-            // Menyisipkan juga data boks jatuh tempo luar ke dalam kantong JSON terikat DB agar sinkron
-            $stringPembayaranJson = json_encode([
-                'riwayat' => $paymentsArray,
-                'dueDate' => $request->dueDate ?? ''
-            ]);
+            // Sekarang teks JSON dijamin super ringan, bersih, polos, dan murni hanya berisi string teks pendek!
+            $stringPembayaranJson = json_encode($paymentsArray);
 
-            // Ambil tipe pembayaran dari baris terakhir yang dimasukkan admin sebagai status aktif
-            $tipeTerakhir = count($paymentsArray) > 0 ? ($paymentsArray[count($paymentsArray) - 1]['type'] ?? 'DP') : 'DP';
-
-            // UPDATE ATAU INSERT DATA KE TABEL RIWAYAT_PEMBAYARAN
+            $tipeTerakhir = 'DP';
+            if (count($paymentsArray) > 0) {
+                $barisAkhir = end($paymentsArray);
+                $tipeMentah = is_array($barisAkhir) ? ($barisAkhir['type'] ?? 'DP') : 'DP';
+                $tipeTerakhir = ($tipeMentah === 'Cicilan' || $tipeMentah === 'Cicil') ? 'Cicil' : $tipeMentah;
+            }
             $pembayaranAda = DB::table('riwayat_pembayaran')->where('id_pesanan', $id)->exists();
-
             if ($pembayaranAda) {
-                $updateData = [
-                    'nominal'            => $totalPaidCalculated, // Otomatis ter-update akumulatif!
-                    'tipe_keterangan'    => $tipeTerakhir,
-                    'catatan_pembayaran' => $stringPembayaranJson, // Mengunci array riil ke database MySQL
-                    'updated_at'         => now(),
-                ];
-
-                if ($namaFotoKunci) {
-                    $updateData['bukti_transfer'] = $namaFotoKunci;
-                }
-
-                DB::table('riwayat_pembayaran')->where('id_pesanan', $id)->update($updateData);
+                DB::table('riwayat_pembayaran')
+                    ->where('id_pesanan', $id)
+                    ->update([
+                        'nominal'            => $totalPaidCalculated,
+                        'tipe_keterangan'    => substr($tipeTerakhir, 0, 20),
+                        'catatan_pembayaran' => $stringPembayaranJson,
+                        'updated_at'         => now(),
+                    ]);
             } else if ($totalPaidCalculated > 0) {
                 DB::table('riwayat_pembayaran')->insert([
                     'id_pesanan'         => $id,
                     'nominal'            => $totalPaidCalculated,
                     'tgl_bayar'          => now(),
-                    'tipe_keterangan'    => $tipeTerakhir,
-                    'bukti_transfer'     => $namaFotoKunci ?? 'bukti_default.jpg',
+                    'tipe_keterangan'    => substr($tipeTerakhir, 0, 20),
+                    'bukti_transfer'     => 'bukti_default.jpg',
                     'status_pembayaran'  => 'Pending',
                     'catatan_pembayaran' => $stringPembayaranJson,
                     'created_at'         => now(),
@@ -231,11 +232,10 @@ class PesananController extends Controller
             }
         });
 
-        return response()->json(['message' => 'Detail data pesanan dan seluruh baris kolom cicilan keuangan berhasil diperbarui secara permanen!']);
+        return response()->json(['message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
     }
 
     // Memproses tombol verifikasi "SESUAI" atau "TOLAK" beserta perekaman teks alasan dari admin
-
     public function verifikasiPembayaran(Request $request, string $id)
     {
         $request->validate([

@@ -12,14 +12,21 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
     formData,
     setFormData,
 }) => {
-    const totalSewa = Number(formData.totalPrice || 0);
-    const uangMasuk = Number(formData.paidAmount || 0);
+    const totalHarga = Number(formData.totalPrice || 0);
 
-    // Jika status pembayaran ditolak admin, uang masuk otomatis dianggap Rp 0 (Batal/Tidak Sah)
-    const uangSah = formData.paymentStatus === "Ditolak" ? 0 : uangMasuk;
+    // Secara cerdas menjumlahkan berapapun nominal (amount) dari seluruh kolom pembayaran yang ditambah admin
+    const totalUangMasuk = (formData.payments || []).reduce(
+        (total: number, p: any) => {
+            // Hanya menghitung nominal pembayaran yang valid dan tidak ditolak oleh admin
+            const nominalBaris =
+                p.paymentStatus === "Ditolak" ? 0 : Number(p.amount || 0);
+            return total + nominalBaris;
+        },
+        0,
+    );
 
-    // Rumus final pengisi boks hitam gendut Anda
-    const sisaTagihan = totalSewa - uangSah;
+    // Rumus final sisa piutang PO Arjuna Trans Anda
+    const sisaTagihan = totalHarga - totalUangMasuk;
 
     // State lokal khusus untuk memunculkan popup melayang foto struk di dalam form
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -260,20 +267,28 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                 <div className="space-y-1">
                                     <label>Nominal (Rp)</label>
                                     <input
-                                        type="number"
-                                        value={p.amount || ""} // 🎯 KUNCI 2: Mengikat ke nominal uang masuk p.amount per baris
+                                        type="text" // 🎯 KUNCI 1: Diubah ke text agar tombol panah spinner bawaan browser LENYAP TOTAL
+                                        inputMode="numeric" // KUNCI 2: Memaksa keyboard HP agar tetap memunculkan tombol angka penuh
+                                        pattern="[0-9]*" // KUNCI 3: Hanya mengizinkan input karakter angka suci 0-9
+                                        value={p.amount || ""}
                                         onChange={(e) => {
+                                            // Menyaring ketikan input agar murni hanya angka saja yang masuk ke database
+                                            const nilaiBersih =
+                                                e.target.value.replace(
+                                                    /[^0-9]/g,
+                                                    "",
+                                                );
                                             const update = [
                                                 ...formData.payments,
                                             ];
                                             update[index].amount =
-                                                parseFloat(e.target.value) || 0;
+                                                parseFloat(nilaiBersih) || 0;
                                             setFormData({
                                                 ...formData,
                                                 payments: update,
                                             });
                                         }}
-                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 text-xs"
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 text-xs outline-none"
                                     />
                                 </div>
                             </div>
@@ -369,16 +384,13 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                     </button>
 
                                     {/* 🎯 KUNCI 2: Mengikat tombol verifikasi aksi langsung ke status p.paymentStatus baris ini */}
-                                    {!p.paymentStatus ||
-                                    p.paymentStatus === "Pending" ? (
+                                    {/* AREA TOMBOL AKSI VERIFIKASI INTERAKTIF PER BARIS */}
+                                    {p.paymentStatus === "Pending" ? (
                                         <>
                                             <button
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.preventDefault();
-                                                    e.stopPropagation();
-
-                                                    // Jalur verifikasi inline baris aktif
                                                     const update = [
                                                         ...formData.payments,
                                                     ];
@@ -386,12 +398,15 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                         index
                                                     ].paymentStatus =
                                                         "Disetujui";
+                                                    // Menghapus alasan jika sebelumnya sempat ditolak
+                                                    update[
+                                                        index
+                                                    ].rejection_reason = "";
                                                     setFormData({
                                                         ...formData,
                                                         payments: update,
                                                     });
 
-                                                    // Tetap memicu fungsi verifikasi utama Laravel Anda jika ada
                                                     if (
                                                         typeof handleVerifyPayment ===
                                                             "function" &&
@@ -402,7 +417,7 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                         );
                                                     }
                                                 }}
-                                                className="flex-1 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center cursor-pointer"
+                                                className="flex-1 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-[8px] font-black uppercase tracking-wider text-center cursor-pointer"
                                             >
                                                 Sesuai
                                             </button>
@@ -410,7 +425,17 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.preventDefault();
-                                                    e.stopPropagation();
+                                                    // 🎯 INTERAKSI PINTAR: Meminta alasan penolakan via pop-up prompt bawaan browser yang ringkas
+                                                    const alasan = prompt(
+                                                        "Masukkan Alasan Penolakan Pembayaran Ini:",
+                                                    );
+                                                    if (alasan === null) return; // Batal klik
+                                                    if (!alasan.trim()) {
+                                                        alert(
+                                                            "❌ Gagal: Alasan penolakan wajib diisi!",
+                                                        );
+                                                        return;
+                                                    }
 
                                                     const update = [
                                                         ...formData.payments,
@@ -418,6 +443,9 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                     update[
                                                         index
                                                     ].paymentStatus = "Ditolak";
+                                                    update[
+                                                        index
+                                                    ].rejection_reason = alasan; // Mengunci alasan tolak ke index array
                                                     setFormData({
                                                         ...formData,
                                                         payments: update,
@@ -433,14 +461,28 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                         );
                                                     }
                                                 }}
-                                                className="flex-1 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all text-center cursor-pointer"
+                                                className="flex-1 py-1.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-xl text-[8px] font-black uppercase tracking-wider text-center cursor-pointer"
                                             >
                                                 Tolak
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex-1 py-2 bg-slate-50 text-slate-400 rounded-xl text-[8px] font-black uppercase tracking-widest text-center border border-slate-100 cursor-not-allowed select-none">
-                                            🔒 VERIFIKASI FINAL KUNCI
+                                        <div className="flex-1 space-y-2">
+                                            <div className="py-1.5 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-[8px] font-black uppercase tracking-widest text-center cursor-not-allowed select-none">
+                                                🔒 VERIFIKASI FINAL KUNCI (
+                                                {p.paymentStatus})
+                                            </div>
+
+                                            {/* 🎯 TAMPILAN INFORMASI: Jika status ditolak, munculkan boks alasan kaku di bawahnya */}
+                                            {p.paymentStatus === "Ditolak" && (
+                                                <div className="p-2 bg-red-50/50 border border-red-100 text-red-500 rounded-lg text-[8px] font-bold text-left normal-case">
+                                                    <span className="font-black block uppercase tracking-wider text-[7px] text-red-400 mb-0.5">
+                                                        Alasan Penolakan:
+                                                    </span>
+                                                    {p.rejection_reason ||
+                                                        "Tidak ada alasan spesifik."}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

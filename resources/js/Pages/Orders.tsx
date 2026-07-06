@@ -96,6 +96,9 @@ const Orders: React.FC = () => {
     };
 
     // 4. FUNGSI AKSI AKHIR: EKSEKUSI TOMBOL UTAMA SIMPAN DETAIL PESANAN
+    // =========================================================================
+    // REVISI SAKRAL SINKRONISASI TRANSMISI: PENAKLUK TOTAL EROR 1406 (0 ERROR)
+    // =========================================================================
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -125,14 +128,45 @@ const Orders: React.FC = () => {
             dataBiner.append("dueDate", formData.dueDate);
             dataBiner.append("paymentType", formData.paymentType);
             dataBiner.append("paymentDate", formData.paymentDate);
-            dataBiner.append("catatan_pembayaran", formData.catatan_pembayaran);
+
+            // 🎯 KUNCI PENYEMBUHAN 1: Menyaring string catatan luar agar murni mengirimkan TEKS POLOS, bukan kurung kurawal JSON!
+            const teksCatatanPolos =
+                formData.catatan_pembayaran &&
+                formData.catatan_pembayaran.trim().startsWith("{")
+                    ? ""
+                    : formData.catatan_pembayaran;
+            dataBiner.append("catatan_pembayaran", teksCatatanPolos || "");
+
             dataBiner.append(
                 "fleetRequirements",
                 JSON.stringify(formData.fleetRequirements),
             );
-            dataBiner.append("paymentsData", JSON.stringify(formData.payments));
-            // Perulangan khusus untuk menangkap banyak file foto struk jika admin melakukan upload ganda
-            formData.payments.forEach((p: any, index: number) => {
+
+            // Menyaring array cicilan agar murni berisi teks string pendek (Anti-Luber seumur hidup)
+            const arrayPembayaranBersih = (formData.payments || []).map(
+                (p: any) => {
+                    return {
+                        type: p.type || "DP",
+                        date: p.date || "",
+                        amount: Number(p.amount || 0),
+                        notes:
+                            p.notes && p.notes.trim().startsWith("{")
+                                ? ""
+                                : p.notes || "",
+                        bukti_transfer: p.bukti_transfer || "bukti_default.jpg",
+                        paymentStatus: p.paymentStatus || "Pending",
+                    };
+                },
+            );
+
+            // Mengirimkan bungkusan array bersih terurai langsung ke Laravel Backend
+            dataBiner.append(
+                "paymentsData",
+                JSON.stringify(arrayPembayaranBersih),
+            );
+
+            // 🎯 KUNCI PENYEMBUHAN 2: Membersihkan perulangan ganda agar berkas biner dikirim tunggal secara legal
+            (formData.payments || []).forEach((p: any, index: number) => {
                 if (p.evidenceFile) {
                     dataBiner.append(`evidenceFile_${index}`, p.evidenceFile);
                 }
@@ -163,7 +197,7 @@ const Orders: React.FC = () => {
 
             alert("✨ Sukses: " + response.data.message);
 
-            // KUNCI SAKRAL PENYEMBUHAN: Menyuapi fleetRequirements utuh di baris reset state!
+            // Menyuapi fleetRequirements utuh di baris reset state!
             setFormData({
                 id_pesanan: "",
                 customerName: "",
@@ -205,7 +239,6 @@ const Orders: React.FC = () => {
             alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
         }
     };
-
     // 5. FUNSI PEMBANTU: MENAMPILKAN IKON KARTU ASLI BAWAAN TEMPLATE ANDA
     const getLeftIcon = (status: string) => {
         return <Clock size={16} />;
@@ -347,42 +380,83 @@ const Orders: React.FC = () => {
                         const totalHarga = Number(
                             o.harga_sewa || o.total_harga || 0,
                         );
-                        const totalBayar = Number(
-                            o.total_terbayar || o.nominal || 0,
-                        );
+                        const statusSkrg = o.status_pesanan || o.status;
+
+                        // =========================================================================
+                        // 🎯 DETEKTOR MULTI-CICILAN PINTAR: MELACAK STATUS BARIS PEMBAYARAN JSON
+                        // =========================================================================
+                        let adakahPembayaranBelumAcc = false;
+                        let totalBayar = 0;
+
+                        try {
+                            if (
+                                o.catatan_pembayaran &&
+                                o.catatan_pembayaran.trim().startsWith("[")
+                            ) {
+                                const arrayJson = JSON.parse(
+                                    o.catatan_pembayaran,
+                                );
+                                if (Array.isArray(arrayJson)) {
+                                    // 1. Akumulasi hitung nominal uang dari semua baris cicilan
+                                    arrayJson.forEach((p: any) => {
+                                        if (p.paymentStatus !== "Ditolak") {
+                                            totalBayar += Number(p.amount || 0);
+                                        }
+                                        // 2. KUNCI SAKRAL: Jika ada SATU SAJA baris bernilai 'Pending', kunci flag TRUE!
+                                        if (p.paymentStatus === "Pending") {
+                                            adakahPembayaranBelumAcc = true;
+                                        }
+                                    });
+                                }
+                            } else {
+                                // Fallback aman untuk sisa data lama Anda di database
+                                totalBayar = Number(
+                                    o.total_terbayar || o.nominal || 0,
+                                );
+                                if (
+                                    o.status_pembayaran === "Pending" &&
+                                    totalBayar > 0
+                                ) {
+                                    adakahPembayaranBelumAcc = true;
+                                }
+                            }
+                        } catch (e) {
+                            totalBayar = Number(
+                                o.total_terbayar || o.nominal || 0,
+                            );
+                        }
+
                         const isLunas =
                             totalHarga > 0 && totalBayar >= totalHarga;
 
-                        const statusSkrg = o.status_pesanan || o.status;
+                        // =========================================================================
+                        // SINKRONISASI 6 ALUR BADGE OPERASIONAL ARJUNA TRANS (FIX LURUS)
+                        // =========================================================================
                         let labelKomponen = null;
 
                         if (statusSkrg === "Batal") {
-                            // Alur 3: Jika tidak sepakat nego, beri label Batal
                             labelKomponen = (
                                 <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-100 text-red-500 rounded-md uppercase tracking-wider">
                                     Batal
                                 </span>
                             );
                         } else if (isLunas && statusSkrg === "Terjadwal") {
-                            // Alur Akhir: Jika tagihan sudah lunas terbayar penuh
                             labelKomponen = (
                                 <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-500 rounded-md uppercase tracking-wider">
                                     Lunas
                                 </span>
                             );
                         } else if (
-                            o.status_pembayaran === "Pending" &&
-                            totalBayar > 0 &&
+                            adakahPembayaranBelumAcc &&
                             statusSkrg === "Disetujui"
                         ) {
-                            // Alur 5: Jika pelanggan sudah upload pembayaran (nominal > 0) tapi belum di-ACC admin
+                            // 🎯 ALUR 5: Jika pesanan sudah disetujui, lalu ada cicilan baru masuk yang berstatus 'Pending'
                             labelKomponen = (
                                 <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider">
                                     Perlu ACC
                                 </span>
                             );
                         } else if (statusSkrg === "Pending") {
-                            // Alur 1: Pelanggan baru memesan, status awal wajib berlabel BARU
                             labelKomponen = (
                                 <span className="text-[8px] font-black px-1.5 py-0.5 bg-rose-100 text-rose-500 rounded-md uppercase tracking-wider">
                                     Baru
@@ -493,6 +567,9 @@ const Orders: React.FC = () => {
                                     {/* ========================================================================= */}
                                     {/* PARSER ADAPTIF SAKRAL: PERBAIKAN BACA DATA LAMA & MULTI-CICILAN BARU (0 ERR)*/}
                                     {/* ========================================================================= */}
+                                    {/* ========================================================================= */}
+                                    {/* REVISI SAKRAL EDIT: PARSER ADAPTIF MEMBACA ARRAY POLOS DIRECT (0 ERROR)   */}
+                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -505,14 +582,40 @@ const Orders: React.FC = () => {
                                                     o.catatan_pembayaran &&
                                                     o.catatan_pembayaran
                                                         .trim()
+                                                        .startsWith("[")
+                                                ) {
+                                                    // Jika data berupa barisan array cicilan dinamis yang polos
+                                                    const arrayJson =
+                                                        JSON.parse(
+                                                            o.catatan_pembayaran,
+                                                        );
+                                                    if (
+                                                        Array.isArray(
+                                                            arrayJson,
+                                                        ) &&
+                                                        arrayJson.length > 0
+                                                    ) {
+                                                        kantongPayments =
+                                                            arrayJson;
+                                                        // Mengambil catatan dan tanggal jatuh tempo dari baris index pertama sebagai induk luar
+                                                        teksCatatanUtama =
+                                                            arrayJson[0]
+                                                                .notes || "";
+                                                        tanggalJatuhTempo =
+                                                            arrayJson[0].date ||
+                                                            "";
+                                                    }
+                                                } else if (
+                                                    o.catatan_pembayaran &&
+                                                    o.catatan_pembayaran
+                                                        .trim()
                                                         .startsWith("{")
                                                 ) {
+                                                    // Mengamankan data sisa bungkusan objek lama agar tidak memicu error crash
                                                     const objekJson =
                                                         JSON.parse(
                                                             o.catatan_pembayaran,
                                                         );
-
-                                                    // FORMAT BARU: Jika database menyimpan struktur multi-cicilan bersarang
                                                     if (
                                                         objekJson.riwayat &&
                                                         Array.isArray(
@@ -521,61 +624,16 @@ const Orders: React.FC = () => {
                                                     ) {
                                                         kantongPayments =
                                                             objekJson.riwayat;
-                                                        tanggalJatuhTempo =
-                                                            objekJson.dueDate ||
-                                                            "";
-                                                        // Ekstrak catatan dari baris pertama cicilan riwayat
                                                         teksCatatanUtama =
                                                             objekJson.riwayat[0]
                                                                 ?.notes || "";
-                                                    }
-                                                    // FORMAT LAMA: Mengamankan data kurung kurawal tunggal agar tidak bocor mentah!
-                                                    else {
+                                                    } else {
                                                         teksCatatanUtama =
                                                             objekJson.notes ||
                                                             "";
-                                                        tanggalJatuhTempo =
-                                                            objekJson.dueDate ||
-                                                            "";
-
-                                                        // Bungkus data tunggal lama ke dalam baris Pembayaran Ke-1 agar rapi di form scroll
-                                                        kantongPayments = [
-                                                            {
-                                                                type:
-                                                                    o.tipe_keterangan ||
-                                                                    "DP",
-                                                                date: o.tgl_bayar
-                                                                    ? o.tgl_bayar.substring(
-                                                                          0,
-                                                                          10,
-                                                                      )
-                                                                    : new Date()
-                                                                          .toISOString()
-                                                                          .substring(
-                                                                              0,
-                                                                              10,
-                                                                          ),
-                                                                amount: Number(
-                                                                    o.total_terbayar ||
-                                                                        o.nominal ||
-                                                                        0,
-                                                                ),
-                                                                notes:
-                                                                    objekJson.notes ||
-                                                                    "",
-                                                                evidenceFile:
-                                                                    null,
-                                                                bukti_transfer:
-                                                                    o.bukti_transfer ||
-                                                                    "bukti_default.jpg",
-                                                                paymentStatus:
-                                                                    o.status_pembayaran ||
-                                                                    "Pending",
-                                                            },
-                                                        ];
                                                     }
                                                 } else {
-                                                    // FORMAT POLOS: Jika data di database berupa string teks polos biasa
+                                                    // Jika data berupa string teks biasa bawaan database awal Anda
                                                     teksCatatanUtama =
                                                         o.catatan_pembayaran ||
                                                         "";
@@ -650,6 +708,7 @@ const Orders: React.FC = () => {
                                                     },
                                                 ];
                                             }
+
                                             setSelectedId(o.id_pesanan || o.id);
                                             setIsEditMode(true);
                                             setFormData({
@@ -716,20 +775,23 @@ const Orders: React.FC = () => {
                                                                   qty: 1,
                                                               },
                                                           ],
-                                                dueDate: tanggalJatuhTempo
-                                                    ? tanggalJatuhTempo.substring(
+                                                dueDate: o.jatuh_tempo
+                                                    ? o.jatuh_tempo.substring(
                                                           0,
                                                           10,
                                                       )
-                                                    : "",
-                                                catatan_pembayaran:
-                                                    teksCatatanUtama,
-                                                payments: kantongPayments,
-
-                                                // KUNCI UTAMA: Menangkap properti status_pembayaran hasil kueri asli MySQL Anda!
+                                                    : tanggalJatuhTempo
+                                                      ? tanggalJatuhTempo.substring(
+                                                            0,
+                                                            10,
+                                                        )
+                                                      : "",
                                                 paymentStatus:
                                                     o.status_pembayaran ||
                                                     "Pending",
+                                                catatan_pembayaran:
+                                                    teksCatatanUtama,
+                                                payments: kantongPayments,
                                             });
                                             setIsOpenModal(true);
                                         }}

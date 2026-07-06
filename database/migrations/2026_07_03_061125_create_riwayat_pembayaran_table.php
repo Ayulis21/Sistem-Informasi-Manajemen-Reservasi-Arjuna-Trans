@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->enum('tipe_keterangan', ['DP', 'Cicil', 'Lunas']);
             $table->string('bukti_transfer', 255);
             $table->string('status_pembayaran', 255)->default('Pending');
-            $table->string('catatan_pembayaran', 255)->nullable();
+            $table->longText('catatan_pembayaran')->nullable();
             $table->timestamps();
 
             // Relasi Foreign Key lurus ke tabel pesanan
