@@ -24,13 +24,10 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-            {/* Box Putih Melayang Lebar Mengikuti Skala Layar */}
             <form
                 onSubmit={onSubmit}
                 className="bg-white w-full max-w-[1024px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)] p-6 md:p-8 space-y-6 text-left animate-in zoom-in-95 duration-300 relative border border-slate-100 custom-scrollbar"
             >
-                {/* Title Header Form */}
-                {/* Title Header Form - REVISI SINKRONISASI ID PESANAN */}
                 <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
                         <div className="w-1 h-6 bg-[#5346F1] rounded-full"></div>
@@ -38,7 +35,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                             <h3 className="text-base font-black text-slate-800 uppercase tracking-wider leading-none">
                                 Edit Detail Pesanan
                             </h3>
-                            {/* KUNCI SAKRAL: Menampilkan ID Pesanan kaku database secara anggun di bawah judul */}
                             <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md uppercase block mt-1 tracking-wider">
                                 ID:{" "}
                                 {formData?.id_pesanan || formData?.id || "BARU"}
@@ -53,8 +49,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         <X size={18} />
                     </button>
                 </div>
-
-                {/* Grid Pembagian Tiga Kolom Form (Kiri, Tengah, Kanan Keuangan) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <OrderMainForm
                         formData={formData}
@@ -68,8 +62,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         }}
                     />
                 </div>
-
-                {/* Catatan Area Rute Perjalanan */}
                 <div className="space-y-1.5 text-[10px] font-black uppercase tracking-widest text-[#94A3B8] pt-2 border-t border-slate-100">
                     <label className="pl-1">Rute Perjalanan & Keterangan</label>
                     <textarea
@@ -84,8 +76,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none text-xs leading-relaxed"
                     />
                 </div>
-
-                {/* Baris Tombol Aksi Bawah */}
                 <div className="flex gap-4 pt-4 border-t border-slate-100 text-[10px] font-black uppercase tracking-widest">
                     <button
                         type="button"

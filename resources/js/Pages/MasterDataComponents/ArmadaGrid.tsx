@@ -18,9 +18,6 @@ const ArmadaGrid: React.FC<ArmadaGridProps> = ({
     onEditTrigger,
     onDeleteTrigger,
 }) => {
-    // =========================================================================
-    // BACKEND CONTROL LOGIC: PENARIK DATA ARMADA RIIL DARI LARAVEL DATABASE
-    // =========================================================================
     const [dbArmadaList, setDbArmadaList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -92,24 +89,18 @@ const ArmadaGrid: React.FC<ArmadaGridProps> = ({
                             {item.nama_armada || item.name}
                         </h4>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            {/* KUNCI SINKRONISASI: Membaca kolom database nopol atau data mockup .plate */}
                             {item.nopol || item.plate}
                         </p>
                     </div>
-
-                    {/* Baris Tag Fasilitas */}
-                    {/* ========================================================================= */}
-                    {/* REVISI PENYELAMAT KALIBRASI TAG FASILITAS (100% ANTI BLANK & ANTI CRASH)   */}
-                    {/* ========================================================================= */}
                     <div className="flex flex-wrap gap-1.5 text-[8px] font-black uppercase tracking-wider text-slate-400">
                         {(() => {
-                            // 1. Jika aslinya sudah berupa Array bawaan template, langsung pakai
+                            // Jika aslinya sudah berupa Array bawaan template, langsung pakai
                             if (Array.isArray(item.facilities))
                                 return item.facilities;
                             if (Array.isArray(item.fasilitas))
                                 return item.fasilitas;
 
-                            // 2. Jika berupa teks string dari database, kita split dengan aman memakai tipe data kaku
+                            // Jika berupa teks string dari database, kita split dengan aman memakai tipe data kaku
                             if (
                                 typeof item.fasilitas === "string" &&
                                 item.fasilitas.trim() !== ""
@@ -123,7 +114,7 @@ const ArmadaGrid: React.FC<ArmadaGridProps> = ({
                                 return item.facilities.split(",");
                             }
 
-                            // 3. Jaring Pengaman Akhir: Jika data null atau kosong, tampilkan opsi default ini agar web tidak blank
+                            // Jaring Pengaman Akhir: Jika data null atau kosong, tampilkan opsi default ini agar web tidak blank
                             return ["Full AC", "Audio", "Karaoke"];
                         })().map((fac: string, fIdx: number) => (
                             <span

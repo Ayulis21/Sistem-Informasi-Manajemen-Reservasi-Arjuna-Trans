@@ -15,7 +15,7 @@ class OrderStatusController extends Controller
         return inertia('OrderStatus');
     }
 
-    // 2. Fungsi Otak: Mencari Data Pesanan Berdasarkan ID atau Nomor WA
+    // Mencari Data Pesanan Berdasarkan ID atau Nomor WA
     public function search(Request $request)
     {
         $request->validate([
@@ -24,7 +24,7 @@ class OrderStatusController extends Controller
         ]);
 
         if ($request->type === 'ID') {
-            // Cari 1 data spesifik berdasarkan ID Pesanan beserta relasi plotting bus & riwayat bayar
+            // Cari data spesifik berdasarkan ID Pesanan beserta relasi plotting bus & riwayat bayar
             $pesanan = Pesanan::with(['riwayatPembayaran', 'penugasan.armada'])
                 ->where('id_pesanan', $request->value)
                 ->first();
@@ -40,7 +40,7 @@ class OrderStatusController extends Controller
         }
     }
 
-    // 3. Fungsi Otak: Menyimpan File Bukti Transfer Pelanggan
+    //Menyimpan File Bukti Transfer Pelanggan
     public function uploadBuktiBayar(Request $request)
     {
         $request->validate([
@@ -54,7 +54,6 @@ class OrderStatusController extends Controller
 
         $filePath = null;
         if ($request->hasFile('bukti_transfer')) {
-            // File otomatis masuk ke boks folder storage/app/public/bukti-transfer
             $filePath = $request->file('bukti_transfer')->store('bukti-transfer', 'public');
         }
 

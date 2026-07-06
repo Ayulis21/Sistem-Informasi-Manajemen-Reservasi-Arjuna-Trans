@@ -11,14 +11,13 @@ interface ModalCrewProps {
         totalKm?: number;
     };
     setCrewForm: (data: any) => void;
-    onClose: () => void; // Menambahkan pendaftaran fungsi penutup modal agar error onClose sirna
+    onClose: () => void;
     onSubmit: (e: React.FormEvent) => void;
 }
 
 const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
     return (
         <div className="space-y-3 text-[9px] font-black uppercase tracking-widest text-[#94A3B8] animate-in fade-in duration-200">
-            {/* Input Nama Lengkap Kru */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     NAMA LENGKAP KRU
@@ -34,7 +33,6 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
-                {/* Pilihan Dropdown Peran Tugas */}
                 <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                         PERAN TUGAS
@@ -55,7 +53,6 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                         </select>
                     </div>
                 </div>
-                {/* Input Kontak No Telepon */}
                 <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                         NOMOR TELEPON (WHATSAPP)
@@ -106,15 +103,14 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-                {/* Input Total Perjalanan (Trips) - REVISI: DI KUNCI DISABLE OTOMATIS */}
                 <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                         TOTAL PERJALANAN (TRIPS)
                     </label>
                     <input
                         type="number"
-                        disabled // ← KUNCI SAKRAL: Membuat boks input otomatis terkunci dan tidak bisa diklik/diketik
-                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah background slate-100 agar estetikanya sinkron pasif
+                        disabled
+                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none"
                         value={crewForm?.trips ?? 0}
                         onChange={(e) =>
                             setCrewForm({
@@ -124,16 +120,14 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                         }
                     />
                 </div>
-
-                {/* Input Total Jarak (KM) - REVISI: DI KUNCI DISABLE OTOMATIS */}
                 <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                         TOTAL JARAK (KM)
                     </label>
                     <input
                         type="number"
-                        disabled // ← KUNCI SAKRAL: Membuat boks input otomatis terkunci dan tidak bisa diklik/diketik
-                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah background slate-100 agar estetikanya sinkron pasif
+                        disabled
+                        className="w-full px-4 py-3 bg-slate-100 border border-slate-100 rounded-xl text-xs font-bold text-slate-400 cursor-not-allowed outline-none"
                         value={crewForm?.totalKm ?? 0}
                         onChange={(e) =>
                             setCrewForm({

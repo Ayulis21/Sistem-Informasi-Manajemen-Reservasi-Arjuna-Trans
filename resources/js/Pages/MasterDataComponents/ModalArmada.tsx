@@ -21,9 +21,7 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
     onSubmit,
 }) => {
     return (
-        /* KUNCI SAKRAL VISUAL: Mengembalikan struktur layout boks input form yang hilang */
         <div className="space-y-5 pt-2">
-            {/* Input Nama Armada */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     NAMA ARMADA
@@ -38,8 +36,6 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     }
                 />
             </div>
-
-            {/* Input Nomor Polisi / NOPOL */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     NOMOR POLISI (NOPOL)
@@ -54,9 +50,6 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     }
                 />
             </div>
-
-            {/* Select Tipe Armada */}
-            {/* Select Tipe Armada - REVISI: Resmi Dipecah Menjadi 4 Opsi Sesuai Database Baru */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     TIPE ARMADA
@@ -72,7 +65,6 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                             })
                         }
                     >
-                        {/* KUNCI SAKRAL: Nilai value wajib kembar identik dengan enum database baru kita */}
                         <option value="Big Bus">Big Bus</option>
                         <option value="Medium Bus">Medium Bus</option>
                         <option value="Elf">Elf / Hiace</option>
@@ -80,8 +72,6 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     </select>
                 </div>
             </div>
-
-            {/* Input Kapasitas (Seat) */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     KAPASITAS (SEAT)
@@ -101,8 +91,6 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     }
                 />
             </div>
-
-            {/* Textarea Fasilitas */}
             <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
                     FASILITAS (GUNAKAN KOMA)

@@ -14,7 +14,7 @@ class ArmadaController extends Controller
         return response()->json(['data' => $armada]);
     }
 
-    // Fungsi menyimpan inputan bus baru dari ModalArmada.tsx React
+    // Fungsi menyimpan inputan bus baru dari ModalArmada
     public function store(Request $request)
     {
         $request->validate([
@@ -31,7 +31,7 @@ class ArmadaController extends Controller
             'nopol' => $request->nopol,
             'kapasitas' => $request->kapasitas,
             'fasilitas' => $request->fasilitas,
-            'status_ketersediaan' => 'Tersedia', // Otomatis ready saat pertama didaftarkan
+            'status_ketersediaan' => 'Tersedia',
         ]);
 
         return response()->json(['message' => 'Unit armada baru berhasil didaftarkan!', 'data' => $armada]);
@@ -45,7 +45,6 @@ class ArmadaController extends Controller
         $request->validate([
             'nama_armada' => 'required|string|max:50',
             'tipe_armada' => 'required|in:Big Bus,Medium Bus,Elf,Mobil',
-            // Pastikan nopol unik, kecuali untuk nopol milik armada itu sendiri yang sedang diedit
             'nopol' => 'required|string|max:15|unique:armada,nopol,' . $id . ',id_armada',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',

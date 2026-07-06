@@ -248,12 +248,6 @@ const CustomerSchedule: React.FC = () => {
                                                         {day}
                                                     </span>
                                                 </div>
-                                                {/* ========================================================================= */}
-                                                {/* REVISI AKHIR: PENYELARASAN VARIABEL PENANGGALAN KALENDER (0 ERROR)          */}
-                                                {/* ========================================================================= */}
-                                                {/* ========================================================================= */}
-                                                {/* REVISI FINAL: MEMANGGIL DATA GLOBAL WINDOW SECARA MUTLAK (0 ERROR)          */}
-                                                {/* ========================================================================= */}
                                                 <div className="mt-1 px-1 space-y-1 overflow-y-auto max-h-[60px] w-full text-left">
                                                     {(
                                                         (window as any)

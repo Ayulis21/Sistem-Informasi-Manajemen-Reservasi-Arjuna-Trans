@@ -12,7 +12,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
 }) => {
     return (
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">
-            {/* PANEL SEBELAH KIRI: DATA UTAMA & LOKASI */}
             <div className="space-y-4">
                 <h4 className="flex items-center gap-1.5 text-[#5346F1] border-b border-slate-50 pb-1.5">
                     <Layers size={13} /> Data Utama
@@ -21,9 +20,9 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     <label className="pl-1">ID Pesanan</label>
                     <input
                         type="text"
-                        disabled // ← KUNCI SAKRAL: Mengunci boks agar disable/read-only kaku tidak bisa diedit admin
-                        value={formData?.id_pesanan || formData?.id || ""} // ← KUNCI UTAMA: Membaca id_pesanan database Anda
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-400 cursor-not-allowed outline-none" // Ditambah text-slate-400 agar estetikanya pasif mengunci
+                        disabled
+                        value={formData?.id_pesanan || formData?.id || ""}
+                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-400 cursor-not-allowed outline-none"
                     />
                 </div>
                 <div className="space-y-1">
@@ -104,15 +103,11 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     />
                 </div>
             </div>
-
-            {/* PANEL TENGAH: LOGISTIK PERJALANAN & WAKTU */}
             <div className="space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
                     <h4 className="flex items-center gap-1.5 text-slate-500">
                         <Bus size={13} /> Logistik Perjalanan
                     </h4>
-
-                    {/* KUNCI PEMICU TAMBAH BARIS: Menyuntikkan pilihan armada baru saat diklik */}
                     <span
                         onClick={() => {
                             const currentFleet =
@@ -132,8 +127,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                 </div>
                 <div className="space-y-2">
                     <label className="pl-1">Kebutuhan Armada</label>
-
-                    {/* PERBAIKAN: Mengganti kurung siku typo, dan menegaskan tipe data (fleet: any, index: number) */}
                     {(
                         formData.fleetRequirements || [{ type: "Bus", qty: 1 }]
                     ).map((fleet: any, index: number) => (
@@ -177,8 +170,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 }}
                                 className="w-14 p-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 text-center outline-none text-xs"
                             />
-
-                            {/* TOMBOL HAPUS BARIS: Menegaskan tipe data data filter (_: any, i: number) */}
                             {(formData.fleetRequirements || []).length > 1 && (
                                 <button
                                     type="button"
@@ -201,12 +192,10 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                         </div>
                     ))}
                 </div>
-
-                {/* REVISI: Mengubah tipe menjadi datetime-local agar memunculkan kalender & jam interaktif */}
                 <div className="space-y-1.5 pt-2">
                     <label className="pl-1">Waktu Berangkat</label>
                     <input
-                        type="datetime-local" // ← KUNCI WAKTU INTERAKTIF
+                        type="datetime-local"
                         value={formData.departureDate || ""}
                         onChange={(e) =>
                             setFormData({
@@ -220,7 +209,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                 <div className="space-y-1.5">
                     <label className="pl-1">Waktu Pulang</label>
                     <input
-                        type="datetime-local" // ← KUNCI WAKTU INTERAKTIF
+                        type="datetime-local"
                         value={formData.returnDate || ""}
                         onChange={(e) =>
                             setFormData({

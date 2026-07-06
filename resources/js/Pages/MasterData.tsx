@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import ArmadaGrid from "./MasterDataComponents/ArmadaGrid";
 import CrewGrid from "./MasterDataComponents/CrewGrid";
-import ModalArmada from "./MasterDataComponents/ModalArmada"; // Panggil modal armada terpisah
-import ModalCrew from "./MasterDataComponents/ModalCrew"; // Panggil modal kru terpisah
+import ModalArmada from "./MasterDataComponents/ModalArmada";
+import ModalCrew from "./MasterDataComponents/ModalCrew";
 import { Plus } from "lucide-react";
 import axios from "axios";
 import { router } from "@inertiajs/react";
@@ -13,11 +13,8 @@ const MasterData: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-
     const [armada, setArmada] = useState([]);
-
     const [crew, setCrew] = useState([]);
-
     const [busForm, setBusForm] = useState({
         nama_armada: "",
         nopol: "",
@@ -35,7 +32,6 @@ const MasterData: React.FC = () => {
         trips: 0,
         totalKm: 0,
     });
-
     const fetchCrewData = () => {
         axios
             .get("/api/admin/kru")
@@ -47,16 +43,11 @@ const MasterData: React.FC = () => {
                 console.error("Gagal menarik data kru:", error);
             });
     };
-    // =========================================================================
-    // KUNCI SAKRAL KRU: MENARIK DATA RIIL DARI DATABASE MYSQL SE CARA OTOMATIS
-    // =========================================================================
     React.useEffect(() => {
-        // Hanya menarik data dari database jika admin sedang berada di tab KRU
         if (activeTab === "KRU") {
             axios
                 .get("/api/admin/kru")
                 .then((response) => {
-                    // Menyiram data dari database MySQL masuk ke dalam state crew Anda
                     setCrew(response.data);
                 })
                 .catch((error) => {
@@ -66,19 +57,11 @@ const MasterData: React.FC = () => {
                     );
                 });
         }
-    }, [activeTab]); // Otomatis terpicu segar setiap kali admin mengklik perpindahan tab menu
-
-    // =========================================================================
-    // REVISI VALIDASI DETAI L: INFORMATIF & TO THE POINT BERI TAHU SALAHNYA DI MANA
-    // =========================================================================
-    // =========================================================================
-    // REVISI URUTAN VARIABEL: CAKUPAN LURUS BEBAS ERROR TYP EScRIPT (0 ERROR)
-    // =========================================================================
+    }, [activeTab]);
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (activeTab === "ARMADA") {
-            // KUNCI SAKRAL 1: Deklarasi saringan variabel diletakkan di bagian paling atas fungsi
             const nama = busForm?.nama_armada || (busForm as any)?.name || "";
             const pelat = busForm?.nopol || (busForm as any)?.plate || "";
             const kursi = busForm?.kapasitas || (busForm as any)?.seats || 0;
@@ -86,8 +69,6 @@ const MasterData: React.FC = () => {
                 busForm?.tipe_armada || (busForm as any)?.type || "Big Bus";
             const fasilitas =
                 busForm?.fasilitas || (busForm as any)?.facilities || "-";
-
-            // Validasi pengecekan interaktif front-end Anda tetap terjaga
             if (!nama) {
                 alert("❌ Gagal Simpan: Kolom 'NAMA ARMADA' belum diisi!");
                 return;
@@ -104,9 +85,7 @@ const MasterData: React.FC = () => {
                 );
                 return;
             }
-
             try {
-                // KUNCI SAKRAL 2: Sekarang variabel payload di dalam blok try aman membaca data dari atas
                 const payload = {
                     nama_armada: nama,
                     tipe_armada: tipe,
@@ -127,9 +106,7 @@ const MasterData: React.FC = () => {
                         payload,
                     );
                 }
-
                 alert("✨ Sukses: " + response.data.message);
-
                 setBusForm({
                     nama_armada: "",
                     nopol: "",
@@ -138,7 +115,6 @@ const MasterData: React.FC = () => {
                     fasilitas: "AC, TV",
                     status: "READY",
                 } as any);
-
                 setIsModalOpen(false);
                 fetchCrewData();
             } catch (error: any) {
@@ -158,13 +134,9 @@ const MasterData: React.FC = () => {
                 );
             }
         } else {
-            // =========================================================================
-            // SINKRONISASI TRANSMISI DATA: LURUS LANGSUNG MASUK KE KRU CONTROLLER
-            // =========================================================================
             const namaKru = crewForm.name || "";
             const noTelp = crewForm.phone || "";
-            const peranKru = crewForm.role || "Driver"; // Mengambil nilai string murni 'Driver' atau 'Helper'
-
+            const peranKru = crewForm.role || "Driver";
             if (!namaKru.trim()) {
                 alert(
                     "❌ Gagal Simpan: Kolom 'NAMA LENGKAP KRU' tidak boleh kosong!",
@@ -175,11 +147,8 @@ const MasterData: React.FC = () => {
                 alert("❌ Gagal Simpan: Kolom 'NOMOR TELEPON' wajib diisi!");
                 return;
             }
-
             try {
                 let response;
-
-                // KUNCI ASINKRONIS EDIT KRU: Deteksi rute PUT update atau POST store
                 if (isEditMode) {
                     response = await axios.put(
                         `/api/admin/kru/update/${selectedId}`,
@@ -196,9 +165,7 @@ const MasterData: React.FC = () => {
                         peran: peranKru,
                     });
                 }
-
                 alert("✨ Sukses: " + response.data.message);
-
                 setCrewForm({
                     name: "",
                     role: "Driver",
@@ -217,11 +184,9 @@ const MasterData: React.FC = () => {
             }
         }
     };
-
     return (
         <AdminLayout>
             <div className="space-y-6 text-left relative">
-                {/* Header Toolbar */}
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
                         <h2 className="text-2xl font-black text-slate-800 tracking-tight">
@@ -261,7 +226,6 @@ const MasterData: React.FC = () => {
                                         status: "READY",
                                     });
                                 } else {
-                                    // KUNCI RESET KRU: Pastikan mode edit disetel false saat tambah baru
                                     setIsEditMode(false);
                                     setCrewForm({
                                         name: "",
@@ -288,17 +252,12 @@ const MasterData: React.FC = () => {
                 </div>
 
                 <div className="pt-2">
-                    {/* ========================================================================= */}
-                    {/* REVISI PEMICU KLIK PENSIL: MENANGKAP DATA UNTUK DI LEMPAR KE MODAL POPUP    */}
-                    {/* ========================================================================= */}
                     {activeTab === "ARMADA" ? (
                         <ArmadaGrid
                             armadaList={armada}
-                            // Fungsi magis yang membuat tombol pensil fiks Anda langsung merespons membuka form
                             onEditTrigger={(item: any) => {
                                 setSelectedId(item.id_armada || item.id);
-                                setIsEditMode(true); // Mengunci status ke mode EDIT
-
+                                setIsEditMode(true);
                                 setBusForm({
                                     nama_armada:
                                         item.nama_armada || item.name || "",
@@ -323,10 +282,8 @@ const MasterData: React.FC = () => {
                                         item.status ||
                                         "READY",
                                 });
-
-                                setIsModalOpen(true); // Membuka jendela boks formulir visual Anda
+                                setIsModalOpen(true);
                             }}
-                            // Logika hapus data armada tetap diamankan di bawahnya
                             onDeleteTrigger={async (
                                 id: number,
                                 namaBus: string,
@@ -355,10 +312,8 @@ const MasterData: React.FC = () => {
                         <CrewGrid
                             crewList={crew || []}
                             onEditTrigger={(item: any) => {
-                                // SATU VARIABEL UNTUK SEMUA: Masukkan ID kru ke selectedId bawaan Anda
                                 setSelectedId(item.id_kru || item.id);
                                 setIsEditMode(true);
-
                                 setCrewForm({
                                     name: item.nama_kru || item.name || "",
                                     role:
@@ -375,7 +330,6 @@ const MasterData: React.FC = () => {
                                         item.totalKm || item.total_km || 0,
                                     ),
                                 });
-
                                 setIsModalOpen(true);
                             }}
                             onDeleteTrigger={async (
@@ -404,8 +358,6 @@ const MasterData: React.FC = () => {
                         />
                     )}
                 </div>
-
-                {/* MODAL OVERLAY POPUP BERSIH */}
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                         <form
@@ -420,8 +372,6 @@ const MasterData: React.FC = () => {
                                     Baru
                                 </h3>
                             </div>
-
-                            {/* MEMANGGIL KOMPONEN SECARA TERPISAH DAN DINAMIS */}
                             {activeTab === "ARMADA" ? (
                                 <ModalArmada
                                     busForm={busForm}
@@ -439,11 +389,10 @@ const MasterData: React.FC = () => {
                                 <ModalCrew
                                     crewForm={crewForm}
                                     setCrewForm={setCrewForm}
-                                    onClose={() => setIsModalOpen(false)} // Menyembuhkan error onClose
-                                    onSubmit={handleSave} // Menyembuhkan error onSubmit
+                                    onClose={() => setIsModalOpen(false)}
+                                    onSubmit={handleSave}
                                 />
                             )}
-
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50 text-[10px] font-black uppercase tracking-widest">
                                 <button
                                     onClick={() => setIsModalOpen(false)}

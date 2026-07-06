@@ -8,7 +8,7 @@ class Pesanan extends Model
 {
     protected $table = 'pesanan';
     protected $primaryKey = 'id_pesanan';
-    public $incrementing = false; // Karena id_pesanan berupa string varchar(20)
+    public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [

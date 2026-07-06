@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
-// import ModalConfirmWA from "./ReportComponents/ModalConfirmWA";
 import ModalSuccessPayment from "./ReportComponents/ModalSuccessPayment";
-// KUNCI SAKRAL 1: Impor library axios agar eror 'Cannot find name axios' hilang total
 import axios from "axios";
 import {
     ArrowLeft,
@@ -23,7 +21,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const OrderStatus: React.FC = () => {
-    // 1. STATE MANAGEMENT DYNAMIC CONTROL
+    // STATE MANAGEMENT DYNAMIC CONTROL
     const [searchTab, setSearchTab] = useState<"ID" | "WA">("ID");
     const [inputValue, setInputValue] = useState("");
     const [showList, setShowResultList] = useState(false);
@@ -45,10 +43,6 @@ const OrderStatus: React.FC = () => {
 
     // Dummy data cadangan aman agar link WA tidak putus saat inisialisasi awal
     const backupOrder = { id: "ORD", customerName: "Pelanggan" };
-
-    // =========================================================================
-    // REVISI BACKEND: SATU FUNGSI PENCARIAN DINAMIS (TIDAK DOUBLE/DUPLIKAT LAGI)
-    // =========================================================================
     const handleSearchSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
@@ -85,10 +79,6 @@ const OrderStatus: React.FC = () => {
             alert("Terjadi kesalahan koneksi sistem.");
         }
     };
-
-    // =========================================================================
-    // REVISI BACKEND: AKSI SIMPAN BUKTI TRANSFER KE CONTROLLER LARAVEL
-    // =========================================================================
     const handleUploadPembayaran = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!buktiFile) {
@@ -109,14 +99,11 @@ const OrderStatus: React.FC = () => {
                   : "DP",
         );
         formData.append("bukti_transfer", buktiFile);
-
         try {
             await axios.post("/api/order/upload-payment", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setIsSuccessUploadOpen(true);
-
-            // Segarkan data riwayat di layar secara realtime setelah berhasil upload
             const refresh = await axios.post("/api/order/search", {
                 type: "ID",
                 value: dynamicOrder?.id_pesanan,
@@ -136,50 +123,33 @@ const OrderStatus: React.FC = () => {
         window.open(`https://wa.me{message}`, "_blank");
         setIsWAConfirmOpen(false);
     };
-    // Fungsi print kosong ditunda sesuai instruksi
-    // const handlePrint = (e: any) => { e.preventDefault(); };
-    // =========================================================================
-    // REVISI FITUR: MENGARAHKAN TARGET CETAK KE LEMBAR SURAT JALAN RESMI ARJUNA
-    // =========================================================================
     const handleDownloadPDF = async () => {
-        // KUNCI UTAMA: Mengalihkan target jepretan ke ID lembar kertas invoice asli Anda
         const element = document.getElementById("arjuna-invoice-print-sheet");
         if (!element) {
             alert("Template dokumen cetak invoice tidak ditemukan!");
             return;
         }
-
         try {
             alert(
                 "Sedang mengunduh dokumen Invoice resmi Arjuna Trans, mohon tunggu...",
             );
-
-            // Memaksa elemen cetak muncul sesaat di sistem aliran DOM agar terbaca html2canvas
             element.style.display = "block";
-
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
             });
             const imgData = canvas.toDataURL("image/png");
-
             const pdf = new jsPDF("p", "mm", "a4");
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
             pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
             pdf.save(`Invoice-ArjunaTrans-${staticOrder.id}.pdf`);
-
-            // Menyembunyikan kembali lembar cetak agar tidak merusak halaman luar
             element.style.display = "none";
         } catch (error) {
             console.error("Gagal cetak PDF resmi:", error);
         }
     };
-
-    // =========================================================================
-    // REVISI FINAL: JEP RET BOKS YANG ADA DI LAYAR (100% BEBAS EROR & NO BLANK)
-    // =========================================================================
     const handlePrint = async (
         event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
     ): Promise<void> => {
@@ -191,7 +161,6 @@ const OrderStatus: React.FC = () => {
             alert("Area dokumen invoice tidak ditemukan!");
             return;
         }
-
         try {
             const canvas = await html2canvas(element, {
                 scale: 2,
@@ -210,7 +179,6 @@ const OrderStatus: React.FC = () => {
         }
     };
     const staticOrder: any = dynamicOrder || { fleets: [] };
-
     return (
         <div className="bg-[#F8FAFC] min-h-screen font-sans pb-20 text-left select-none animate-in fade-in duration-500 relative">
             {/* 1. Header Navigasi Atas (Logo Terpusat Kunci Mati) */}
@@ -230,8 +198,6 @@ const OrderStatus: React.FC = () => {
                     </span>
                 </div>
             </div>
-
-            {/* 2. Area Form Input Pencarian */}
             <div className="max-w-4xl mx-auto pt-8 px-4 sm:px-6">
                 <div className="text-center space-y-2 mb-6">
                     <h2 className="text-3xl font-black text-[#1E293B] tracking-tight">
@@ -242,7 +208,6 @@ const OrderStatus: React.FC = () => {
                         perkembangan terbaru.
                     </p>
                 </div>
-
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 sm:p-8 space-y-5">
                     <div className="bg-[#F5F3FF] border border-indigo-100 text-[#5346F1] rounded-2xl p-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-wider">
                         <Info size={14} className="shrink-0 text-indigo-500" />
@@ -251,7 +216,6 @@ const OrderStatus: React.FC = () => {
                             NOMOR TERDAFTAR.
                         </span>
                     </div>
-
                     <div className="grid grid-cols-2 gap-3 text-[10px] font-black uppercase tracking-widest text-center">
                         <button
                             onClick={() => {
@@ -276,7 +240,6 @@ const OrderStatus: React.FC = () => {
                             Cek Via WhatsApp
                         </button>
                     </div>
-
                     <form onSubmit={handleSearchSubmit} className="flex gap-3">
                         <div className="relative flex-1">
                             <Search
@@ -305,8 +268,6 @@ const OrderStatus: React.FC = () => {
                     </form>
                 </div>
             </div>
-
-            {/* 3. List Ringkas Hasil Pencarian WA */}
             {showList && (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-5 text-left space-y-2.5">
                     <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.2em] pl-2 block">
@@ -336,15 +297,12 @@ const OrderStatus: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* 4. Detail Invoice Utama Pelanggan */}
             {showDetail && (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-4 animate-in slide-in-from-bottom-6 duration-500">
                     <div
                         id="invoice-print-area"
                         className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-slate-100/90 shadow-sm space-y-6"
                     >
-                        {/* Baris Atas Detail Identitas */}
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <span className="text-lg font-black text-indigo-600 bg-slate-50 border px-2.5 py-1 rounded-xl">
@@ -376,8 +334,6 @@ const OrderStatus: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-
-                        {/* Banner Notifikasi Kuning */}
                         <div className="bg-amber-50/40 border border-amber-100 rounded-2xl p-4 text-left space-y-1">
                             <p className="text-[8px] font-black text-amber-600 uppercase tracking-wider flex items-center gap-1">
                                 ⚠️ PENTING: KONFIRMASI WHATSAPP DIPERLUKAN!
@@ -390,8 +346,6 @@ const OrderStatus: React.FC = () => {
                                 armada dari admin kami.
                             </p>
                         </div>
-
-                        {/* Area Dua Kolom Finansial & Operasional */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
                             <div className="space-y-3">
                                 <h4 className="text-[9px] font-black text-indigo-600 uppercase tracking-widest border-b pb-1.5">
@@ -421,7 +375,6 @@ const OrderStatus: React.FC = () => {
                                     </p>
                                 </div>
                             </div>
-
                             <div className="space-y-3 bg-slate-50/50 p-5 rounded-[1.75rem] border border-slate-100/80">
                                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b pb-1.5 flex items-center gap-1">
                                     <Receipt size={11} /> DETAIL PEMBAYARAN
@@ -459,8 +412,6 @@ const OrderStatus: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Area Aksi Unggah Pembayaran (100% DIKUNCI MATI SESUAI ACUAN BARU ANDA) */}
                         <div className="pt-4 border-t border-slate-100 space-y-4 text-left">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <div className="space-y-0.5">
@@ -488,8 +439,6 @@ const OrderStatus: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-
-                            {/* Baris Input Tanggal & Nominal Tanpa Kolom Keterangan Sesuai Gambar Anda */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[9px] font-black uppercase tracking-widest text-slate-400">
                                 <div className="space-y-1.5">
                                     <label className="pl-1">
@@ -539,8 +488,6 @@ const OrderStatus: React.FC = () => {
                                     />
                                 </div>
                             </div>
-
-                            {/* Box Lampiran Berkas Upload (Struktur Fiks Dijaga Utuh & Bersih) */}
                             <div
                                 onClick={() =>
                                     document
@@ -552,8 +499,6 @@ const OrderStatus: React.FC = () => {
                                 <div className="w-9 h-9 bg-white text-indigo-600 border border-slate-100 rounded-xl flex items-center justify-center shadow-sm">
                                     <UploadCloud size={16} />
                                 </div>
-
-                                {/* KUNCI BACKEND: Input file disembunyikan pakai kelas hidden agar tidak merusak draf desain fiks Anda */}
                                 <input
                                     id="hidden-file-input"
                                     type="file"
@@ -581,7 +526,6 @@ const OrderStatus: React.FC = () => {
                                     Format: JPG, PNG (Maks 5MB)
                                 </p>
                             </div>
-
                             <div className="pt-2">
                                 <button
                                     type="submit"
@@ -591,8 +535,6 @@ const OrderStatus: React.FC = () => {
                                     Kirim Bukti Pembayaran
                                 </button>
                             </div>
-
-                            {/* Tabel Riwayat Pembayaran */}
                             <div className="space-y-2 pt-2">
                                 <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-400">
                                     <span>RIWAYAT PEMBAYARAN</span>
@@ -624,8 +566,6 @@ const OrderStatus: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* PANEL BIRU DASAR PENUGASAN ARMADA */}
                             <div className="bg-[#5346F1] rounded-[1.75rem] p-5 text-white text-left space-y-3 shadow-md shadow-indigo-100">
                                 <h4 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-90 flex items-center gap-1.5">
                                     <Bus size={12} /> ARMADA & SUPIR DITUGASKAN

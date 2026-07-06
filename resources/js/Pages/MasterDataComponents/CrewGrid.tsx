@@ -24,7 +24,6 @@ const CrewGrid: React.FC<CrewGridProps> = ({
                             <UserCheck size={20} />
                         </div>
                         <div className="flex gap-1.5 text-slate-300">
-                            {/* KUNCI SAKRAL EDIT: Memasang onClick pemicu lempar data modal */}
                             <button
                                 type="button"
                                 onClick={() => onEditTrigger(c)}
@@ -32,8 +31,6 @@ const CrewGrid: React.FC<CrewGridProps> = ({
                             >
                                 <Edit2 size={13} />
                             </button>
-
-                            {/* KUNCI SAKRAL HAPUS: Memasang onClick pemicu konfirmasi hapus database */}
                             <button
                                 type="button"
                                 onClick={() =>
