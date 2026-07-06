@@ -11,7 +11,7 @@ import {
     Trash2,
     Plus,
 } from "lucide-react";
-import axios from "axios"; // ← KUNCI PENYEMBUHAN 1: Memperbaiki typo dari ajax menjadi axios
+import axios from "axios";
 
 const Orders: React.FC = () => {
     // 1. DAFTAR STATE UTAMA BAWAAN PROYEK ARJUNA TRANS ANDA
@@ -94,14 +94,8 @@ const Orders: React.FC = () => {
             }
         }
     };
-
-    // 4. FUNGSI AKSI AKHIR: EKSEKUSI TOMBOL UTAMA SIMPAN DETAIL PESANAN
-    // =========================================================================
-    // REVISI SAKRAL SINKRONISASI TRANSMISI: PENAKLUK TOTAL EROR 1406 (0 ERROR)
-    // =========================================================================
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (
             !formData.customerName.trim() ||
             !formData.destination.trim() ||
@@ -112,7 +106,6 @@ const Orders: React.FC = () => {
             );
             return;
         }
-
         try {
             const dataBiner = new FormData();
             dataBiner.append("customerName", formData.customerName);
@@ -239,11 +232,6 @@ const Orders: React.FC = () => {
             alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
         }
     };
-    // 5. FUNSI PEMBANTU: MENAMPILKAN IKON KARTU ASLI BAWAAN TEMPLATE ANDA
-    const getLeftIcon = (status: string) => {
-        return <Clock size={16} />;
-    };
-
     return (
         <AdminLayout>
             <div className="p-4 md:p-6 space-y-6">
@@ -343,7 +331,7 @@ const Orders: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* BARIS 2: BOX SEARCH BERDIRI MANDIRI MEMANJANG 100% LEBAR HALAMAN */}
+                        {/* BOX SEARCH BERDIRI MANDIRI MEMANJANG 100% LEBAR HALAMAN */}
                         <div className="relative w-full pt-1">
                             <input
                                 type="text"
@@ -381,10 +369,6 @@ const Orders: React.FC = () => {
                             o.harga_sewa || o.total_harga || 0,
                         );
                         const statusSkrg = o.status_pesanan || o.status;
-
-                        // =========================================================================
-                        // 🎯 DETEKTOR MULTI-CICILAN PINTAR: MELACAK STATUS BARIS PEMBAYARAN JSON
-                        // =========================================================================
                         let adakahPembayaranBelumAcc = false;
                         let totalBayar = 0;
 
@@ -402,7 +386,7 @@ const Orders: React.FC = () => {
                                         if (p.paymentStatus !== "Ditolak") {
                                             totalBayar += Number(p.amount || 0);
                                         }
-                                        // 2. KUNCI SAKRAL: Jika ada SATU SAJA baris bernilai 'Pending', kunci flag TRUE!
+                                        // Jika ada SATU SAJA baris bernilai 'Pending', kunci flag TRUE!
                                         if (p.paymentStatus === "Pending") {
                                             adakahPembayaranBelumAcc = true;
                                         }
@@ -428,10 +412,6 @@ const Orders: React.FC = () => {
 
                         const isLunas =
                             totalHarga > 0 && totalBayar >= totalHarga;
-
-                        // =========================================================================
-                        // SINKRONISASI 6 ALUR BADGE OPERASIONAL ARJUNA TRANS (FIX LURUS)
-                        // =========================================================================
                         let labelKomponen = null;
 
                         if (statusSkrg === "Batal") {
@@ -450,7 +430,7 @@ const Orders: React.FC = () => {
                             adakahPembayaranBelumAcc &&
                             statusSkrg === "Disetujui"
                         ) {
-                            // 🎯 ALUR 5: Jika pesanan sudah disetujui, lalu ada cicilan baru masuk yang berstatus 'Pending'
+                            // Jika pesanan sudah disetujui, lalu ada cicilan baru masuk yang berstatus 'Pending'
                             labelKomponen = (
                                 <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider">
                                     Perlu ACC
@@ -468,7 +448,7 @@ const Orders: React.FC = () => {
                                 key={o.id_pesanan || idx}
                                 className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100"
                             >
-                                {/* SISI KIRI: SINKRONISASI WARNA IKON 6 ALUR ARJUNA TRANS */}
+                                {/* SINKRONISASI WARNA IKON 6 ALUR ARJUNA TRANS */}
                                 <div className="flex items-start gap-4 flex-1">
                                     <div
                                         className={`p-3 rounded-full ${
@@ -480,9 +460,7 @@ const Orders: React.FC = () => {
                                                     ? "bg-indigo-50 text-indigo-500 border border-indigo-100" // Alur 6: Berwarna Biru setelah di-Plotting
                                                     : "bg-slate-50 text-slate-400"
                                         }`}
-                                    >
-                                        {getLeftIcon(statusSkrg)}
-                                    </div>
+                                    ></div>
                                     <div className="space-y-1 text-left">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h4 className="text-sm font-black text-slate-800 tracking-tight leading-tight">
@@ -506,13 +484,45 @@ const Orders: React.FC = () => {
                                             <span className="hidden sm:inline text-slate-200">
                                                 |
                                             </span>
-                                            <p className="flex items-center gap-1">
-                                                <Calendar
-                                                    size={10}
-                                                    className="text-slate-300"
-                                                />{" "}
-                                                {o.tgl_berangkat || "-"}
-                                            </p>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                {/* TANGGAL BERANGKAT */}
+                                                <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                                    PERGI:{" "}
+                                                    {o.tgl_berangkat
+                                                        ? (() => {
+                                                              const [y, m, d] =
+                                                                  o.tgl_berangkat
+                                                                      .substring(
+                                                                          0,
+                                                                          10,
+                                                                      )
+                                                                      .split(
+                                                                          "-",
+                                                                      );
+                                                              return `${d}/${m}/${y}`;
+                                                          })()
+                                                        : "-"}
+                                                </span>
+
+                                                {/* TANGGAL PULANG */}
+                                                <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
+                                                    PULANG:{" "}
+                                                    {o.tgl_selesai
+                                                        ? (() => {
+                                                              const [y, m, d] =
+                                                                  o.tgl_selesai
+                                                                      .substring(
+                                                                          0,
+                                                                          10,
+                                                                      )
+                                                                      .split(
+                                                                          "-",
+                                                                      );
+                                                              return `${d}/${m}/${y}`;
+                                                          })()
+                                                        : "-"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -564,12 +574,6 @@ const Orders: React.FC = () => {
                                     >
                                         <Phone size={12} />
                                     </button>
-                                    {/* ========================================================================= */}
-                                    {/* PARSER ADAPTIF SAKRAL: PERBAIKAN BACA DATA LAMA & MULTI-CICILAN BARU (0 ERR)*/}
-                                    {/* ========================================================================= */}
-                                    {/* ========================================================================= */}
-                                    {/* REVISI SAKRAL EDIT: PARSER ADAPTIF MEMBACA ARRAY POLOS DIRECT (0 ERROR)   */}
-                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -724,16 +728,14 @@ const Orders: React.FC = () => {
                                                     o.estimasi_jarak || 0,
                                                 ),
                                                 departureDate: o.tgl_berangkat
-                                                    ? o.tgl_berangkat.substring(
-                                                          0,
-                                                          16,
-                                                      )
+                                                    ? o.tgl_berangkat
+                                                          .replace(" ", "T")
+                                                          .substring(0, 16)
                                                     : "",
                                                 returnDate: o.tgl_selesai
-                                                    ? o.tgl_selesai.substring(
-                                                          0,
-                                                          16,
-                                                      )
+                                                    ? o.tgl_selesai
+                                                          .replace(" ", "T")
+                                                          .substring(0, 16)
                                                     : "",
                                                 routeNotes: o.rute || "",
                                                 totalPrice: Number(
@@ -775,13 +777,13 @@ const Orders: React.FC = () => {
                                                                   qty: 1,
                                                               },
                                                           ],
-                                                dueDate: o.jatuh_tempo
-                                                    ? o.jatuh_tempo.substring(
+                                                dueDate: tanggalJatuhTempo
+                                                    ? tanggalJatuhTempo.substring(
                                                           0,
                                                           10,
                                                       )
-                                                    : tanggalJatuhTempo
-                                                      ? tanggalJatuhTempo.substring(
+                                                    : o.jatuh_tempo
+                                                      ? o.jatuh_tempo.substring(
                                                             0,
                                                             10,
                                                         )

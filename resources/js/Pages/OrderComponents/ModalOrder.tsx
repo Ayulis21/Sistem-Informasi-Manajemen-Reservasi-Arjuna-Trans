@@ -33,7 +33,10 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         <div className="w-1 h-6 bg-[#5346F1] rounded-full"></div>
                         <div>
                             <h3 className="text-base font-black text-slate-800 uppercase tracking-wider leading-none">
-                                Edit Detail Pesanan
+                                {/* Otomatis berubah kapital kaku mengikuti ada atau tidaknya ID pesanan */}
+                                {formData?.id_pesanan
+                                    ? "EDIT DETAIL PESANAN"
+                                    : "TAMBAH RESERVASI BARU"}
                             </h3>
                             <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md uppercase block mt-1 tracking-wider">
                                 ID:{" "}

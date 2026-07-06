@@ -192,32 +192,45 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                         </div>
                     ))}
                 </div>
-                <div className="space-y-1.5 pt-2">
-                    <label className="pl-1">Waktu Berangkat</label>
+                <div className="space-y-1 text-left">
+                    <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 pl-1">
+                        Waktu Berangkat
+                    </label>
                     <input
                         type="datetime-local"
-                        value={formData.departureDate || ""}
+                        value={
+                            formData.departureDate
+                                ? formData.departureDate.substring(0, 16)
+                                : ""
+                        }
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
                                 departureDate: e.target.value,
                             })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        className="w-full h-8 p-1.5 bg-slate-50 border border-slate-100 rounded-lg font-bold text-slate-700 text-xs outline-none transition-all cursor-pointer max-w-[240px]"
                     />
                 </div>
-                <div className="space-y-1.5">
-                    <label className="pl-1">Waktu Pulang</label>
+
+                <div className="space-y-1 text-left mt-3">
+                    <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 pl-1">
+                        Waktu Pulang
+                    </label>
                     <input
                         type="datetime-local"
-                        value={formData.returnDate || ""}
+                        value={
+                            formData.returnDate
+                                ? formData.returnDate.substring(0, 16)
+                                : ""
+                        }
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
                                 returnDate: e.target.value,
                             })
                         }
-                        className="w-full p-2.5 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none"
+                        className="w-full h-8 p-1.5 bg-slate-50 border border-slate-100 rounded-lg font-bold text-slate-700 text-xs outline-none transition-all cursor-pointer max-w-[240px]"
                     />
                 </div>
             </div>
