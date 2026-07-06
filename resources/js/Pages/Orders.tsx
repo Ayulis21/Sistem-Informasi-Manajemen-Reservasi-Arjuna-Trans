@@ -40,6 +40,17 @@ const Orders: React.FC = () => {
         bukti_transfer: "bukti_default.jpg",
         paymentStatus: "Pending",
         catatan_pembayaran: "",
+        payments: [
+            {
+                type: "DP",
+                date: new Date().toISOString().substring(0, 10),
+                amount: 0,
+                notes: "",
+                evidenceFile: null,
+                bukti_transfer: "bukti_default.jpg",
+                paymentStatus: "Pending",
+            },
+        ],
     });
 
     // 2. FUNGSI PENYEGAR DATA DARI DATABASE MYSQL
@@ -119,6 +130,13 @@ const Orders: React.FC = () => {
                 "fleetRequirements",
                 JSON.stringify(formData.fleetRequirements),
             );
+            dataBiner.append("paymentsData", JSON.stringify(formData.payments));
+            // Perulangan khusus untuk menangkap banyak file foto struk jika admin melakukan upload ganda
+            formData.payments.forEach((p: any, index: number) => {
+                if (p.evidenceFile) {
+                    dataBiner.append(`evidenceFile_${index}`, p.evidenceFile);
+                }
+            });
 
             if (formData.evidenceFile) {
                 dataBiner.append("evidenceFile", formData.evidenceFile);
@@ -166,6 +184,17 @@ const Orders: React.FC = () => {
                 paymentStatus: "Pending",
                 catatan_pembayaran: "",
                 fleetRequirements: [{ type: "Bus", qty: 1 }],
+                payments: [
+                    {
+                        type: "DP",
+                        date: new Date().toISOString().substring(0, 10),
+                        amount: 0,
+                        notes: "",
+                        evidenceFile: null,
+                        bukti_transfer: "bukti_default.jpg",
+                        paymentStatus: "Pending",
+                    },
+                ],
             });
 
             setIsOpenModal(false);
@@ -256,6 +285,20 @@ const Orders: React.FC = () => {
                                             catatan_pembayaran: "",
                                             fleetRequirements: [
                                                 { type: "Bus", qty: 1 },
+                                            ],
+                                            payments: [
+                                                {
+                                                    type: "DP",
+                                                    date: new Date()
+                                                        .toISOString()
+                                                        .substring(0, 10),
+                                                    amount: 0,
+                                                    notes: "",
+                                                    evidenceFile: null,
+                                                    bukti_transfer:
+                                                        "bukti_default.jpg",
+                                                    paymentStatus: "Pending",
+                                                },
                                             ],
                                         });
                                         setIsOpenModal(true);
@@ -448,40 +491,165 @@ const Orders: React.FC = () => {
                                         <Phone size={12} />
                                     </button>
                                     {/* ========================================================================= */}
-                                    {/* REVISI SAKRAL EDIT: PARSER BUKAN PHP DAN MENYUAPI FLEET (0 ERROR)          */}
+                                    {/* PARSER ADAPTIF SAKRAL: PERBAIKAN BACA DATA LAMA & MULTI-CICILAN BARU (0 ERR)*/}
                                     {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            let teksCatatan = "";
+                                            let teksCatatanUtama = "";
                                             let tanggalJatuhTempo = "";
+                                            let kantongPayments: any[] = [];
 
                                             try {
-                                                // Menggunakan standar baku JavaScript (JSON.parse) untuk membongkar data
                                                 if (
                                                     o.catatan_pembayaran &&
-                                                    o.catatan_pembayaran.startsWith(
-                                                        "{",
-                                                    )
+                                                    o.catatan_pembayaran
+                                                        .trim()
+                                                        .startsWith("{")
                                                 ) {
                                                     const objekJson =
                                                         JSON.parse(
                                                             o.catatan_pembayaran,
                                                         );
-                                                    teksCatatan =
-                                                        objekJson.notes || "";
-                                                    tanggalJatuhTempo =
-                                                        objekJson.dueDate || "";
+
+                                                    // FORMAT BARU: Jika database menyimpan struktur multi-cicilan bersarang
+                                                    if (
+                                                        objekJson.riwayat &&
+                                                        Array.isArray(
+                                                            objekJson.riwayat,
+                                                        )
+                                                    ) {
+                                                        kantongPayments =
+                                                            objekJson.riwayat;
+                                                        tanggalJatuhTempo =
+                                                            objekJson.dueDate ||
+                                                            "";
+                                                        // Ekstrak catatan dari baris pertama cicilan riwayat
+                                                        teksCatatanUtama =
+                                                            objekJson.riwayat[0]
+                                                                ?.notes || "";
+                                                    }
+                                                    // FORMAT LAMA: Mengamankan data kurung kurawal tunggal agar tidak bocor mentah!
+                                                    else {
+                                                        teksCatatanUtama =
+                                                            objekJson.notes ||
+                                                            "";
+                                                        tanggalJatuhTempo =
+                                                            objekJson.dueDate ||
+                                                            "";
+
+                                                        // Bungkus data tunggal lama ke dalam baris Pembayaran Ke-1 agar rapi di form scroll
+                                                        kantongPayments = [
+                                                            {
+                                                                type:
+                                                                    o.tipe_keterangan ||
+                                                                    "DP",
+                                                                date: o.tgl_bayar
+                                                                    ? o.tgl_bayar.substring(
+                                                                          0,
+                                                                          10,
+                                                                      )
+                                                                    : new Date()
+                                                                          .toISOString()
+                                                                          .substring(
+                                                                              0,
+                                                                              10,
+                                                                          ),
+                                                                amount: Number(
+                                                                    o.total_terbayar ||
+                                                                        o.nominal ||
+                                                                        0,
+                                                                ),
+                                                                notes:
+                                                                    objekJson.notes ||
+                                                                    "",
+                                                                evidenceFile:
+                                                                    null,
+                                                                bukti_transfer:
+                                                                    o.bukti_transfer ||
+                                                                    "bukti_default.jpg",
+                                                                paymentStatus:
+                                                                    o.status_pembayaran ||
+                                                                    "Pending",
+                                                            },
+                                                        ];
+                                                    }
                                                 } else {
-                                                    teksCatatan =
+                                                    // FORMAT POLOS: Jika data di database berupa string teks polos biasa
+                                                    teksCatatanUtama =
                                                         o.catatan_pembayaran ||
                                                         "";
+                                                    kantongPayments = [
+                                                        {
+                                                            type:
+                                                                o.tipe_keterangan ||
+                                                                "DP",
+                                                            date: o.tgl_bayar
+                                                                ? o.tgl_bayar.substring(
+                                                                      0,
+                                                                      10,
+                                                                  )
+                                                                : new Date()
+                                                                      .toISOString()
+                                                                      .substring(
+                                                                          0,
+                                                                          10,
+                                                                      ),
+                                                            amount: Number(
+                                                                o.total_terbayar ||
+                                                                    o.nominal ||
+                                                                    0,
+                                                            ),
+                                                            notes:
+                                                                o.catatan_pembayaran ||
+                                                                "",
+                                                            evidenceFile: null,
+                                                            bukti_transfer:
+                                                                o.bukti_transfer ||
+                                                                "bukti_default.jpg",
+                                                            paymentStatus:
+                                                                o.status_pembayaran ||
+                                                                "Pending",
+                                                        },
+                                                    ];
                                                 }
                                             } catch (e) {
-                                                teksCatatan =
+                                                teksCatatanUtama =
                                                     o.catatan_pembayaran || "";
+                                                kantongPayments = [
+                                                    {
+                                                        type:
+                                                            o.tipe_keterangan ||
+                                                            "DP",
+                                                        date: o.tgl_bayar
+                                                            ? o.tgl_bayar.substring(
+                                                                  0,
+                                                                  10,
+                                                              )
+                                                            : new Date()
+                                                                  .toISOString()
+                                                                  .substring(
+                                                                      0,
+                                                                      10,
+                                                                  ),
+                                                        amount: Number(
+                                                            o.total_terbayar ||
+                                                                o.nominal ||
+                                                                0,
+                                                        ),
+                                                        notes:
+                                                            o.catatan_pembayaran ||
+                                                            "",
+                                                        evidenceFile: null,
+                                                        bukti_transfer:
+                                                            o.bukti_transfer ||
+                                                            "bukti_default.jpg",
+                                                        paymentStatus:
+                                                            o.status_pembayaran ||
+                                                            "Pending",
+                                                    },
+                                                ];
                                             }
-
                                             setSelectedId(o.id_pesanan || o.id);
                                             setIsEditMode(true);
                                             setFormData({
@@ -530,19 +698,7 @@ const Orders: React.FC = () => {
                                                 bukti_transfer:
                                                     o.bukti_transfer ||
                                                     "bukti_default.jpg",
-                                                paymentStatus:
-                                                    o.status_pembayaran ||
-                                                    "Pending",
                                                 evidenceFile: null,
-                                                dueDate: tanggalJatuhTempo
-                                                    ? tanggalJatuhTempo.substring(
-                                                          0,
-                                                          10,
-                                                      )
-                                                    : "",
-                                                catatan_pembayaran: teksCatatan,
-
-                                                // SINKRONISASI TRANSMISI: Memasukkan kembali fleetRequirements wajib proyek Anda
                                                 fleetRequirements:
                                                     o.tipe_unit_diminta
                                                         ? [
@@ -560,13 +716,28 @@ const Orders: React.FC = () => {
                                                                   qty: 1,
                                                               },
                                                           ],
+                                                dueDate: tanggalJatuhTempo
+                                                    ? tanggalJatuhTempo.substring(
+                                                          0,
+                                                          10,
+                                                      )
+                                                    : "",
+                                                catatan_pembayaran:
+                                                    teksCatatanUtama,
+                                                payments: kantongPayments,
+
+                                                // KUNCI UTAMA: Menangkap properti status_pembayaran hasil kueri asli MySQL Anda!
+                                                paymentStatus:
+                                                    o.status_pembayaran ||
+                                                    "Pending",
                                             });
                                             setIsOpenModal(true);
                                         }}
-                                        className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors"
+                                        className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-all"
                                     >
                                         <Edit2 size={12} />
                                     </button>
+
                                     <button
                                         type="button"
                                         className="p-2 bg-slate-950 text-white rounded-xl text-xs"
