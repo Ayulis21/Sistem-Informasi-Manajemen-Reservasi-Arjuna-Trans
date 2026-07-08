@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import ModalOrder from "./OrderComponents/ModalOrder";
+import OrderMainForm from "./OrderComponents/OrderMainForm";
+import OrderFinanceForm from "./OrderComponents/OrderFinanceForm";
 import {
     Clock,
     MapPin,
@@ -10,6 +12,8 @@ import {
     Printer,
     Trash2,
     Plus,
+    Check,
+    XCircle,
 } from "lucide-react";
 import axios from "axios";
 
@@ -232,6 +236,10 @@ const Orders: React.FC = () => {
             alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
         }
     };
+    function setPreviewUrl(url: string | null): void {
+        throw new Error("Function not implemented.");
+    }
+
     return (
         <AdminLayout>
             <div className="p-4 md:p-6 space-y-6">
@@ -372,6 +380,9 @@ const Orders: React.FC = () => {
                         let adakahPembayaranBelumAcc = false;
                         let totalBayar = 0;
 
+                        // =========================================================================
+                        // 🎯 KUNCI UTAMA SIFAT AUDIT: HANYA PERLU ACC JIKA NOMINAL DIISI > 0 (0 ERR)
+                        // =========================================================================
                         try {
                             if (
                                 o.catatan_pembayaran &&
@@ -381,13 +392,18 @@ const Orders: React.FC = () => {
                                     o.catatan_pembayaran,
                                 );
                                 if (Array.isArray(arrayJson)) {
+                                    const kantongPayments = arrayJson;
+
                                     // 1. Akumulasi hitung nominal uang dari semua baris cicilan
                                     arrayJson.forEach((p: any) => {
                                         if (p.paymentStatus !== "Ditolak") {
                                             totalBayar += Number(p.amount || 0);
                                         }
-                                        // Jika ada SATU SAJA baris bernilai 'Pending', kunci flag TRUE!
-                                        if (p.paymentStatus === "Pending") {
+                                        // 🎯 KUNCI VISUAL 1: Label kuning hanya menyala jika status pending DAN nominal uang diisi > 0!
+                                        if (
+                                            p.paymentStatus === "Pending" &&
+                                            Number(p.amount || 0) > 0
+                                        ) {
                                             adakahPembayaranBelumAcc = true;
                                         }
                                     });
@@ -397,6 +413,7 @@ const Orders: React.FC = () => {
                                 totalBayar = Number(
                                     o.total_terbayar || o.nominal || 0,
                                 );
+                                // 🎯 KUNCI VISUAL 2: Mengunci hal yang sama untuk baris data warisan awal Anda
                                 if (
                                     o.status_pembayaran === "Pending" &&
                                     totalBayar > 0
@@ -409,7 +426,6 @@ const Orders: React.FC = () => {
                                 o.total_terbayar || o.nominal || 0,
                             );
                         }
-
                         const isLunas =
                             totalHarga > 0 && totalBayar >= totalHarga;
                         let labelKomponen = null;
@@ -448,25 +464,62 @@ const Orders: React.FC = () => {
                                 key={o.id_pesanan || idx}
                                 className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100"
                             >
-                                {/* SINKRONISASI WARNA IKON 6 ALUR ARJUNA TRANS */}
-                                <div className="flex items-start gap-4 flex-1">
-                                    <div
-                                        className={`p-3 rounded-full ${
-                                            statusSkrg === "Pending"
-                                                ? "bg-amber-50 text-amber-500 border border-amber-100" // Alur 1 & 2: Berwarna Kuning saat Baru/Nego
-                                                : statusSkrg === "Disetujui"
-                                                  ? "bg-emerald-50 text-emerald-500 border border-emerald-100" // Alur 4: Berwarna Hijau setelah klik Setujui
-                                                  : statusSkrg === "Terjadwal"
-                                                    ? "bg-indigo-50 text-indigo-500 border border-indigo-100" // Alur 6: Berwarna Biru setelah di-Plotting
-                                                    : "bg-slate-50 text-slate-400"
-                                        }`}
-                                    ></div>
+                                <div className="flex items-center gap-3">
+                                    {/* ========================================================================= */}
+                                    {/* 🎯 KUNCI UTAMA: KOTAK IKON STATUS ASLI SESUAI BLUEPRINT DESAIN ANDA (0 ERR) */}
+                                    {/* ========================================================================= */}
+                                    {(() => {
+                                        // Menentukan warna boks, warna ikon, dan jenis ikon Lucide secara dinamis
+                                        let bgBoks = "bg-indigo-50";
+                                        let warnaIkon = "text-indigo-600";
+                                        let KomponenIkon = Clock;
+
+                                        if (statusSkrg === "Batal") {
+                                            bgBoks = "bg-rose-50";
+                                            warnaIkon = "text-rose-500";
+                                            KomponenIkon = XCircle;
+                                        } else if (
+                                            isLunas &&
+                                            statusSkrg === "Terjadwal"
+                                        ) {
+                                            // TIPE LUNAS / TERJADWAL: Boks hijau pudar dengan ikon centang
+                                            bgBoks = "bg-emerald-50/80";
+                                            warnaIkon = "text-emerald-600";
+                                            KomponenIkon = Check;
+                                        } else if (
+                                            adakahPembayaranBelumAcc &&
+                                            statusSkrg === "Disetujui"
+                                        ) {
+                                            // TIPE PERLU ACC / PENDING: Boks kuning/jingga pudar dengan ikon jam
+                                            bgBoks = "bg-amber-50/80";
+                                            warnaIkon = "text-amber-600";
+                                            KomponenIkon = Clock;
+                                        } else if (statusSkrg === "Pending") {
+                                            // TIPE BARU / PENDING UTAMA
+                                            bgBoks = "bg-amber-50/80";
+                                            warnaIkon = "text-amber-600";
+                                            KomponenIkon = Clock;
+                                        }
+
+                                        return (
+                                            /* 🎯 KUNCI UTAMA: Mengubah w-10 h-10 menjadi w-12 h-12 agar boks lebih kekar besar */
+                                            <div
+                                                className={`w-12 h-12 ${bgBoks} rounded-xl flex items-center justify-center flex-shrink-0 transition-all shadow-sm`}
+                                            >
+                                                {/* 🎯 KUNCI IKON: Mengubah size={18} menjadi size={22} agar logo jam/centang lebih tajam tebal */}
+                                                <KomponenIkon
+                                                    size={22}
+                                                    className={`${warnaIkon} stroke-[2.5]`}
+                                                />
+                                            </div>
+                                        );
+                                    })()}
                                     <div className="space-y-1 text-left">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h4 className="text-sm font-black text-slate-800 tracking-tight leading-tight">
+                                        <div className="space-y-1 text-left">
+                                            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide leading-tight">
                                                 {o.nama_pemesan ||
                                                     o.title ||
-                                                    "Tanpa Nama"}
+                                                    "Pelanggan Tanpa Nama"}
                                             </h4>
                                             <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md border border-slate-200/40 uppercase tracking-widest">
                                                 #{o.id_pesanan || o.id}
@@ -918,17 +971,49 @@ const Orders: React.FC = () => {
             </div>
 
             {/* Jendela Modal Pembungkus */}
+            {/* ========================================================================= */}
+            {/* REVISI SAKRAL MODAL: MENYELARASKAN PROPERTI PENYUAP COMPILER (0 ERROR)    */}
+            {/* ========================================================================= */}
             <ModalOrder
                 isOpen={isOpenModal}
+                onClose={() => setIsOpenModal(false)}
+                isEditMode={isEditMode}
                 formData={formData}
-                setFormData={setFormData}
-                onSubmit={handleSaveOrder}
-                onClose={() => {
-                    setIsOpenModal(false);
-                    fetchOrdersData();
-                }}
-                fetchOrdersData={fetchOrdersData}
-            />
+                /* 🎯 KUNCI UTAMA: Properti hantu setFormData dan onSubmit DIHAPUS TOTAL dari sini */
+            >
+                {/* 🎯 PIPA FORMULA: Fungsi handleSaveOrder disuapi langsung ke dalam tag form HTML legal React */}
+                <form onSubmit={handleSaveOrder} className="space-y-6">
+                    {/* BAGIAN ATAS: DATA OPERASIONAL PERJALANAN (Blok 1, 2, 3, 4) */}
+                    <OrderMainForm
+                        formData={formData}
+                        setFormData={setFormData}
+                    />
+
+                    {/* BAGIAN BAWAH: PANEL KEUANGAN DAN TABEL RINCIAN CICILAN LEBAR (Blok 5) */}
+                    <OrderFinanceForm
+                        formData={formData}
+                        setFormData={setFormData}
+                        setPreviewUrl={setPreviewUrl}
+                    />
+
+                    {/* BARIS FOOTER AKSI SEJAJAR KAKU DI BAWAH */}
+                    <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100 flex-shrink-0 bg-white">
+                        <button
+                            type="button"
+                            onClick={() => setIsOpenModal(false)}
+                            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            className="flex-1 py-2.5 bg-[#5346F1] hover:bg-[#4338CA] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md text-center cursor-pointer shadow-indigo-600/10"
+                        >
+                            Simpan Detail Pesanan
+                        </button>
+                    </div>
+                </form>
+            </ModalOrder>
         </AdminLayout>
     );
 };
