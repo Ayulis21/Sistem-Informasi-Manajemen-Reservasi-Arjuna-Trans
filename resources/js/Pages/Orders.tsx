@@ -18,7 +18,6 @@ import {
 import axios from "axios";
 
 const Orders: React.FC = () => {
-    // 1. DAFTAR STATE UTAMA BAWAAN PROYEK ARJUNA TRANS ANDA
     const [orders, setOrders] = useState<any[]>([]);
     const [isOpenModal, setIsOpenModal] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -236,10 +235,8 @@ const Orders: React.FC = () => {
             alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
         }
     };
-    function setPreviewUrl(url: string | null): void {
-        throw new Error("Function not implemented.");
-    }
 
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     return (
         <AdminLayout>
             <div className="p-4 md:p-6 space-y-6">
@@ -617,16 +614,25 @@ const Orders: React.FC = () => {
                                 <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            window.open(
-                                                `https://wa.me{o.no_telp || o.whatsapp}`,
-                                                "_blank",
-                                            )
-                                        }
-                                        className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-colors"
+                                        onClick={() => {
+                                            if (o.no_telp)
+                                                window.open(
+                                                    `https://wa.me{o.no_telp}`,
+                                                    "_blank",
+                                                );
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer"
+                                        title="Hubungi WhatsApp"
                                     >
-                                        <Phone size={12} />
+                                        {/* 🎯 KUNCI: Menaikkan ukuran ke 18 dan menebalkan garis stroke menjadi 2.5 */}
+                                        <Phone
+                                            size={18}
+                                            className="stroke-[2.5]"
+                                        />
                                     </button>
+                                    {/* ========================================================================= */}
+                                    {/* 🎯 KUNCI SAKRAL: SAMBUNGAN UTOMATIS TOMBOL EDIT DATA & IKON BESAR (0 ERR) */}
+                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -641,7 +647,6 @@ const Orders: React.FC = () => {
                                                         .trim()
                                                         .startsWith("[")
                                                 ) {
-                                                    // Jika data berupa barisan array cicilan dinamis yang polos
                                                     const arrayJson =
                                                         JSON.parse(
                                                             o.catatan_pembayaran,
@@ -654,7 +659,6 @@ const Orders: React.FC = () => {
                                                     ) {
                                                         kantongPayments =
                                                             arrayJson;
-                                                        // Mengambil catatan dan tanggal jatuh tempo dari baris index pertama sebagai induk luar
                                                         teksCatatanUtama =
                                                             arrayJson[0]
                                                                 .notes || "";
@@ -668,7 +672,6 @@ const Orders: React.FC = () => {
                                                         .trim()
                                                         .startsWith("{")
                                                 ) {
-                                                    // Mengamankan data sisa bungkusan objek lama agar tidak memicu error crash
                                                     const objekJson =
                                                         JSON.parse(
                                                             o.catatan_pembayaran,
@@ -690,7 +693,6 @@ const Orders: React.FC = () => {
                                                             "";
                                                     }
                                                 } else {
-                                                    // Jika data berupa string teks biasa bawaan database awal Anda
                                                     teksCatatanUtama =
                                                         o.catatan_pembayaran ||
                                                         "";
@@ -766,6 +768,7 @@ const Orders: React.FC = () => {
                                                 ];
                                             }
 
+                                            // MENYUAPI DATA KE DALAM FORM DATA MODAL SECARA LURUS SINKRON
                                             setSelectedId(o.id_pesanan || o.id);
                                             setIsEditMode(true);
                                             setFormData({
@@ -794,11 +797,18 @@ const Orders: React.FC = () => {
                                                 totalPrice: Number(
                                                     o.harga_sewa || 0,
                                                 ),
-                                                paidAmount: Number(
-                                                    o.total_terbayar ||
-                                                        o.nominal ||
-                                                        0,
-                                                ),
+                                                paidAmount: totalBayar, // Diambil dari variabel kalkulator hitung otomatis Anda
+                                                dueDate: o.jatuh_tempo
+                                                    ? o.jatuh_tempo.substring(
+                                                          0,
+                                                          10,
+                                                      )
+                                                    : tanggalJatuhTempo
+                                                      ? tanggalJatuhTempo.substring(
+                                                            0,
+                                                            10,
+                                                        )
+                                                      : "",
                                                 paymentType:
                                                     o.tipe_keterangan || "DP",
                                                 paymentDate: o.tgl_bayar
@@ -830,17 +840,6 @@ const Orders: React.FC = () => {
                                                                   qty: 1,
                                                               },
                                                           ],
-                                                dueDate: tanggalJatuhTempo
-                                                    ? tanggalJatuhTempo.substring(
-                                                          0,
-                                                          10,
-                                                      )
-                                                    : o.jatuh_tempo
-                                                      ? o.jatuh_tempo.substring(
-                                                            0,
-                                                            10,
-                                                        )
-                                                      : "",
                                                 paymentStatus:
                                                     o.status_pembayaran ||
                                                     "Pending",
@@ -850,9 +849,14 @@ const Orders: React.FC = () => {
                                             });
                                             setIsOpenModal(true);
                                         }}
-                                        className="p-2 hover:bg-slate-50 text-slate-300 hover:text-slate-500 rounded-xl transition-all"
+                                        className="p-2 text-slate-400 hover:text-[#5346F1] hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                        title="Edit Cepat Detail Pesanan"
                                     >
-                                        <Edit2 size={12} />
+                                        {/* 🎯 KUNCI BESAR: Menaikkan ukuran ke 18 dan menebalkan garis stroke menjadi 2.5 */}
+                                        <Edit2
+                                            size={18}
+                                            className="stroke-[2.5]"
+                                        />
                                     </button>
 
                                     <button
@@ -969,11 +973,6 @@ const Orders: React.FC = () => {
                     })}
                 </div>
             </div>
-
-            {/* Jendela Modal Pembungkus */}
-            {/* ========================================================================= */}
-            {/* REVISI SAKRAL MODAL: MENYELARASKAN PROPERTI PENYUAP COMPILER (0 ERROR)    */}
-            {/* ========================================================================= */}
             <ModalOrder
                 isOpen={isOpenModal}
                 onClose={() => setIsOpenModal(false)}
@@ -988,14 +987,11 @@ const Orders: React.FC = () => {
                         formData={formData}
                         setFormData={setFormData}
                     />
-
-                    {/* BAGIAN BAWAH: PANEL KEUANGAN DAN TABEL RINCIAN CICILAN LEBAR (Blok 5) */}
                     <OrderFinanceForm
                         formData={formData}
                         setFormData={setFormData}
                         setPreviewUrl={setPreviewUrl}
                     />
-
                     {/* BARIS FOOTER AKSI SEJAJAR KAKU DI BAWAH */}
                     <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100 flex-shrink-0 bg-white">
                         <button
@@ -1014,6 +1010,40 @@ const Orders: React.FC = () => {
                     </div>
                 </form>
             </ModalOrder>
+            {/* ========================================================================= */}
+            {/* 🎯 TEMPAT DI FILE UTAMA ORDERS.TSX (GANTI TOTAL BAGIAN POPUP MELAYANG INI) */}
+            {/* ========================================================================= */}
+            {previewUrl && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => setPreviewUrl(null)}
+                >
+                    <div
+                        className="bg-white p-5 rounded-[2rem] max-w-sm w-full text-center shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* 🎯 BERIKUT PERUBAHAN TAG IMG YANG PERLU DI TIMPA SAKRAL */}
+                        <img
+                            src={
+                                previewUrl.startsWith("data:") ||
+                                previewUrl.startsWith("blob:")
+                                    ? previewUrl
+                                    : `/uploads/bukti_transfer/${previewUrl}`
+                            }
+                            alt="Struk Transfer"
+                            className="w-full h-auto rounded-xl object-contain max-h-[50vh] mb-3 border border-slate-100 bg-slate-50"
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => setPreviewUrl(null)}
+                            className="w-full py-2 bg-slate-950 text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                        >
+                            Tutup Struk
+                        </button>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

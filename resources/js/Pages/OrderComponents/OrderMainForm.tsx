@@ -1,5 +1,5 @@
 import React from "react";
-import { User, MapPin, Bus, FileText } from "lucide-react";
+import { User, MapPin, Bus, FileText, Plus, Trash2 } from "lucide-react";
 
 interface OrderMainFormProps {
     formData: any;
@@ -10,11 +10,10 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
     formData,
     setFormData,
 }) => {
-    const armadaArray = formData?.fleetRequirements;
-    const armadaUtama =
-        Array.isArray(armadaArray) && armadaArray.length > 0
-            ? armadaArray[0]
-            : { type: "Bus", qty: 1 };
+    // Memastikan fleetRequirements selalu bertipe array dinamis yang aman
+    const armadaList = Array.isArray(formData?.fleetRequirements)
+        ? formData.fleetRequirements
+        : [{ type: "Bus", qty: 1 }];
 
     return (
         <div className="space-y-5">
@@ -137,58 +136,115 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     </div>
                 </div>
 
-                {/* 3. LOGISTIK PERJALANAN */}
+                {/* 3. LOGISTIK PERJALANAN (DENGAN INPUT DATA ARMADA MULTI-KOLOM DINAMIS) */}
                 <div className="space-y-3 text-left">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1.5 pb-1 border-b border-slate-50">
-                        <Bus size={12} className="text-[#5346F1]" /> 3. Logistik
-                        Perjalanan
-                    </span>
-                    <div className="space-y-1">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
-                            Kebutuhan Armada
-                        </label>
-                        <div className="flex gap-2">
-                            <select
-                                value={armadaUtama.type || "Bus"}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        fleetRequirements: [
-                                            {
-                                                type: e.target.value,
-                                                qty: armadaUtama.qty || 1,
-                                            },
-                                        ],
-                                    })
-                                }
-                                className="flex-1 p-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none cursor-pointer"
-                            >
-                                <option value="Bus">Bus</option>
-                                <option value="Medium Bus">Medium Bus</option>
-                                <option value="Hiace">Hiace</option>
-                            </select>
-                            <input
-                                type="number"
-                                min="1"
-                                value={armadaUtama.qty || 1}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        fleetRequirements: [
-                                            {
-                                                type: armadaUtama.type || "Bus",
-                                                qty:
-                                                    parseInt(e.target.value) ||
-                                                    1,
-                                            },
-                                        ],
-                                    })
-                                }
-                                className="w-12 p-1.5 bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-800 text-xs text-center outline-none"
-                            />
-                        </div>
+                    <div className="flex justify-between items-center pb-1 border-b border-slate-50">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1.5">
+                            <Bus size={12} className="text-[#5346F1]" /> 3.
+                            Logistik Perjalanan
+                        </span>
+                        {/* 🎯 BUTTON TAMBAH KOLOM ARMADA BARU */}
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setFormData({
+                                    ...formData,
+                                    fleetRequirements: [
+                                        ...armadaList,
+                                        { type: "Bus", qty: 1 },
+                                    ],
+                                })
+                            }
+                            className="text-[#5346F1] hover:text-[#4338CA] font-black text-[8px] uppercase tracking-wider flex items-center gap-0.5 cursor-pointer"
+                        >
+                            <Plus size={9} /> Tambah
+                        </button>
                     </div>
-                    <div className="space-y-1">
+
+                    {/* WADAH INPUT SCROLLING KECIL KHUSUS DAFTAR ARMADA MULTI-BARIS */}
+                    <div className="space-y-2 max-h-[110px] overflow-y-auto pr-0.5 scrollbar-thin">
+                        {armadaList.map((f: any, index: number) => (
+                            <div
+                                key={index}
+                                className="space-y-1 border-b border-slate-50 pb-1.5 last:border-none"
+                            >
+                                <div className="flex justify-between items-center text-[7px] font-black text-slate-400 uppercase tracking-wider">
+                                    <span>Armada Ke-{index + 1}</span>
+                                    {index > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setFormData({
+                                                    ...formData,
+                                                    fleetRequirements:
+                                                        armadaList.filter(
+                                                            (
+                                                                _: any,
+                                                                i: number,
+                                                            ) => i !== index,
+                                                        ),
+                                                })
+                                            }
+                                            className="text-red-500 font-bold flex items-center gap-0.5"
+                                        >
+                                            <Trash2 size={9} /> Hapus
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <select
+                                        value={f.type || "Bus"}
+                                        onChange={(e) => {
+                                            const update = [...armadaList];
+                                            update[index].type = e.target.value;
+                                            setFormData({
+                                                ...formData,
+                                                fleetRequirements: update,
+                                            });
+                                        }}
+                                        className="flex-1 p-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none cursor-pointer"
+                                    >
+                                        <option value="Bus">Bus</option>
+                                        <option value="Medium Bus">
+                                            Medium Bus
+                                        </option>
+                                        <option value="Hiace">Hiace</option>
+                                        <option value="Coaster">Coaster</option>
+                                    </select>
+
+                                    <input
+                                        type="text" // 🎯 KUNCI 1: Ubah ke text biasa agar bebas total dari kuncian bawaan number browser
+                                        inputMode="numeric"
+                                        placeholder="0"
+                                        // 🎯 KUNCI 2: Jika nilainya 0 atau kosong, biarkan string kosong agar boks bisa dikosongkan total!
+                                        value={f.qty === 0 ? "" : f.qty || ""}
+                                        onChange={(e) => {
+                                            // 🎯 KUNCI 3: Menyaring agar hanya angka 0-9 saja yang boleh diketik masuk
+                                            const hanyaAngka =
+                                                e.target.value.replace(
+                                                    /[^0-9]/g,
+                                                    "",
+                                                );
+
+                                            const update = [...armadaList];
+                                            // Simpan nilai angka aslinya, jika kosong beri nilai 0 sementara di state
+                                            update[index].qty =
+                                                hanyaAngka === ""
+                                                    ? 0
+                                                    : parseInt(hanyaAngka);
+                                            setFormData({
+                                                ...formData,
+                                                fleetRequirements: update,
+                                            });
+                                        }}
+                                        className="w-12 p-1.5 bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-800 text-xs text-center outline-none"
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="space-y-1 pt-1">
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
                             Waktu Berangkat
                         </label>
@@ -223,9 +279,9 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                 </div>
             </div>
 
-            {/* 4. RUTE PERJALANAN & KETERANGAN (MEMANJANG FULL DI TENGAH) */}
-            <div className="space-y-1 text-left pt-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1.5 mb-1.5">
+            {/* 4. RUTE PERJALANAN & KETERANGAN (BARIS TENGAH) */}
+            <div className="space-y-1 text-left">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1 mb-1">
                     <FileText size={12} className="text-[#5346F1]" /> 4. Rute
                     Perjalanan & Keterangan
                 </span>
