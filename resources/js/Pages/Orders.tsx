@@ -376,10 +376,6 @@ const Orders: React.FC = () => {
                         const statusSkrg = o.status_pesanan || o.status;
                         let adakahPembayaranBelumAcc = false;
                         let totalBayar = 0;
-
-                        // =========================================================================
-                        // 🎯 KUNCI UTAMA SIFAT AUDIT: HANYA PERLU ACC JIKA NOMINAL DIISI > 0 (0 ERR)
-                        // =========================================================================
                         try {
                             if (
                                 o.catatan_pembayaran &&
@@ -389,14 +385,15 @@ const Orders: React.FC = () => {
                                     o.catatan_pembayaran,
                                 );
                                 if (Array.isArray(arrayJson)) {
-                                    const kantongPayments = arrayJson;
-
-                                    // 1. Akumulasi hitung nominal uang dari semua baris cicilan
+                                    // 🎯 KUNCI SAKRAL: Pastikan huruf L di kata 'Lokal' ditulis kecil jika let di atas menggunakan huruf kecil!
+                                    const kantongPaymentsLokal = arrayJson;
                                     arrayJson.forEach((p: any) => {
-                                        if (p.paymentStatus !== "Ditolak") {
+                                        // Nominal sewa luar HANYA terakumulasi jika statusnya "Disetujui"
+                                        if (p.paymentStatus === "Disetujui") {
                                             totalBayar += Number(p.amount || 0);
                                         }
-                                        // 🎯 KUNCI VISUAL 1: Label kuning hanya menyala jika status pending DAN nominal uang diisi > 0!
+
+                                        // Label kuning Perlu ACC menyala jika status pending DAN nominal uang diisi > 0
                                         if (
                                             p.paymentStatus === "Pending" &&
                                             Number(p.amount || 0) > 0
@@ -406,11 +403,9 @@ const Orders: React.FC = () => {
                                     });
                                 }
                             } else {
-                                // Fallback aman untuk sisa data lama Anda di database
                                 totalBayar = Number(
                                     o.total_terbayar || o.nominal || 0,
                                 );
-                                // 🎯 KUNCI VISUAL 2: Mengunci hal yang sama untuk baris data warisan awal Anda
                                 if (
                                     o.status_pembayaran === "Pending" &&
                                     totalBayar > 0

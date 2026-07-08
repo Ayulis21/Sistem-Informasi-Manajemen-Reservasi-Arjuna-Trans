@@ -14,9 +14,11 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
 }) => {
     const totalHarga = Number(formData.totalPrice || 0);
     const totalBayar = (formData.payments || []).reduce(
-        (acc: number, curr: any) =>
-            acc +
-            (curr.paymentStatus === "Ditolak" ? 0 : Number(curr.amount || 0)),
+        (acc: number, curr: any) => {
+            // KUNCI ABSOLUT: Uang sewa HANYA berkurang jika status pembayaran BENAR-BENAR sudah "Disetujui"
+            const apakahSahDiacc = curr.paymentStatus === "Disetujui";
+            return acc + (apakahSahDiacc ? Number(curr.amount || 0) : 0);
+        },
         0,
     );
     const sisaTagihan = totalHarga - totalBayar;
@@ -26,7 +28,7 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
             {/* HEADER JUDUL KEUANGAN & TOMBOL AKSI TAMBAH */}
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-[#5346F1]">
                 <label className="flex items-center gap-1">
-                    💳 5. Informasi Keuangan & Rincian Pembayaran
+                    5. Informasi Keuangan & Rincian Pembayaran
                 </label>
                 <button
                     type="button"
