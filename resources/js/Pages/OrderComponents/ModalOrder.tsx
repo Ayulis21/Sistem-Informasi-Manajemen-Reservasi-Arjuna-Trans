@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { XCircle } from "lucide-react";
 
 interface ModalOrderProps {
     isOpen: boolean;
@@ -38,11 +38,10 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         </div>
                     </div>
                     <button
-                        type="button"
                         onClick={onClose}
-                        className="text-slate-300 hover:text-slate-500 transition-colors p-1 cursor-pointer"
+                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
                     >
-                        <X size={18} />
+                        <XCircle size={32} />
                     </button>
                 </div>
 
