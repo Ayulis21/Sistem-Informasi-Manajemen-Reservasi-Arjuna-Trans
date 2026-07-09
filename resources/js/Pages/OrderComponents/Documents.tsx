@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 import { Order, AppState } from "../../types";
 import {
     Printer,
@@ -18,9 +19,11 @@ interface DocumentsProps {
 }
 
 const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
-    const handlePrint = () => {
-        window.print();
-    };
+    const printRef = useRef<HTMLDivElement>(null);
+
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+    });
 
     const today = new Date();
     const year = today.getFullYear();
@@ -34,7 +37,7 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
         .join(", ");
 
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 lg:p-10 no-print">
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 lg:p-10">
             <div className="bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl flex flex-col">
                 {/* Header Controls */}
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
@@ -56,9 +59,12 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                 </div>
 
                 {/* Document Content */}
-                <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30 print:p-0 print:bg-white print:overflow-visible custom-scrollbar">
+                <div className="flex-1 overflow-y-auto print:overflow-visible print:h-auto p-10 bg-slate-50/30 print:p-0 print:bg-white">
                     {/* THE IMAGE-MATCHING INVOICE */}
-                    <div className="bg-white w-[210mm] min-h-[297mm] mx-auto shadow-2xl print:shadow-none print:m-0 relative overflow-hidden font-sans text-slate-800">
+                    <div
+                        ref={printRef}
+                        className="bg-white w-[210mm] min-h-[297mm] mx-auto shadow-2xl print:shadow-none print:m-0 relative overflow-hidden font-sans text-slate-800"
+                    >
                         {/* Top Curved Decoration */}
                         <div
                             className="absolute top-0 left-0 w-full h-16 bg-[#004262] print:bg-[#004262]"
@@ -418,7 +424,7 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                     <img
                                         src="/uploads/stempel_arjuna.png"
                                         alt="Stempel Resmi PO Arjuna Trans"
-                                        className="absolute bottom-[-5px] left-[25%] w-28 h-auto opacity-95 pointer-events-none select-none mix-blend-multiply z-20"
+                                        className="absolute bottom-[-15px] left-[20%] w-40 h-auto opacity-95 pointer-events-none select-none mix-blend-multiply z-20"
                                         onError={(e) => {
                                             e.currentTarget.style.display =
                                                 "none";
@@ -456,37 +462,43 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                 </div>
             </div>
 
+            {/* ========================================================================= */}
+            {/* 🎯 KUNCI FIX SAKRAL 2: REFORMASI CSS MEDIA PRINT ANTI BLANK TOTAL (0 ERR)  */}
+            {/* ========================================================================= */}
             <style>{`
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-          }
-          .flex-1 {
-            overflow: visible !important;
-            height: auto !important;
-            padding: 0 !important;
-          }
-          .max-w-5xl {
-            max-width: none !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          .fixed {
-            position: static !important;
-            display: block !important;
-            background: none !important;
-            backdrop-filter: none !important;
-            padding: 0 !important;
-          }
-          .bg-white {
-            border: none !important;
-            box-shadow: none !important;
-          }
-        }
-      `}</style>
+                @media print {
+
+                    .no-print{
+                        display:none !important;
+                    }
+
+                    body{
+                        margin:0;
+                        background:#fff;
+                    }
+
+                    .fixed{
+                        position: static !important;
+                        inset: auto !important;
+                        width:100%;
+                        height:auto;
+                        background:white !important;
+                    }
+
+                    .max-w-5xl{
+                        max-width:none !important;
+                        width:100% !important;
+                        height:auto !important;
+                        box-shadow:none !important;
+                        border:none !important;
+                    }
+
+                    .print\\:shadow-none{
+                        box-shadow:none !important;
+                    }
+
+                }
+            `}</style>
         </div>
     );
 };
