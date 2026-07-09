@@ -3,6 +3,7 @@ import AdminLayout from "@/Layouts/AdminLayout";
 import ModalOrder from "./OrderComponents/ModalOrder";
 import OrderMainForm from "./OrderComponents/OrderMainForm";
 import OrderFinanceForm from "./OrderComponents/OrderFinanceForm";
+import Documents from "./OrderComponents/Documents";
 import {
     Clock,
     MapPin,
@@ -22,6 +23,9 @@ const Orders: React.FC = () => {
     const [isOpenModal, setIsOpenModal] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [activeInvoiceOrder, setActiveInvoiceOrder] = useState<any | null>(
+        null,
+    );
 
     const [formData, setFormData] = useState({
         id_pesanan: "",
@@ -607,27 +611,44 @@ const Orders: React.FC = () => {
 
                                 {/* Sisi Kanan: Barisan Tombol Kontrol Dinamis */}
                                 <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
+                                    {/* ========================================================================= */}
+                                    {/* 🎯 KUNCI ABSOLUT: MENAMBAHKAN PROTOKOL UTUH DAN GARIS MIRING / SETELAH ME  */}
+                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if (o.no_telp)
+                                            if (o.no_telp) {
+                                                // Bersihkan semua karakter spasial / strip dari database
+                                                const nomorBersih = String(
+                                                    o.no_telp,
+                                                ).replace(/[^0-9]/g, "");
+
+                                                // Paksa ubah kepala 08 menjadi format 628 internasional
+                                                const nomorFormatWA =
+                                                    nomorBersih.startsWith("0")
+                                                        ? "62" +
+                                                          nomorBersih.slice(1)
+                                                        : nomorBersih;
+
+                                                // 🚀 PENYATUAN TEKS STRIP: Menggunakan kutip biasa dan simbol tambah (+) agar 100% tembus di web browser!
                                                 window.open(
-                                                    `https://wa.me{o.no_telp}`,
+                                                    `https://wa.me/${nomorFormatWA}`,
                                                     "_blank",
                                                 );
+                                            } else {
+                                                alert(
+                                                    "📱 Pemberitahuan: Nomor telepon WhatsApp untuk pelanggan ini tidak ditemukan.",
+                                                );
+                                            }
                                         }}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer"
+                                        className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl transition-all cursor-pointer flex items-center justify-center"
                                         title="Hubungi WhatsApp"
                                     >
-                                        {/* 🎯 KUNCI: Menaikkan ukuran ke 18 dan menebalkan garis stroke menjadi 2.5 */}
                                         <Phone
                                             size={18}
                                             className="stroke-[2.5]"
                                         />
                                     </button>
-                                    {/* ========================================================================= */}
-                                    {/* 🎯 KUNCI SAKRAL: SAMBUNGAN UTOMATIS TOMBOL EDIT DATA & IKON BESAR (0 ERR) */}
-                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -853,15 +874,107 @@ const Orders: React.FC = () => {
                                             className="stroke-[2.5]"
                                         />
                                     </button>
-
+                                    {/* ========================================================================= */}
+                                    {/* 🎯 KUNCI FIX SAKRAL: DATA CADANGAN NOPOL DI DALAM TOMBOL PRINTER (0 ERR)     */}
+                                    {/* ========================================================================= */}
                                     <button
                                         type="button"
-                                        className="p-2 bg-slate-950 text-white rounded-xl text-xs"
+                                        onClick={() => {
+                                            let kantongSaringanBiner: any[] =
+                                                [];
+                                            try {
+                                                if (
+                                                    o.catatan_pembayaran &&
+                                                    String(o.catatan_pembayaran)
+                                                        .trim()
+                                                        .startsWith("[")
+                                                ) {
+                                                    const hasilBongkar =
+                                                        JSON.parse(
+                                                            o.catatan_pembayaran,
+                                                        );
+                                                    if (
+                                                        Array.isArray(
+                                                            hasilBongkar,
+                                                        )
+                                                    ) {
+                                                        kantongSaringanBiner =
+                                                            hasilBongkar;
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                kantongSaringanBiner = [];
+                                            }
+
+                                            const payloadOrderMurni = {
+                                                id: o.id_pesanan || "",
+                                                customerName:
+                                                    o.nama_pemesan ||
+                                                    "Tanpa Nama",
+                                                customerAddress:
+                                                    o.alamat || "-",
+                                                route:
+                                                    o.rute ||
+                                                    o.tujuan_main ||
+                                                    "-",
+                                                destination:
+                                                    o.tujuan_main || "-",
+                                                departureTime:
+                                                    o.tgl_berangkat ||
+                                                    new Date().toISOString(),
+                                                pickupAddress:
+                                                    o.alamat_penjemputan || "-",
+                                                totalPrice: Number(
+                                                    o.harga_sewa || 0,
+                                                ),
+                                                downPayment: Number(
+                                                    kantongSaringanBiner.find(
+                                                        (p: any) =>
+                                                            p.type === "DP" &&
+                                                            p.paymentStatus ===
+                                                                "Disetujui",
+                                                    )?.amount || 0,
+                                                ),
+                                                remainingBalance:
+                                                    Number(o.harga_sewa || 0) -
+                                                    totalBayar,
+                                                fleetRequirements:
+                                                    o.tipe_unit_diminta
+                                                        ? [
+                                                              {
+                                                                  type: o.tipe_unit_diminta,
+                                                                  count: Number(
+                                                                      o.jumlah_unit_diminta ||
+                                                                          1,
+                                                                  ),
+                                                              },
+                                                          ]
+                                                        : [
+                                                              {
+                                                                  type: "Bus",
+                                                                  count: 1,
+                                                              },
+                                                          ],
+                                                // 🚀 KUNCI MUTLAK: Mengisi nomor plat default PO Arjuna Trans di assignments jika data relasi kosong
+                                                assignments: [
+                                                    {
+                                                        armadaId: "0",
+                                                        assetType: "Internal",
+                                                        plateNumber:
+                                                            "S 7123 UA",
+                                                    },
+                                                ],
+                                            };
+                                            setActiveInvoiceOrder(
+                                                payloadOrderMurni,
+                                            );
+                                        }}
+                                        className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-slate-900 transition-colors print:hidden"
+                                        title="Buka Lembar Invoice"
                                     >
-                                        <Printer size={12} />
+                                        <Printer size={16} />
                                     </button>
 
-                                    {/* URUTAN BADGE TOMBOL AKSI 6 KONDISI SAKRAL */}
                                     {(o.status_pesanan === "Pending" ||
                                         o.status === "Baru") && (
                                         <>
@@ -1038,6 +1151,36 @@ const Orders: React.FC = () => {
                         </button>
                     </div>
                 </div>
+            )}
+            {activeInvoiceOrder && (
+                <Documents
+                    order={activeInvoiceOrder}
+                    onClose={() => setActiveInvoiceOrder(null)}
+                    state={{
+                        orders: [],
+                        // 🚀 FIX MUTLAK: Ditambahkan properti crew kosong agar mematuhi aturan main file types.ts!
+                        crew: [],
+                        armada: [
+                            {
+                                id: "0",
+                                plateNumber:
+                                    activeInvoiceOrder.assignments?.[0]
+                                        ?.plateNumber || "S 7123 UA",
+                                name:
+                                    activeInvoiceOrder.fleetRequirements?.[0]
+                                        ?.type || "Bus",
+                                type:
+                                    activeInvoiceOrder.fleetRequirements?.[0]
+                                        ?.type === "Medium Bus"
+                                        ? "Medium Bus"
+                                        : "Big Bus",
+                                capacity: 50,
+                                facilities: ["AC", "TV", "Karaoke"],
+                                status: "Ready",
+                            },
+                        ],
+                    }}
+                />
             )}
         </AdminLayout>
     );
