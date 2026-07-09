@@ -47,6 +47,7 @@ const Orders: React.FC = () => {
         bukti_transfer: "bukti_default.jpg",
         paymentStatus: "Pending",
         catatan_pembayaran: "",
+        lain_lain: "",
         payments: [
             {
                 type: "DP",
@@ -128,6 +129,7 @@ const Orders: React.FC = () => {
             dataBiner.append("dueDate", formData.dueDate);
             dataBiner.append("paymentType", formData.paymentType);
             dataBiner.append("paymentDate", formData.paymentDate);
+            dataBiner.append("lain_lain", formData.lain_lain || "");
 
             // 🎯 KUNCI PENYEMBUHAN 1: Menyaring string catatan luar agar murni mengirimkan TEKS POLOS, bukan kurung kurawal JSON!
             const teksCatatanPolos =
@@ -217,6 +219,7 @@ const Orders: React.FC = () => {
                 bukti_transfer: "bukti_default.jpg",
                 paymentStatus: "Pending",
                 catatan_pembayaran: "",
+                lain_lain: "",
                 fleetRequirements: [{ type: "Bus", qty: 1 }],
                 payments: [
                     {
@@ -313,6 +316,7 @@ const Orders: React.FC = () => {
                                             bukti_transfer: "bukti_default.jpg",
                                             paymentStatus: "Pending",
                                             catatan_pembayaran: "",
+                                            lain_lain: "",
                                             fleetRequirements: [
                                                 { type: "Bus", qty: 1 },
                                             ],
@@ -461,9 +465,6 @@ const Orders: React.FC = () => {
                                 className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100"
                             >
                                 <div className="flex items-center gap-3">
-                                    {/* ========================================================================= */}
-                                    {/* 🎯 KUNCI UTAMA: KOTAK IKON STATUS ASLI SESUAI BLUEPRINT DESAIN ANDA (0 ERR) */}
-                                    {/* ========================================================================= */}
                                     {(() => {
                                         // Menentukan warna boks, warna ikon, dan jenis ikon Lucide secara dinamis
                                         let bgBoks = "bg-indigo-50";
@@ -839,6 +840,7 @@ const Orders: React.FC = () => {
                                                     o.bukti_transfer ||
                                                     "bukti_default.jpg",
                                                 evidenceFile: null,
+                                                lain_lain: o.lain_lain || "",
                                                 fleetRequirements:
                                                     o.tipe_unit_diminta
                                                         ? [
@@ -875,7 +877,7 @@ const Orders: React.FC = () => {
                                         />
                                     </button>
                                     {/* ========================================================================= */}
-                                    {/* 🎯 KUNCI FIX SAKRAL: DATA CADANGAN NOPOL DI DALAM TOMBOL PRINTER (0 ERR)     */}
+                                    {/* 🎯 KUNCI SAKRAL: MENYAMBUNGKAN PIPA DATA LAIN-LAIN DARI DATABASE (0 ERR)   */}
                                     {/* ========================================================================= */}
                                     <button
                                         type="button"
@@ -955,7 +957,6 @@ const Orders: React.FC = () => {
                                                                   count: 1,
                                                               },
                                                           ],
-                                                // 🚀 KUNCI MUTLAK: Mengisi nomor plat default PO Arjuna Trans di assignments jika data relasi kosong
                                                 assignments: [
                                                     {
                                                         armadaId: "0",
@@ -964,6 +965,9 @@ const Orders: React.FC = () => {
                                                             "S 7123 UA",
                                                     },
                                                 ],
+
+                                                // 🚀 KUNCI REKAT BARU: Menyedot langsung kolom 'lain_lain' dari database MySQL Anda!
+                                                notes: o.lain_lain || "-",
                                             };
                                             setActiveInvoiceOrder(
                                                 payloadOrderMurni,
@@ -1118,9 +1122,6 @@ const Orders: React.FC = () => {
                     </div>
                 </form>
             </ModalOrder>
-            {/* ========================================================================= */}
-            {/* 🎯 TEMPAT DI FILE UTAMA ORDERS.TSX (GANTI TOTAL BAGIAN POPUP MELAYANG INI) */}
-            {/* ========================================================================= */}
             {previewUrl && (
                 <div
                     className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -1154,18 +1155,20 @@ const Orders: React.FC = () => {
             )}
             {activeInvoiceOrder && (
                 <Documents
-                    order={activeInvoiceOrder}
+                    // 🚀 KUNCI REKAT UTAMA: Mengirimkan payload objek order secara utuh lengkap dengan notes dinamisnya!
+                    order={{
+                        ...activeInvoiceOrder,
+                        // Memastikan properti notes di dalam Documents.tsx diisi dari data activeInvoiceOrder yang sedang aktif diklik
+                        notes: activeInvoiceOrder.notes || "-",
+                    }}
                     onClose={() => setActiveInvoiceOrder(null)}
                     state={{
                         orders: [],
-                        // 🚀 FIX MUTLAK: Ditambahkan properti crew kosong agar mematuhi aturan main file types.ts!
                         crew: [],
                         armada: [
                             {
                                 id: "0",
-                                plateNumber:
-                                    activeInvoiceOrder.assignments?.[0]
-                                        ?.plateNumber || "S 7123 UA",
+                                plateNumber: "S 7123 UA",
                                 name:
                                     activeInvoiceOrder.fleetRequirements?.[0]
                                         ?.type || "Bus",

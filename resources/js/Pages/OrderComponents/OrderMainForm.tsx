@@ -204,7 +204,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                         }}
                                         className="flex-1 p-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none cursor-pointer"
                                     >
-                                        <option value="Bus">Bus</option>
+                                        <option value="Bus">Big Bus</option>
                                         <option value="Medium Bus">
                                             Medium Bus
                                         </option>
@@ -279,21 +279,47 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                 </div>
             </div>
 
-            {/* 4. RUTE PERJALANAN & KETERANGAN (BARIS TENGAH) */}
-            <div className="space-y-1 text-left">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1 mb-1">
-                    <FileText size={12} className="text-[#5346F1]" /> 4. Rute
-                    Perjalanan & Keterangan
-                </span>
-                <textarea
-                    rows={2}
-                    placeholder="Ketik rute lengkap (Contoh: Cilacap - Yogyakarta - Cilacap)..."
-                    value={formData.routeNotes || ""}
-                    onChange={(e) =>
-                        setFormData({ ...formData, routeNotes: e.target.value })
-                    }
-                    className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 text-xs outline-none resize-none focus:bg-white focus:border-indigo-100 transition-all"
-                />
+            {/* ========================================================================= */}
+            {/* 4. RUTE PERJALANAN & CATATAN LAIN-LAIN (SINKRON DATA BASE LOKAL 100%)       */}
+            {/* ========================================================================= */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                {/* BOKS RUTE PERJALANAN (BAWAAN ASLI ANDA) */}
+                <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1 mb-1">
+                        <FileText size={12} /> 4. Rute Perjalanan & Keterangan
+                    </span>
+                    <textarea
+                        rows={2}
+                        placeholder="Ketik rute lengkap (Contoh: Cilacap - Yogyakarta - Cilacap)..."
+                        value={formData.routeNotes || ""}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                routeNotes: e.target.value,
+                            })
+                        }
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 text-xs outline-none resize-none focus:bg-white focus:border-indigo-100 transition-all"
+                    />
+                </div>
+
+                {/* 🎯 SELEMPANGAN BOKS BARU: CATATAN OPERASIONAL LAIN-LAIN PO ARJUNA TRANS */}
+                <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1 mb-1">
+                        📝 Catatan Khusus / Lain-Lain
+                    </span>
+                    <textarea
+                        rows={2}
+                        placeholder="Contoh: Minta driver pak Bambang, Include Tol, bus wajib wangi..."
+                        value={formData.lain_lain || ""}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                lain_lain: e.target.value,
+                            })
+                        }
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 text-xs outline-none resize-none focus:bg-white focus:border-indigo-100 transition-all"
+                    />
+                </div>
             </div>
         </div>
     );

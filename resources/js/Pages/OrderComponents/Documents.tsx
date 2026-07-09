@@ -239,7 +239,10 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                             value: `Rp ${order.remainingBalance.toLocaleString()}`,
                                             highlight: true,
                                         },
-                                        { label: "Lain - lain", value: "-" },
+                                        {
+                                            label: "Lain - lain",
+                                            value: order?.notes || "-",
+                                        },
                                     ].map((item) => (
                                         <div
                                             key={item.label}
@@ -309,13 +312,45 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                             </div>
                         </div>
 
+                        {/* ========================================================================= */}
+                        {/* 🎯 KUNCI FIX SAKRAL: TANGGAL OTOMATIS FORMAT NAMA BULAN INDONESIA (0 ERR)  */}
+                        {/* ========================================================================= */}
                         {/* Footer / Signatures */}
-                        <div className="px-12 mt-12 mb-24 relative z-10 flex justify-between items-start">
+                        <div className="px-12 mt-12 mb-24 relative z-10 flex justify-between items-end">
+                            {/* KIRI: PENGURUS ARJUNA TRANS */}
                             <div className="w-72">
                                 <p className="text-xs font-black text-slate-800 uppercase tracking-widest">
-                                    Mojokerto,
-                                    .........................................{" "}
-                                    {year}
+                                    Mojokerto,{" "}
+                                    {/* 🚀 LOGIKA SAKRAL: Mengurai tanggal database menjadi nama bulan Indonesia formal */}
+                                    {order?.departureTime
+                                        ? (() => {
+                                              const [tahun, bulan, tanggal] =
+                                                  order.departureTime
+                                                      .substring(0, 10)
+                                                      .split("-");
+                                              const daftarBulan = [
+                                                  "Januari",
+                                                  "Februari",
+                                                  "Maret",
+                                                  "April",
+                                                  "Mei",
+                                                  "Juni",
+                                                  "Juli",
+                                                  "Agustus",
+                                                  "September",
+                                                  "Oktoter",
+                                                  "November",
+                                                  "Desember",
+                                              ];
+                                              // Mengubah string "08" menjadi index angka bulat lalu mencocokkan ke array daftarBulan
+                                              const namaBulan =
+                                                  daftarBulan[
+                                                      parseInt(bulan) - 1
+                                                  ] || "Januari";
+                                              return `${parseInt(tanggal)} ${namaBulan} ${tahun}`;
+                                          })()
+                                        : "......................................... " +
+                                          year}
                                 </p>
                                 <div className="mt-6 flex flex-col h-32 justify-between">
                                     <p className="text-xs font-black text-slate-800">
@@ -324,7 +359,9 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                     <div className="border-b-2 border-slate-900 w-full"></div>
                                 </div>
                             </div>
-                            <div className="w-72 mt-9">
+
+                            {/* KANAN: PEMESANAN / PELANGGAN */}
+                            <div className="w-72">
                                 <div className="flex flex-col h-32 justify-between text-center">
                                     <p className="text-xs font-black text-slate-800 uppercase tracking-widest">
                                         Pemesanan

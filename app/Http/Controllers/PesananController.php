@@ -70,7 +70,7 @@ class PesananController extends Controller
                 'jumlah_unit_diminta' => intval($fleet['qty'] ?? 1),
                 'harga_sewa'          => $request->totalPrice,
                 'status_pesanan'      => 'Pending',
-                'lain_lain'           => $request->routeNotes ?? '-',
+                'lain_lain'           => $request->lain_lain ?? '-',
                 'token_akses'         => Str::random(32),
                 'created_at'          => now(),
                 'updated_at'          => now(),
@@ -169,6 +169,7 @@ class PesananController extends Controller
                     'tipe_unit_diminta'   => $fleet['type'] ?? 'Bus',
                     'jumlah_unit_diminta' => intval($fleet['qty'] ?? 1),
                     'harga_sewa'          => $request->totalPrice,
+                    'lain_lain'           => $request->lain_lain ?? '-',
                     'updated_at'          => now(),
                 ]);
 
