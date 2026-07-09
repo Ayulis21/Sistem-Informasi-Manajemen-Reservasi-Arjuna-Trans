@@ -311,17 +311,72 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                 </ol>
                             </div>
                         </div>
+                        <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-100 flex flex-row justify-between items-center gap-4 text-left relative z-10 mx-12">
+                            <div className="max-w-[45%]">
+                                <h4 className="text-[9px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1">
+                                    INFORMASI PEMBAYARAN RESMI PO. ARJUNA TRANS
+                                </h4>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5 tracking-wide leading-tight">
+                                    Mohon transfer murni hanya ke rekening resmi
+                                    perusahaan di bawah ini:
+                                </p>
+                            </div>
 
-                        {/* ========================================================================= */}
-                        {/* 🎯 KUNCI FIX SAKRAL: TANGGAL OTOMATIS FORMAT NAMA BULAN INDONESIA (0 ERR)  */}
-                        {/* ========================================================================= */}
-                        {/* Footer / Signatures */}
+                            {/* 🚀 FIX UTUT: Dipaksa kaku menggunakan flex-row dan items-center agar berjejer mendatar kesamping tanpa melar kebawah! */}
+                            <div className="flex flex-row items-center gap-3">
+                                {/* BANK 1: MANDIRI */}
+                                <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm min-w-[125px]">
+                                    <p className="text-[8px] font-black text-blue-800 uppercase tracking-wider">
+                                        BANK MANDIRI
+                                    </p>
+                                    <p className="font-mono font-black text-slate-800 text-[10px] tracking-wide mt-0.5">
+                                        1420012345678
+                                    </p>
+                                    <p className="text-[7px] font-bold text-slate-400 uppercase tracking-wide">
+                                        A.N PO ARJUNA TRANS
+                                    </p>
+                                </div>
+                                {/* BANK 2: BCA */}
+                                <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm min-w-[125px]">
+                                    <p className="text-[8px] font-black text-teal-600 uppercase tracking-wider">
+                                        BANK BCA
+                                    </p>
+                                    <p className="font-mono font-black text-slate-800 text-[10px] tracking-wide mt-0.5">
+                                        8290123456
+                                    </p>
+                                    <p className="text-[7px] font-bold text-slate-400 uppercase tracking-wide">
+                                        A.N ARJUNA TRANS PO
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         <div className="px-12 mt-12 mb-24 relative z-10 flex justify-between items-end">
-                            {/* KIRI: PENGURUS ARJUNA TRANS */}
-                            <div className="w-72">
+                            <div className="w-72 text-center flex flex-col justify-between h-[140px]">
                                 <p className="text-xs font-black text-slate-800 uppercase tracking-widest">
+                                    Pemesanan
+                                </p>
+
+                                {/* Nama pelanggan ukuran RAKSASA melayang tepat di tengah area kosong atas garis */}
+                                <div className="w-full flex items-center justify-center flex-grow py-2">
+                                    <p className="text-xl font-black text-slate-950 uppercase tracking-widest bg-slate-50/70 px-4 py-1.5 rounded-2xl border border-slate-200/40 shadow-sm">
+                                        {order?.customerName ||
+                                            "........................................."}
+                                    </p>
+                                </div>
+
+                                <div className="w-full mt-auto">
+                                    {/* Garis Underline Kanan - DIKUNCI MATI SEJAJAR 100% DENGAN GARIS KIRI */}
+                                    <div className="border-b-2 border-slate-900 w-full"></div>
+
+                                    {/* Boks Penyeimbang Tinggi String agar Garis Tetap Lurus Sejajar dengan Samping */}
+                                    <p className="text-[10px] font-black text-transparent uppercase select-none mt-1">
+                                        ( ARJUNA TRANS ADM )
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="w-72 text-center relative">
+                                <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6">
                                     Mojokerto,{" "}
-                                    {/* 🚀 LOGIKA SAKRAL: Mengurai tanggal database menjadi nama bulan Indonesia formal */}
                                     {order?.departureTime
                                         ? (() => {
                                               const [tahun, bulan, tanggal] =
@@ -342,7 +397,6 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                                   "November",
                                                   "Desember",
                                               ];
-                                              // Mengubah string "08" menjadi index angka bulat lalu mencocokkan ke array daftarBulan
                                               const namaBulan =
                                                   daftarBulan[
                                                       parseInt(bulan) - 1
@@ -352,33 +406,44 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                         : "......................................... " +
                                           year}
                                 </p>
-                                <div className="mt-6 flex flex-col h-32 justify-between">
-                                    <p className="text-xs font-black text-slate-800">
-                                        Pengurus Arjuna Trans
-                                    </p>
+
+                                {/* 🚀 FIX 2: Menghapus kelas pl-1 bawaan lama agar teks fiks presisi di tengah */}
+                                <p className="text-xs font-black text-slate-800">
+                                    PENGURUS ARJUNA TRANS
+                                </p>
+
+                                {/* 🚀 FIX SAKRAL: Jarak dinaikkan menjadi mt-24 agar area tanda tangan melar luas memberi ruang kosong untuk stempel! */}
+                                <div className="mt-24 relative w-full">
+                                    {/* 🚀 FIX 3: Mengubah left-4 menjadi left-[25%] agar bulatan stempel ikut bergeser presisi melayang melayang di tengah-tengah garis hitam! */}
+                                    <img
+                                        src="/uploads/stempel_arjuna.png"
+                                        alt="Stempel Resmi PO Arjuna Trans"
+                                        className="absolute bottom-[-5px] left-[25%] w-28 h-auto opacity-95 pointer-events-none select-none mix-blend-multiply z-20"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display =
+                                                "none";
+                                        }}
+                                    />
+
+                                    {/* Garis Underline Tanda Tangan */}
                                     <div className="border-b-2 border-slate-900 w-full"></div>
                                 </div>
+
+                                {/* Nama Terang di Bawah Garis */}
+                                {/* 🚀 FIX 4: Mengubah tracking-wide mt-1.5 pl-1 menjadi text-center tanpa pl-1 agar kurung pembuka-penutup sejajar rata tengah */}
+                                <p className="text-[10px] font-black text-slate-800 uppercase tracking-wide mt-1.5 text-center">
+                                    ( DESSY ISTUNING TYAS )
+                                </p>
                             </div>
 
-                            {/* KANAN: PEMESANAN / PELANGGAN */}
-                            <div className="w-72">
-                                <div className="flex flex-col h-32 justify-between text-center">
-                                    <p className="text-xs font-black text-slate-800 uppercase tracking-widest">
-                                        Pemesanan
-                                    </p>
-                                    <div className="border-b-2 border-slate-900 w-full"></div>
-                                </div>
-                            </div>
+                            {/* KANAN: PEMESANAN / PELANGGAN (SINKRONISASI TINGGI SEJAJAR) */}
                         </div>
-
-                        {/* Bottom Note */}
                         <div className="px-12 pb-10 italic">
                             <p className="text-[10px] font-bold text-red-500">
                                 Catatan : Biaya Tol, Parkir, dan Fee Sopir
                                 menjadi tanggung jawab penyewa
                             </p>
                         </div>
-
                         {/* Footer Trim decoration */}
                         <div
                             className="absolute bottom-0 left-0 w-full h-8 bg-[#004262] print:bg-[#004262]"
