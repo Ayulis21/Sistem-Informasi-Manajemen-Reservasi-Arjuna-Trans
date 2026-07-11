@@ -72,12 +72,14 @@ const Plotting: React.FC<PlottingProps> = ({
                 {/* 2. RENDER PECAHAN KANAN (COSPAN 8) */}
                 <div className="lg:col-span-8">
                     <PlottingRight
+                        key={selectedOrderId}
                         selectedOrder={selectedOrder}
                         onAddAssignment={handleAddAssignment}
                         onRemoveAssignment={handleRemoveAssignment}
                         handleUpdateAssignment={handleUpdateAssignment}
                         armada={armada}
                         crew={crew}
+                        orders={orders}
                     />
                 </div>
             </div>

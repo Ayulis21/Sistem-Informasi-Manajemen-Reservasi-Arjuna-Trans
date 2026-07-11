@@ -23,27 +23,22 @@ class PesananController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($order) {
-                // 1. Ambil data detail logistik dari tabel anak pesanan_detail_armada
-                $detailArmada = \Illuminate\Support\Facades\DB::table('pesanan_detail_armada')
+                // 🎯 INI KUNCINYA: Laravel harus menarik data dari tabel detail!
+                $order->fleetRequirements = DB::table('pesanan_detail_armada')
                     ->where('id_pesanan', $order->id_pesanan)
-                    ->get();
-
-                // 2. 🚀 KUNCI SAKRAL: Konversi teks tipe_armada menjadi id_armada master agar dibaca oleh React
-                $order->fleetRequirements = $detailArmada->map(function ($item) {
-                    // Mencari kecocokan nama teks (misal: "Big Bus") ke tabel master armada
-                    $masterArmada = \Illuminate\Support\Facades\DB::table('armada')
-                        ->where('tipe_armada', $item->tipe_armada)
-                        ->first();
-
-                    return [
-                        // Mengirimkan id_armada riil sebagai armada_id ke frontend React
-                        'armada_id' => $masterArmada ? $masterArmada->id_armada : "",
-                        'qty' => $item->qty
-                    ];
-                });
-
+                    ->get()
+                    ->map(function ($item) {
+                        // Cari nama tipenya dari tabel armada
+                        $armada = DB::table('armada')->where('tipe_armada', $item->tipe_armada)->first();
+                        return [
+                            'armada_id'   => $armada ? $armada->id_armada : "",
+                            'tipe_armada' => $item->tipe_armada,
+                            'qty'         => (int)$item->qty
+                        ];
+                    });
                 return $order;
             });
+
 
         return response()->json($pesanan);
     }
@@ -150,8 +145,9 @@ class PesananController extends Controller
                         ->first();
 
                     return [
-                        'armada_id' => $masterArmada ? (int)$masterArmada->id_armada : 0,
-                        'qty'       => (int)($item->qty ?? 1)
+                        'armada_id'   => $masterArmada ? $masterArmada->id_armada : "",
+                        'tipe_armada' => $item->tipe_armada, // 🎯 WAJIB ADA agar React tidak bingung
+                        'qty'         => (int)$item->qty
                     ];
                 });
 

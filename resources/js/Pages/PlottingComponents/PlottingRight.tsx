@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MapPin, Bus, Users, Trash2, UserCheck } from "lucide-react";
+import axios from "axios";
 
 interface PlottingRightProps {
     selectedOrder: any;
@@ -8,44 +9,31 @@ interface PlottingRightProps {
         assetType: "Internal" | "Rekanan",
         slotIndex: number,
     ) => void;
+    onRemoveAssignment: (orderId: string, asId: string) => void;
+    orders: any[];
+    armada: any[];
+    crew: any[];
     handleUpdateAssignment: (
         orderId: string,
         assignmentId: any,
         data: any,
     ) => void;
-    onRemoveAssignment: (orderId: string, asId: string) => void;
-    armada: any[];
-    crew: any[];
 }
 
 const PlottingRight: React.FC<PlottingRightProps> = ({
     selectedOrder,
     onAddAssignment,
     onRemoveAssignment,
+    orders,
     armada,
     crew,
     handleUpdateAssignment,
 }) => {
-    if (!selectedOrder || (!selectedOrder.id_pesanan && !selectedOrder.id)) {
+    if (!selectedOrder) {
         return (
-            <div className="h-full min-h-[400px] bg-white rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-300 space-y-4 text-center p-6">
-                <svg
-                    xmlns="http://w3.org"
-                    width="48"
-                    height="48"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="lucide lucide-user-check opacity-20 text-indigo-600"
-                >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="m16 11 2 2 4-4" />
-                </svg>
-                <p className="font-bold italic text-sm text-slate-400">
+            <div className="h-full min-h-[400px] bg-white rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-300 space-y-4">
+                <UserCheck size={64} className="opacity-20" />
+                <p className="font-bold italic text-sm">
                     Pilih pesanan di sebelah kiri untuk mulai plotting.
                 </p>
             </div>
@@ -53,42 +41,111 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
     }
 
     const namaPelanggan: string =
-        selectedOrder.nama_pemesan ||
-        selectedOrder.customerName ||
-        "Tanpa Nama";
+        selectedOrder?.nama_pemesan ||
+        selectedOrder?.customerName ||
+        "Tidak Ada Pesanan Terpilih";
     const tujuanWisata: string =
         selectedOrder?.tujuan_main || selectedOrder?.destination || "-";
     const tipeUnitBus: string = selectedOrder?.tipe_unit_diminta || "Bus";
 
-    // Menghitung total kebutuhan unit bus secara akurat dari database riil Anda
-    const totalBusesNeeded = Number(
-        selectedOrder?.jumlah_unit_diminta ||
-            selectedOrder?.fleetRequirements?.reduce(
-                (sum: number, r: any) => sum + r.count,
-                0,
-            ) ||
-            0,
-    );
+    // 1. Ambil data mentah
+    const fleetReq = selectedOrder?.fleetRequirements || [];
 
-    const slotRows = Array.from(
-        { length: totalBusesNeeded },
-        (_, index) => index + 1,
-    );
+    // 2. Bungkus semua perhitungan dalam useMemo (HANYA SATU BLOK INI)
+    const { totalBusesNeeded, rowTypes, slotRows } = useMemo(() => {
+        const types: string[] = [];
+        let total = 0;
 
+        if (Array.isArray(fleetReq) && fleetReq.length > 0) {
+            fleetReq.forEach((req: any) => {
+                const jumlah = Number(req.qty || 0);
+                total += jumlah;
+                for (let i = 0; i < jumlah; i++) {
+                    types.push(req.tipe_armada || "ARMADA");
+                }
+            });
+        }
+
+        const finalTotal = total > 0 ? total : 1;
+        const finalTypes = types.length > 0 ? types : ["ARMADA"];
+        const rows = Array.from({ length: finalTotal }, (_, i) => i + 1);
+
+        return {
+            totalBusesNeeded: finalTotal,
+            rowTypes: finalTypes,
+            slotRows: rows,
+        };
+    }, [selectedOrder?.id_pesanan]);
+
+    // 1. Deklarasi State (WAJIB ADA agar error 'Cannot find name' hilang)
     const [slotModes, setSlotModes] = useState<{
         [key: number]: "Standby" | "Internal" | "Rekanan";
     }>({});
 
-    useEffect(() => {
-        setSlotModes({});
-    }, [selectedOrder.id_pesanan || selectedOrder.id]);
+    const [formValues, setFormValues] = useState<{
+        [key: number]: {
+            platLuar: null;
+            poLuar: null;
+            armadaId: string;
+            driverId: string;
+            helperId: string;
+        };
+    }>({});
 
+    const handleSelectChange = (
+        slotNum: number,
+        field: string,
+        value: string,
+    ) => {
+        setFormValues((prev) => ({
+            ...prev,
+            [slotNum]: { ...prev[slotNum], [field]: value },
+        }));
+    };
+
+    // 2. Reset mode setiap kali ganti pesanan (agar form tidak nyangkut dari pesanan sebelumnya)
+    // 🎯 KUNCI UTAMA: Sinkronisasi data Database ke Form di Layar
+    useEffect(() => {
+        if (
+            selectedOrder?.assignments &&
+            selectedOrder.assignments.length > 0
+        ) {
+            const initialModes: any = {};
+            const initialValues: any = {};
+
+            selectedOrder.assignments.forEach((as: any, index: number) => {
+                const num = index + 1; // Slot 1, 2, 3...
+
+                // 1. Tentukan mode (Internal / Rekanan)
+                initialModes[num] =
+                    as.jenis_aset === "internal" ? "Internal" : "Rekanan";
+
+                // 2. Masukkan ID Bus, Sopir, dan Helper ke form
+                initialValues[num] = {
+                    armadaId: String(as.id_armada || ""),
+                    driverId: String(as.id_driver || ""),
+                    helperId: String(as.id_helper || ""),
+                    poLuar: as.nama_po_mitra || "",
+                    platLuar: as.plat_mitra || "",
+                };
+            });
+
+            setSlotModes(initialModes);
+            setFormValues(initialValues);
+        } else {
+            // Jika pesanan baru/belum di-plot, kosongkan form
+            setSlotModes({});
+            setFormValues({});
+        }
+    }, [selectedOrder?.id_pesanan, selectedOrder?.assignments]);
+
+    // 3. Fungsi Helper untuk mengubah mode per slot (Internal / Rekanan)
     const setTypeForSlot = (slotNum: number, mode: "Internal" | "Rekanan") => {
-        setSlotModes((prev) => ({ ...prev, [slotNum]: mode }));
+        setSlotModes((prev: any) => ({ ...prev, [slotNum]: mode }));
     };
 
     const resetSlotToStandby = (slotNum: number) => {
-        setSlotModes((prev) => ({ ...prev, [slotNum]: "Standby" }));
+        setSlotModes((prev: any) => ({ ...prev, [slotNum]: "Standby" }));
     };
     const [isOpenModalInternal, setIsOpenModalInternal] =
         useState<boolean>(false);
@@ -99,211 +156,300 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
         driver2Id: "",
         coDriverId: "",
     });
+    // Hitung berapa banyak slot yang sudah diisi (BUKAN Standby)
+    const filledSlotsCount = Object.values(slotModes).filter(
+        (mode) => mode !== "Standby",
+    ).length;
+
+    // Hitung persentase untuk lebar garis biru (misal: 1/2 = 50%)
+    const progressPercentage =
+        totalBusesNeeded > 0 ? (filledSlotsCount / totalBusesNeeded) * 100 : 0;
+
+    const handleSavePlotting = async () => {
+        try {
+            // 1. Kumpulkan data dari formValues dan slotModes
+            const assignments = slotRows
+                .map((num) => ({
+                    slot: num,
+                    mode: slotModes[num] || "Standby",
+                    armadaId: formValues[num]?.armadaId || null,
+                    driverId: formValues[num]?.driverId || null,
+                    helperId: formValues[num]?.helperId || null,
+                    // Jika rekanan (opsional)
+                    poLuar: formValues[num]?.poLuar || null,
+                    platLuar: formValues[num]?.platLuar || null,
+                }))
+                .filter((a) => a.mode !== "Standby"); // Hanya kirim yang sudah di-plot
+
+            if (assignments.length === 0) {
+                alert("❌ Gagal: Belum ada armada yang di-plot!");
+                return;
+            }
+
+            // 2. Kirim ke Backend Laravel
+            const response = await axios.post("/api/admin/plotting/save", {
+                id_pesanan: selectedOrder.id_pesanan,
+                assignments: assignments,
+            });
+
+            alert("✨ SUKSES: Data plotting berhasil disimpan!");
+            window.location.reload(); // 🎯 Refresh halaman agar angka di kiri berubah
+        } catch (error) {
+            console.error(error);
+            alert("❌ Gagal menyimpan data ke database.");
+        }
+    };
+
+    const isAssetBusy = (
+        assetId: string,
+        type: "id_armada" | "id_driver" | "id_helper",
+    ) => {
+        if (!assetId || !selectedOrder) return false;
+
+        const startCurrent = new Date(selectedOrder.tgl_berangkat).getTime();
+        const endCurrent = new Date(selectedOrder.tgl_selesai).getTime();
+
+        // Sisir semua pesanan lain
+        return orders.some((order) => {
+            // 1. Abaikan pesanan yang sedang kita edit sekarang
+            if (order.id_pesanan === selectedOrder.id_pesanan) return false;
+
+            // 2. Abaikan pesanan yang sudah batal
+            if (order.status_pesanan === "Batal") return false;
+
+            // 3. Cek apakah tanggalnya tabrakan (Overlap)
+            const startOther = new Date(order.tgl_berangkat).getTime();
+            const endOther = new Date(order.tgl_selesai).getTime();
+
+            const isOverlapping =
+                startCurrent <= endOther && endCurrent >= startOther;
+
+            if (isOverlapping) {
+                // 4. Cek apakah asset (Bus/Sopir) tersebut ada di dalam daftar assignments pesanan lain ini
+                return order.assignments?.some(
+                    (as: any) => String(as[type]) === String(assetId),
+                );
+            }
+            return false;
+        });
+    };
+
     return (
-        <div className="space-y-6 text-left">
-            {/* <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6"> */}
-            <div className="bg-white p-5 pb-3 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between gap-1.5">
-                <div className="space-y-0.5">
-                    <h3 className="text-xl font-black text-slate-800 tracking-tight leading-none">
-                        {namaPelanggan}
-                    </h3>
+        <div className="space-y-4 text-left">
+            {/* --- HEADER SECTION COMPACT --- */}
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
+                            {namaPelanggan}
+                        </h2>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-black uppercase tracking-widest text-slate-400 pt-0.5 leading-none">
-                        <span className="flex items-center">
-                            📍 {tujuanWisata}
-                        </span>
-                        <span className="text-indigo-600">
-                            📅{" "}
-                            {selectedOrder?.tgl_berangkat ||
-                                selectedOrder?.departureTime}{" "}
-                            -{" "}
-                            {selectedOrder?.tgl_kembali ||
-                                selectedOrder?.returnTime}
-                        </span>
-                    </div>
-
-                    <div className="pt-1 leading-none">
-                        <span className="inline-block text-[8px] font-black text-[#5346F1] bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md tracking-wider uppercase leading-none">
-                            MUST PLOT: {totalBusesNeeded} Armada
-                        </span>
-                    </div>
-                    <div className="pt-3 space-y-1.5 w-full">
-                        {/* Garis progress bar ungu bawaan asli layout laptop Anda */}
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                            <div
-                                className="bg-[#5346F1] h-full rounded-full transition-all duration-300"
-                                style={{ width: "100%" }}
-                            ></div>
+                        <div className="flex items-center gap-x-3 text-[10px] font-bold text-slate-400 tracking-widest uppercase">
+                            <span className="flex items-center gap-1">
+                                <MapPin size={12} className="text-slate-300" />
+                                {tujuanWisata}
+                            </span>
+                            <span className="text-slate-200">|</span>
+                            <span className="text-indigo-600 font-black">
+                                {selectedOrder?.tgl_berangkat?.substring(0, 10)}{" "}
+                                - {selectedOrder?.tgl_selesai?.substring(0, 10)}
+                            </span>
                         </div>
-                        {/* Teks abu-asli operasional Anda */}
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">
-                            KEBUTUHAN: {totalBusesNeeded} DARI{" "}
-                            {totalBusesNeeded} UNIT TERPENUHI
-                        </p>
+
+                        <div className="pt-1">
+                            <span className="inline-flex items-center px-3 py-1 rounded-lg text-[9px] font-black bg-indigo-50 text-[#5346F1] uppercase tracking-widest border border-indigo-100">
+                                MUST PLOT: {totalBusesNeeded} UNIT
+                            </span>
+                        </div>
                     </div>
                 </div>
+
+                {/* PROGRESS BAR COMPACT */}
+                <div className="space-y-2 pt-2 border-t border-slate-50">
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div
+                            className="bg-[#5346F1] h-full transition-all duration-700 ease-in-out"
+                            style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        PROGRESS: {filledSlotsCount} / {totalBusesNeeded} UNIT
+                    </p>
+                </div>
             </div>
-            <div className="space-y-4 pt-2">
-                {slotRows.map((num) => {
+
+            {/* 2. DAFTAR SLOT PLOTTING DINAMIS */}
+            <div className="space-y-4">
+                {slotRows.map((num, idx) => {
+                    // Tipe target untuk baris ini (misal: "Big Bus" atau "Elf")
+                    const targetType = rowTypes[idx] || "ARMADA";
+
+                    // State mode lokal (Standby, Internal, atau Rekanan)
                     const currentMode = slotModes[num] || "Standby";
+
                     return (
                         <div
-                            key={num}
-                            className="bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.01)] rounded-2xl p-5 flex gap-4 items-start relative"
+                            key={`slot-${selectedOrder.id_pesanan}-${num}`}
+                            className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all"
                         >
-                            <span className="text-sm font-black text-indigo-600 bg-slate-50 w-8 h-8 flex items-center justify-center rounded-lg border border-slate-100 shrink-0">
-                                {num}
-                            </span>
-                            <div className="flex-1 space-y-4">
-                                {currentMode === "Standby" && (
-                                    <>
-                                        <div className="space-y-0.5">
-                                            <p className="text-[10px] font-black text-red-500 uppercase tracking-wider flex items-center gap-1">
-                                                BUTUH: BUS
-                                            </p>
-                                            <p className="text-[9px] font-medium text-slate-400 italic">
-                                                Slot belum terisi
-                                            </p>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 font-black">
+                                        {num}
+                                    </div>
+
+                                    {currentMode === "Standby" ? (
+                                        <div className="flex flex-col">
+                                            {/* 🎯 DINAMIS: BUTUH: ELF / BUTUH: BIG BUS */}
+                                            <span className="text-[12px] font-black text-red-500 uppercase">
+                                                BUTUH: {targetType}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest italic leading-none">
+                                                Slot Belum Terisi
+                                            </span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-3 text-[9px] font-black uppercase tracking-wider">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setTypeForSlot(
-                                                        num,
-                                                        "Internal",
-                                                    )
-                                                }
-                                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors"
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase">
+                                                Tipe: {targetType}
+                                            </span>
+                                            <span
+                                                className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest w-fit text-white ${
+                                                    currentMode === "Internal"
+                                                        ? "bg-indigo-600"
+                                                        : "bg-amber-500"
+                                                }`}
                                             >
-                                                PLOT ARMADA INT
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setTypeForSlot(
-                                                        num,
-                                                        "Rekanan",
-                                                    )
-                                                }
-                                                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors"
-                                            >
-                                                Plot Rekanan
-                                            </button>
+                                                {currentMode}
+                                            </span>
                                         </div>
-                                    </>
+                                    )}
+                                </div>
+
+                                {currentMode !== "Standby" && (
+                                    <button
+                                        onClick={() => resetSlotToStandby(num)}
+                                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 )}
-                                {/* ========================================================================= */}
-                                {/* 🎯 KUNCI PARIPURNA: KEPALA SLOT INTERNAL ULTRA-RAPAT SESUAI CONTOH (0 ERR)  */}
-                                {/* ========================================================================= */}
-                                {currentMode === "Internal" && (
-                                    <div className="w-full mt-2 animate-in fade-in duration-200 text-left col-span-2 space-y-4">
-                                        {/* Baris Kepala Sejajar Sehat dengan Tombol Sampah */}
-                                        <div className="flex items-center justify-between">
-                                            {/* 🚀 FIX MUTLAK: Tumpukan mini ultra-rapat di sebelah kanan nomor slot */}
-                                            <div className="flex flex-col gap-0 text-left items-start leading-none">
-                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-0.5 leading-none block">
-                                                    TIPE: {tipeUnitBus}
-                                                </span>
-                                                <span className="inline-block text-[8px] font-black text-white bg-[#5346F1] px-1.5 py-0.5 rounded uppercase tracking-widest leading-none">
-                                                    INTERNAL
-                                                </span>
-                                            </div>
+                            </div>
 
-                                            {/* Tombol Sampah Abu-Abu Bawaan Asli Laptop Anda */}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    resetSlotToStandby(num)
-                                                }
-                                                className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 cursor-pointer flex items-center justify-center"
-                                                title="Hapus Slot"
-                                            >
-                                                <svg
-                                                    xmlns="http://w3.org"
-                                                    width="13"
-                                                    height="13"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.5"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="lucide lucide-trash-2"
-                                                >
-                                                    <path d="M3 6h18" />
-                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                                    <line
-                                                        x1="10"
-                                                        x2="10"
-                                                        y1="11"
-                                                        y2="17"
-                                                    />
-                                                    <line
-                                                        x1="14"
-                                                        x2="14"
-                                                        y1="11"
-                                                        y2="17"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        {/* Baris 3 Dropdown Mewah Bawaan Asli Laptop Anda */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {/* A. SELEKTOR PILIH BUS MEWAH ASLI ANDA */}
+                            {currentMode === "Standby" ? (
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() =>
+                                            setTypeForSlot(num, "Internal")
+                                        }
+                                        className="flex-1 bg-slate-50 text-slate-600 py-3 rounded-xl text-[10px] font-black uppercase border border-dashed border-slate-200 hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer"
+                                    >
+                                        Plot Armada Int
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            setTypeForSlot(num, "Rekanan")
+                                        }
+                                        className="flex-1 bg-slate-50 text-slate-600 py-3 rounded-xl text-[10px] font-black uppercase border border-dashed border-slate-200 hover:bg-amber-50 hover:border-amber-300 transition-all cursor-pointer"
+                                    >
+                                        Plot Rekanan
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {currentMode === "Internal" ? (
+                                        <>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
                                                     <Bus
                                                         size={12}
                                                         className="mr-1"
                                                     />{" "}
-                                                    Pilih Bus
+                                                    Pilih Armada
                                                 </label>
                                                 <select
-                                                    id={`select-armada-${num}`}
-                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                                    onChange={(e) => {
-                                                        if (
-                                                            e.target.value &&
-                                                            onAddAssignment
-                                                        ) {
-                                                            onAddAssignment(
-                                                                selectedOrder.id_pesanan ||
-                                                                    selectedOrder.id,
-                                                                "Internal",
-                                                                num,
-                                                            );
-                                                        }
-                                                    }}
+                                                    value={
+                                                        formValues[num]
+                                                            ?.armadaId || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleSelectChange(
+                                                            num,
+                                                            "armadaId",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    /* 🎯 Desain tetap 100% milik Anda */
+                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
                                                 >
                                                     <option value="">
                                                         -- Pilih Armada --
                                                     </option>
-                                                    {armada?.map((b: any) => (
-                                                        <option
-                                                            key={
-                                                                b.id ||
-                                                                b.id_armada
-                                                            }
-                                                            value={
-                                                                b.id ||
-                                                                b.id_armada
-                                                            }
-                                                        >
-                                                            {b.name ||
-                                                                b.nama_bus}{" "}
-                                                            (
-                                                            {b.plateNumber ||
-                                                                b.no_plat}
-                                                            )
-                                                        </option>
-                                                    ))}
+                                                    {armada
+                                                        .filter(
+                                                            (b) =>
+                                                                b.tipe_armada ===
+                                                                targetType,
+                                                        )
+                                                        .map((b) => {
+                                                            // 1. 🎯 BENTROK LOKAL (Slot 1 vs Slot 2 di pesanan yang sama)
+                                                            const isBusTaken =
+                                                                Object.entries(
+                                                                    formValues,
+                                                                ).some(
+                                                                    ([
+                                                                        slotIdx,
+                                                                        val,
+                                                                    ]) =>
+                                                                        val.armadaId ===
+                                                                            String(
+                                                                                b.id_armada,
+                                                                            ) &&
+                                                                        Number(
+                                                                            slotIdx,
+                                                                        ) !==
+                                                                            num,
+                                                                );
+
+                                                            // 2. 🎯 BENTROK GLOBAL (Cek pesanan lain di tanggal yang sama)
+                                                            // Fungsi isAssetBusy harus sudah ada di atas return
+                                                            const isGlobalBusy =
+                                                                isAssetBusy(
+                                                                    String(
+                                                                        b.id_armada,
+                                                                    ),
+                                                                    "id_armada",
+                                                                );
+
+                                                            return (
+                                                                <option
+                                                                    key={
+                                                                        b.id_armada
+                                                                    }
+                                                                    value={
+                                                                        b.id_armada
+                                                                    }
+                                                                    /* 🎯 Gabungkan kedua validasi */
+                                                                    disabled={
+                                                                        isBusTaken ||
+                                                                        isGlobalBusy
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        b.nama_armada
+                                                                    }{" "}
+                                                                    ({b.nopol})
+                                                                    {isBusTaken
+                                                                        ? " (DIPILIH DI SLOT LAIN)"
+                                                                        : isGlobalBusy
+                                                                          ? " (JADWAL BENTROK)"
+                                                                          : " - TERSEDIA"}
+                                                                </option>
+                                                            );
+                                                        })}
                                                 </select>
                                             </div>
 
-                                            {/* B. SELEKTOR SOPIR / DRIVER */}
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
                                                     <Users
@@ -313,43 +459,82 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                     Sopir (Driver)
                                                 </label>
                                                 <select
-                                                    id={`select-crew-${num}`}
-                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
+                                                    value={
+                                                        formValues[num]
+                                                            ?.driverId || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleSelectChange(
+                                                            num,
+                                                            "driverId",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
                                                 >
                                                     <option value="">
                                                         -- Pilih Sopir --
                                                     </option>
                                                     {crew
-                                                        ?.filter((c: any) =>
-                                                            String(
-                                                                c.role ||
-                                                                    c.jabatan ||
-                                                                    "",
-                                                            )
-                                                                .toLowerCase()
-                                                                .includes(
-                                                                    "sopir",
-                                                                ),
+                                                        ?.filter(
+                                                            (c: any) =>
+                                                                c.peran ===
+                                                                "Driver",
                                                         )
-                                                        ?.map((c: any) => (
-                                                            <option
-                                                                key={
-                                                                    c.id ||
-                                                                    c.id_karyawan
-                                                                }
-                                                                value={
-                                                                    c.id ||
-                                                                    c.id_karyawan
-                                                                }
-                                                            >
-                                                                {c.name ||
-                                                                    c.nama}
-                                                            </option>
-                                                        ))}
+                                                        .map((c: any) => {
+                                                            // 1. 🎯 CEK BENTROK LOKAL (Dalam satu pesanan)
+                                                            const isTaken =
+                                                                Object.entries(
+                                                                    formValues,
+                                                                ).some(
+                                                                    ([
+                                                                        slotIdx,
+                                                                        val,
+                                                                    ]) =>
+                                                                        val.driverId ===
+                                                                            String(
+                                                                                c.id_kru,
+                                                                            ) &&
+                                                                        Number(
+                                                                            slotIdx,
+                                                                        ) !==
+                                                                            num,
+                                                                );
+
+                                                            // 2. 🎯 CEK BENTROK GLOBAL (Pesanan lain di tanggal yang sama)
+                                                            const isGlobalBusy =
+                                                                isAssetBusy(
+                                                                    String(
+                                                                        c.id_kru,
+                                                                    ),
+                                                                    "id_driver",
+                                                                );
+
+                                                            return (
+                                                                <option
+                                                                    key={
+                                                                        c.id_kru
+                                                                    }
+                                                                    value={
+                                                                        c.id_kru
+                                                                    }
+                                                                    /* 🎯 Gabungkan kedua validasi agar tidak bisa diklik jika salah satu terpenuhi */
+                                                                    disabled={
+                                                                        isTaken ||
+                                                                        isGlobalBusy
+                                                                    }
+                                                                >
+                                                                    {c.nama_kru}
+                                                                    {isTaken
+                                                                        ? " (DIPILIH DI SLOT LAIN)"
+                                                                        : isGlobalBusy
+                                                                          ? " (JADWAL BENTROK)"
+                                                                          : ""}
+                                                                </option>
+                                                            );
+                                                        })}
                                                 </select>
                                             </div>
-
-                                            {/* C. SELEKTOR KONDEKTUR / HELPER */}
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
                                                     <UserCheck
@@ -359,155 +544,146 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                     Kondektur / Helper
                                                 </label>
                                                 <select
-                                                    id={`select-helper-${num}`}
-                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
+                                                    value={
+                                                        formValues[num]
+                                                            ?.helperId || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleSelectChange(
+                                                            num,
+                                                            "helperId",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    /* 🎯 Desain Anda tetap utuh 100% */
+                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
                                                 >
                                                     <option value="">
                                                         -- Tanpa Helper --
                                                     </option>
                                                     {crew
-                                                        ?.filter((c: any) =>
-                                                            String(
-                                                                c.role ||
-                                                                    c.jabatan ||
-                                                                    "",
-                                                            )
-                                                                .toLowerCase()
-                                                                .includes(
-                                                                    "kernet",
-                                                                ),
+                                                        ?.filter(
+                                                            (c: any) =>
+                                                                c.peran ===
+                                                                "Helper",
                                                         )
-                                                        ?.map((c: any) => (
-                                                            <option
-                                                                key={
-                                                                    c.id ||
-                                                                    c.id_karyawan
-                                                                }
-                                                                value={
-                                                                    c.id ||
-                                                                    c.id_karyawan
-                                                                }
-                                                            >
-                                                                {c.name ||
-                                                                    c.nama}
-                                                            </option>
-                                                        ))}
+                                                        .map((c: any) => {
+                                                            // 1. 🎯 CEK BENTROK LOKAL (Slot 1 vs Slot 2)
+                                                            const isTaken =
+                                                                Object.entries(
+                                                                    formValues,
+                                                                ).some(
+                                                                    ([
+                                                                        slotIdx,
+                                                                        val,
+                                                                    ]) =>
+                                                                        val.helperId ===
+                                                                            String(
+                                                                                c.id_kru,
+                                                                            ) &&
+                                                                        Number(
+                                                                            slotIdx,
+                                                                        ) !==
+                                                                            num,
+                                                                );
+
+                                                            // 2. 🎯 CEK BENTROK GLOBAL (Jadwal di pesanan lain)
+                                                            const isGlobalBusy =
+                                                                isAssetBusy(
+                                                                    String(
+                                                                        c.id_kru,
+                                                                    ),
+                                                                    "id_helper",
+                                                                );
+
+                                                            return (
+                                                                <option
+                                                                    key={
+                                                                        c.id_kru
+                                                                    }
+                                                                    value={
+                                                                        c.id_kru
+                                                                    }
+                                                                    /* 🎯 Kunci jika bentrok lokal ATAU global */
+                                                                    disabled={
+                                                                        isTaken ||
+                                                                        isGlobalBusy
+                                                                    }
+                                                                >
+                                                                    {c.nama_kru}
+                                                                    {isTaken
+                                                                        ? " (DIPILIH DI SLOT LAIN)"
+                                                                        : isGlobalBusy
+                                                                          ? " (JADWAL BENTROK)"
+                                                                          : ""}
+                                                                </option>
+                                                            );
+                                                        })}
                                                 </select>
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
-                                {/* ========================================================================= */}
-                                {/* 🎯 KUNCI PARIPURNA: KEPALA SLOT REKANAN ULTRA-RAPAT SESUAI CONTOH (0 ERR)   */}
-                                {/* ========================================================================= */}
-                                {currentMode === "Rekanan" && (
-                                    <div className="w-full mt-2 animate-in fade-in duration-200 text-left col-span-2 space-y-4">
-                                        {/* Baris Kepala Sejajar Sehat dengan Tombol Sampah */}
-                                        <div className="flex items-center justify-between">
-                                            {/* 🚀 FIX MUTLAK: Tumpukan mini ultra-rapat di sebelah kanan nomor slot */}
-                                            <div className="flex flex-col gap-0 text-left items-start leading-none">
-                                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-0.5 leading-none block">
-                                                    TIPE: {tipeUnitBus}
-                                                </span>
-                                                <span className="inline-block text-[8px] font-black text-white bg-orange-500 px-1.5 py-0.5 rounded uppercase tracking-widest leading-none">
-                                                    REKANAN
-                                                </span>
-                                            </div>
-
-                                            {/* Tombol Sampah Abu-Abu Bawaan Asli Laptop Anda */}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    resetSlotToStandby(num)
-                                                }
-                                                className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 cursor-pointer flex items-center justify-center"
-                                                title="Hapus Slot"
-                                            >
-                                                <svg
-                                                    xmlns="http://w3.org"
-                                                    width="13"
-                                                    height="13"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.5"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="lucide lucide-trash-2"
-                                                >
-                                                    <path d="M3 6h18" />
-                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                                    <line
-                                                        x1="10"
-                                                        x2="10"
-                                                        y1="11"
-                                                        y2="17"
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 col-span-1 md:col-span-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400">
+                                                        PO Mitra
+                                                    </label>
+                                                    <input
+                                                        className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold outline-none"
+                                                        placeholder="Nama PO"
                                                     />
-                                                    <line
-                                                        x1="14"
-                                                        x2="14"
-                                                        y1="11"
-                                                        y2="17"
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400">
+                                                        Plat Nomor
+                                                    </label>
+                                                    <input
+                                                        className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold uppercase outline-none"
+                                                        placeholder="Plat"
                                                     />
-                                                </svg>
-                                            </button>
-                                        </div>
-
-                                        <div className="grid grid-cols-3 gap-3 text-[9px] font-black uppercase tracking-wider text-slate-400">
-                                            <div className="space-y-1">
-                                                <label className="pl-1">
-                                                    PO Mitra
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Nama PO"
-                                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700"
-                                                />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400">
+                                                        Jumlah Seat
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold outline-none"
+                                                        placeholder="Seat"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1 col-span-1 md:col-span-3">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400">
+                                                        Biaya Modal Mitra (Rp)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full bg-red-50 text-red-600 border border-red-100 px-4 py-3 rounded-xl text-sm font-black outline-none"
+                                                        placeholder="0"
+                                                    />
+                                                    <p className="text-[8px] text-red-400 font-bold italic mt-1 leading-none">
+                                                        * Potensi Laba Bersih
+                                                        Slot: Rp{" "}
+                                                        {(
+                                                            Number(
+                                                                selectedOrder.harga_sewa ||
+                                                                    0,
+                                                            ) / totalBusesNeeded
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <label className="pl-1">
-                                                    Plat Nomor
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="PLAT"
-                                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="pl-1">
-                                                    Jumlah Seat
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Seat"
-                                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1 text-left">
-                                            <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 pl-1">
-                                                Biaya Modal Mitra (Rp)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                defaultValue="0"
-                                                className="w-full p-2.5 bg-red-50 text-red-500 border border-red-100 rounded-xl outline-none font-black text-xs"
-                                            />
-                                            <span className="text-[8px] text-red-400 font-bold italic pl-1 block mt-0.5">
-                                                * Potensi Laba Bersih Slot: Rp
-                                                8,000,000
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
             </div>
-            {/* </div>{" "} */}
+
+            {/* 3. FOOTER ACTION */}
             <div className="bg-slate-950 rounded-[2.5rem] p-6 flex items-center justify-between text-white shadow-xl shadow-slate-950/20">
                 <div className="space-y-0.5">
                     <h4 className="text-base font-black tracking-tight leading-none italic">
@@ -518,11 +694,10 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                     </p>
                 </div>
                 <button
-                    onClick={() => alert("Plotting armada berhasil disimpan!")}
-                    type="button"
-                    className="bg-white hover:bg-slate-100 text-slate-900 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 shadow-md"
+                    onClick={handleSavePlotting} // 🎯 Panggil fungsi axios di atas
+                    className="bg-white text-slate-900 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer"
                 >
-                    Selesai & Tutup
+                    Selesai & Simpan Plotting
                 </button>
             </div>
         </div>

@@ -33,9 +33,6 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
         "2. Hasil orders setelah disaring filter:",
         ordersAntreanPlotting,
     );
-    // =========================================================================
-    // 🎯 KUNCI FIX SAKRAL FINAL: SINKRONISASI NAMA PROPERTI DATABASE OPERASIONAL (0 ERR)
-    // =========================================================================
     return (
         <div
             className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm"
@@ -43,7 +40,8 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
         >
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center mb-4">
                 <Calendar size={18} className="mr-2 text-indigo-600" />
-                Antrean Plotting
+                Antrean Plotting ({orders.length} data masuk /{" "}
+                {ordersAntreanPlotting.length} lolos)
             </h3>
             <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                 {ordersAntreanPlotting.length === 0 ? (
@@ -52,12 +50,37 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
                     </div>
                 ) : (
                     ordersAntreanPlotting.map((o) => {
-                        // Tolak ukur kalkulasi penyeimbang slot unit sesuai database riil Anda
-                        const totalReq =
-                            o.fleetRequirements?.reduce(
-                                (s: number, r: any) => s + r.count,
-                                0,
-                            ) || Number(o.jumlah_unit_diminta || 1);
+                        // PlottingLeft.tsx
+                        const totalReq = React.useMemo(() => {
+                            // Jika fleetRequirements ada dan isinya array
+                            if (
+                                o.fleetRequirements &&
+                                Array.isArray(o.fleetRequirements) &&
+                                o.fleetRequirements.length > 0
+                            ) {
+                                return o.fleetRequirements.reduce(
+                                    (sum: number, item: { qty: any }) =>
+                                        sum + Number(item.qty || 0),
+                                    0,
+                                );
+                            }
+                            // Jika data detail tidak ada, ambil dari kolom utama (sebagai backup)
+                            return Number(o.jumlah_unit_diminta || 1);
+                        }, [o.fleetRequirements, o.jumlah_unit_diminta]);
+
+                        // Log untuk memastikan datanya masuk
+                        if (o.id_pesanan === "ORD-20260711-CKMHK") {
+                            console.log(
+                                "ISI DATA FLEET TEST:",
+                                o.fleetRequirements,
+                            );
+                        }
+
+                        // 🎯 KUNCI PELACAK: Cek di Console (F12) saat halaman dibuka
+                        if (o.id_pesanan === "ORD-20260711-CKMHK") {
+                            // ID "test" Anda
+                            console.log("CEK DATA TEST:", o.fleetRequirements);
+                        }
 
                         const assignmentsLength = o.assignments?.length || 0;
                         const isFilled = assignmentsLength >= totalReq;

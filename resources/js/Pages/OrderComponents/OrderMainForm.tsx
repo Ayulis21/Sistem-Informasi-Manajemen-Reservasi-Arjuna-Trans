@@ -255,15 +255,12 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                             </option>
                                         ))}
                                     </select>
-
                                     <input
-                                        type="text" // 🎯 KUNCI 1: Ubah ke text biasa agar bebas total dari kuncian bawaan number browser
+                                        type="text"
                                         inputMode="numeric"
                                         placeholder="0"
-                                        // 🎯 KUNCI 2: Jika nilainya 0 atau kosong, biarkan string kosong agar boks bisa dikosongkan total!
                                         value={f.qty === 0 ? "" : f.qty || ""}
                                         onChange={(e) => {
-                                            // 🎯 KUNCI 3: Menyaring agar hanya angka 0-9 saja yang boleh diketik masuk
                                             const hanyaAngka =
                                                 e.target.value.replace(
                                                     /[^0-9]/g,
@@ -271,7 +268,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                                 );
 
                                             const update = [...armadaList];
-                                            // Simpan nilai angka aslinya, jika kosong beri nilai 0 sementara di state
                                             update[index].qty =
                                                 hanyaAngka === ""
                                                     ? 0

@@ -9,6 +9,7 @@ use App\Http\Controllers\CustomerScheduleController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
 use App\Http\Controllers\PesananController;
+use App\Http\Controllers\PlottingController;
 use App\Models\Armada;
 use App\Models\Kru;
 
@@ -60,7 +61,8 @@ Route::get('/api/admin/pesanan', [\App\Http\Controllers\PesananController::class
 
 Route::get('/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('plotting');
 // Rute untuk aksi tombol simpan biner plotting Anda ke database MySQL
-Route::post('/admin/plotting/store', [\App\Http\Controllers\PlottingController::class, 'store'])->name('admin.plotting.store');
+Route::post('/api/admin/plotting/store', [\App\Http\Controllers\PlottingController::class, 'store'])->name('admin.plotting.store');
+Route::post('/api/admin/plotting/save', [PlottingController::class, 'savePlotting']);
 
 
 
