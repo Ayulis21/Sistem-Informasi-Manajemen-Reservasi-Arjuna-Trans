@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { usePage } from "@inertiajs/react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import ModalOrder from "./OrderComponents/ModalOrder";
 import OrderMainForm from "./OrderComponents/OrderMainForm";
@@ -19,6 +20,9 @@ import {
 import axios from "axios";
 
 const Orders: React.FC = () => {
+    const { props } = usePage<any>();
+    const armada = props.armada || []; // <── 🚀 SUNTIKKAN SAKRAL INDUK: Ambil data master armada dari Laravel!
+
     const [orders, setOrders] = useState<any[]>([]);
     const [isOpenModal, setIsOpenModal] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -34,6 +38,7 @@ const Orders: React.FC = () => {
     const [formData, setFormData] = useState({
         id_pesanan: "",
         customerName: "",
+        customerAddress: "",
         whatsapp: "",
         destination: "",
         pickup: "",
@@ -44,7 +49,12 @@ const Orders: React.FC = () => {
         totalPrice: 0,
         paidAmount: 0,
         dueDate: "",
-        fleetRequirements: [{ type: "Bus", qty: 1 }],
+        fleetRequirements: [
+            {
+                armada_id: "",
+                qty: 1,
+            },
+        ],
         paymentType: "DP",
         paymentDate: new Date().toISOString().substring(0, 10),
         evidenceFile: null as File | null,
@@ -79,7 +89,6 @@ const Orders: React.FC = () => {
         fetchOrdersData();
     }, []);
 
-    // 3. FUNGSI SAKRAL: MENGUBAH STATUS OPERASIONAL PESANAN (SETUJUI / BATAL)
     const handleUpdateStatus = async (
         idPesanan: string,
         statusBaru: string,
@@ -106,6 +115,7 @@ const Orders: React.FC = () => {
             }
         }
     };
+
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
         if (
@@ -120,7 +130,11 @@ const Orders: React.FC = () => {
         }
         try {
             const dataBiner = new FormData();
+            if (isEditMode) {
+                dataBiner.append("id_pesanan", selectedId!);
+            }
             dataBiner.append("customerName", formData.customerName);
+            dataBiner.append("alamat", formData.customerAddress || "-");
             dataBiner.append("whatsapp", formData.whatsapp);
             dataBiner.append("destination", formData.destination);
             dataBiner.append("pickup", formData.pickup);
@@ -134,8 +148,6 @@ const Orders: React.FC = () => {
             dataBiner.append("paymentType", formData.paymentType);
             dataBiner.append("paymentDate", formData.paymentDate);
             dataBiner.append("lain_lain", formData.lain_lain || "");
-
-            // 🎯 KUNCI PENYEMBUHAN 1: Menyaring string catatan luar agar murni mengirimkan TEKS POLOS, bukan kurung kurawal JSON!
             const teksCatatanPolos =
                 formData.catatan_pembayaran &&
                 formData.catatan_pembayaran.trim().startsWith("{")
@@ -143,12 +155,14 @@ const Orders: React.FC = () => {
                     : formData.catatan_pembayaran;
             dataBiner.append("catatan_pembayaran", teksCatatanPolos || "");
 
-            dataBiner.append(
-                "fleetRequirements",
-                JSON.stringify(formData.fleetRequirements),
-            );
-
-            // Menyaring array cicilan agar murni berisi teks string pendek (Anti-Luber seumur hidup)
+            if (formData.fleetRequirements) {
+                dataBiner.append(
+                    "fleetRequirements",
+                    JSON.stringify(formData.fleetRequirements),
+                );
+            } else {
+                dataBiner.append("fleetRequirements", JSON.stringify([]));
+            }
             const arrayPembayaranBersih = (formData.payments || []).map(
                 (p: any) => {
                     return {
@@ -164,14 +178,10 @@ const Orders: React.FC = () => {
                     };
                 },
             );
-
-            // Mengirimkan bungkusan array bersih terurai langsung ke Laravel Backend
             dataBiner.append(
                 "paymentsData",
                 JSON.stringify(arrayPembayaranBersih),
             );
-
-            // 🎯 KUNCI PENYEMBUHAN 2: Membersihkan perulangan ganda agar berkas biner dikirim tunggal secara legal
             (formData.payments || []).forEach((p: any, index: number) => {
                 if (p.evidenceFile) {
                     dataBiner.append(`evidenceFile_${index}`, p.evidenceFile);
@@ -202,11 +212,10 @@ const Orders: React.FC = () => {
             }
 
             alert("✨ Sukses: " + response.data.message);
-
-            // Menyuapi fleetRequirements utuh di baris reset state!
             setFormData({
                 id_pesanan: "",
                 customerName: "",
+                customerAddress: "",
                 whatsapp: "",
                 destination: "",
                 pickup: "",
@@ -224,7 +233,12 @@ const Orders: React.FC = () => {
                 paymentStatus: "Pending",
                 catatan_pembayaran: "",
                 lain_lain: "",
-                fleetRequirements: [{ type: "Bus", qty: 1 }],
+                fleetRequirements: [
+                    {
+                        armada_id: "",
+                        qty: 1,
+                    },
+                ],
                 payments: [
                     {
                         type: "DP",
@@ -246,12 +260,11 @@ const Orders: React.FC = () => {
             alert("❌ Gagal: Masalah koneksi transmisi berkas data.");
         }
     };
+
     const ordersTersaring = React.useMemo(() => {
         const dataMentahBiner = orders || [];
         if (!Array.isArray(dataMentahBiner) || dataMentahBiner.length === 0)
             return [];
-
-        // 🔥 BYPASS UTAMA: Jika admin menyetel semua filter ke posisi default, luapkan seluruh data asli
         if (
             kataKunciPencarian === "" &&
             statusFilterAktif === "Semua" &&
@@ -279,16 +292,11 @@ const Orders: React.FC = () => {
             const cocokStatus =
                 statusFilterAktif === "Semua" ||
                 String(o.status_pesanan) === statusFilterAktif;
-
-            // 3. 🚀 SAKRAL PEMBACAAN STATUS PEMBAYARAN BERDASARKAN ATURAN DATABASE NYATA ANDA
-            // Karena data relasi pembayaran belum di-load backend, kita petakan dari status_pesanan bawaan asli database Anda!
             let statusPelunasanKartu = "Belum Bayar";
 
             if (String(o.status_pesanan).toLowerCase() === "disetujui") {
-                // Sesuai seeder baris 1 Ayu Listiyo Wati (DP disetujui masuk kategori DP)
                 statusPelunasanKartu = "DP";
             } else if (String(o.status_pesanan).toLowerCase() === "terjadwal") {
-                // Sesuai seeder baris 2 Budi Santoso (Pelunasan disetujui masuk kategori Lunas)
                 statusPelunasanKartu = "Lunas";
             } else if (String(o.status_pesanan).toLowerCase() === "batal") {
                 statusPelunasanKartu = "Belum Bayar";
@@ -312,15 +320,13 @@ const Orders: React.FC = () => {
     }, [orders, kataKunciPencarian, statusFilterAktif, filterPembayaranAktif]);
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
     return (
         <AdminLayout>
             <div className="p-4 md:p-6 space-y-6">
-                {/* Bagian Atas Header Halaman */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="space-y-5 w-full">
-                        {/* BARIS 1: JUDUL UTAMA DI KIRI --- FILTERS & TOMBOL TAMBAH DI KANAN */}
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 w-full">
-                            {/* Judul Utama Bawaan Aplikasi Anda */}
                             <div className="text-left">
                                 <h2 className="text-xl font-black text-slate-800 uppercase tracking-wider leading-none">
                                     KELOLA PESANAN
@@ -329,10 +335,7 @@ const Orders: React.FC = () => {
                                     MANAJEMEN TRANSAKSI BUS ARJUNA TRANS
                                 </span>
                             </div>
-
-                            {/* Barisan Filter & Tombol Tambah yang Terkunci Rapi di Sisi Kanan */}
                             <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-                                {/* Dropdown Filter 1 */}
                                 <div className="relative">
                                     <select
                                         value={filterPembayaranAktif}
@@ -358,8 +361,6 @@ const Orders: React.FC = () => {
                                         ▼
                                     </div>
                                 </div>
-
-                                {/* Dropdown Filter 2 */}
                                 <div className="relative ">
                                     <select
                                         value={statusFilterAktif}
@@ -384,8 +385,6 @@ const Orders: React.FC = () => {
                                         ▼
                                     </div>
                                 </div>
-
-                                {/* Tombol Tambah Hitam Pekat Elegan Anda */}
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -393,6 +392,7 @@ const Orders: React.FC = () => {
                                         setFormData({
                                             id_pesanan: "",
                                             customerName: "",
+                                            customerAddress: "",
                                             whatsapp: "",
                                             destination: "",
                                             pickup: "",
@@ -413,7 +413,10 @@ const Orders: React.FC = () => {
                                             catatan_pembayaran: "",
                                             lain_lain: "",
                                             fleetRequirements: [
-                                                { type: "Bus", qty: 1 },
+                                                {
+                                                    armada_id: "",
+                                                    qty: 1,
+                                                },
                                             ],
                                             payments: [
                                                 {
@@ -438,8 +441,6 @@ const Orders: React.FC = () => {
                                 </button>
                             </div>
                         </div>
-
-                        {/* BOX SEARCH BERDIRI MANDIRI MEMANJANG 100% LEBAR HALAMAN */}
                         <div className="relative w-full pt-1">
                             <input
                                 type="text"
@@ -451,7 +452,6 @@ const Orders: React.FC = () => {
                                 className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200/70 rounded-[1.5rem] text-xs font-bold text-slate-700 placeholder-slate-400 outline-none transition-all focus:border-indigo-500 shadow-sm"
                             />
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                {/* Ikon Pencarian Kaca Pembesar Luar */}
                                 <svg
                                     xmlns="http://w3.org"
                                     width="14"
@@ -493,7 +493,6 @@ const Orders: React.FC = () => {
                                         o.catatan_pembayaran,
                                     );
                                     if (Array.isArray(arrayJson)) {
-                                        // 🎯 KUNCI SAKRAL: Pastikan huruf L di kata 'Lokal' ditulis kecil jika let di atas menggunakan huruf kecil!
                                         const kantongPaymentsLokal = arrayJson;
                                         arrayJson.forEach((p: any) => {
                                             // Nominal sewa luar HANYA terakumulasi jika statusnya "Disetujui"
@@ -570,7 +569,6 @@ const Orders: React.FC = () => {
                                 >
                                     <div className="flex items-center gap-3">
                                         {(() => {
-                                            // Menentukan warna boks, warna ikon, dan jenis ikon Lucide secara dinamis
                                             let bgBoks = "bg-indigo-50";
                                             let warnaIkon = "text-indigo-600";
                                             let KomponenIkon = Clock;
@@ -583,7 +581,6 @@ const Orders: React.FC = () => {
                                                 isLunas &&
                                                 statusSkrg === "Terjadwal"
                                             ) {
-                                                // TIPE LUNAS / TERJADWAL: Boks hijau pudar dengan ikon centang
                                                 bgBoks = "bg-emerald-50/80";
                                                 warnaIkon = "text-emerald-600";
                                                 KomponenIkon = Check;
@@ -591,25 +588,21 @@ const Orders: React.FC = () => {
                                                 adakahPembayaranBelumAcc &&
                                                 statusSkrg === "Disetujui"
                                             ) {
-                                                // TIPE PERLU ACC / PENDING: Boks kuning/jingga pudar dengan ikon jam
                                                 bgBoks = "bg-amber-50/80";
                                                 warnaIkon = "text-amber-600";
                                                 KomponenIkon = Clock;
                                             } else if (
                                                 statusSkrg === "Pending"
                                             ) {
-                                                // TIPE BARU / PENDING UTAMA
                                                 bgBoks = "bg-amber-50/80";
                                                 warnaIkon = "text-amber-600";
                                                 KomponenIkon = Clock;
                                             }
 
                                             return (
-                                                /* 🎯 KUNCI UTAMA: Mengubah w-10 h-10 menjadi w-12 h-12 agar boks lebih kekar besar */
                                                 <div
                                                     className={`w-12 h-12 ${bgBoks} rounded-xl flex items-center justify-center flex-shrink-0 transition-all shadow-sm`}
                                                 >
-                                                    {/* 🎯 KUNCI IKON: Mengubah size={18} menjadi size={22} agar logo jam/centang lebih tajam tebal */}
                                                     <KomponenIkon
                                                         size={22}
                                                         className={`${warnaIkon} stroke-[2.5]`}
@@ -643,7 +636,6 @@ const Orders: React.FC = () => {
                                                     |
                                                 </span>
                                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                                    {/* TANGGAL BERANGKAT */}
                                                     <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
                                                         PERGI:{" "}
                                                         {o.tgl_berangkat
@@ -665,8 +657,6 @@ const Orders: React.FC = () => {
                                                               })()
                                                             : "-"}
                                                     </span>
-
-                                                    {/* TANGGAL PULANG */}
                                                     <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">
                                                         PULANG:{" "}
                                                         {o.tgl_selesai
@@ -692,8 +682,6 @@ const Orders: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Sisi Tengah: Tampilan Harga Sewa */}
                                     <div className="text-left md:text-right min-w-[140px] space-y-1 border-t border-slate-50 md:border-none pt-2 md:pt-0">
                                         <div>
                                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
@@ -706,15 +694,12 @@ const Orders: React.FC = () => {
                                                 )}
                                             </p>
                                         </div>
-
-                                        {/* MENAMPILKAN SISA PIUTANG YANG AKAN MENYUSUT OTOMATIS JIKA DP DI-ACC ADMIN */}
                                         <div>
                                             <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                                 Sisa Piutang
                                             </p>
                                             <p
                                                 className={`text-xs font-black mt-0.5 ${
-                                                    // Jika lunas berwarna hijau emerald, jika masih utuh/utang berwarna merah cabai
                                                     isLunas
                                                         ? "text-emerald-500"
                                                         : "text-rose-500"
@@ -727,22 +712,14 @@ const Orders: React.FC = () => {
                                             </p>
                                         </div>
                                     </div>
-
-                                    {/* Sisi Kanan: Barisan Tombol Kontrol Dinamis */}
                                     <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
-                                        {/* ========================================================================= */}
-                                        {/* 🎯 KUNCI ABSOLUT: MENAMBAHKAN PROTOKOL UTUH DAN GARIS MIRING / SETELAH ME  */}
-                                        {/* ========================================================================= */}
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 if (o.no_telp) {
-                                                    // Bersihkan semua karakter spasial / strip dari database
                                                     const nomorBersih = String(
                                                         o.no_telp,
                                                     ).replace(/[^0-9]/g, "");
-
-                                                    // Paksa ubah kepala 08 menjadi format 628 internasional
                                                     const nomorFormatWA =
                                                         nomorBersih.startsWith(
                                                             "0",
@@ -752,8 +729,6 @@ const Orders: React.FC = () => {
                                                                   1,
                                                               )
                                                             : nomorBersih;
-
-                                                    // 🚀 PENYATUAN TEKS STRIP: Menggunakan kutip biasa dan simbol tambah (+) agar 100% tembus di web browser!
                                                     window.open(
                                                         `https://wa.me/${nomorFormatWA}`,
                                                         "_blank",
@@ -911,8 +886,6 @@ const Orders: React.FC = () => {
                                                         },
                                                     ];
                                                 }
-
-                                                // MENYUAPI DATA KE DALAM FORM DATA MODAL SECARA LURUS SINKRON
                                                 setSelectedId(
                                                     o.id_pesanan || o.id,
                                                 );
@@ -922,6 +895,8 @@ const Orders: React.FC = () => {
                                                         o.id_pesanan || "",
                                                     customerName:
                                                         o.nama_pemesan || "",
+                                                    customerAddress:
+                                                        o.alamat || "",
                                                     whatsapp: o.no_telp || "",
                                                     destination:
                                                         o.tujuan_main || "",
@@ -952,7 +927,7 @@ const Orders: React.FC = () => {
                                                     totalPrice: Number(
                                                         o.harga_sewa || 0,
                                                     ),
-                                                    paidAmount: totalBayar, // Diambil dari variabel kalkulator hitung otomatis Anda
+                                                    paidAmount: totalBayar,
                                                     dueDate: o.jatuh_tempo
                                                         ? o.jatuh_tempo.substring(
                                                               0,
@@ -982,19 +957,28 @@ const Orders: React.FC = () => {
                                                     lain_lain:
                                                         o.lain_lain || "",
                                                     fleetRequirements:
-                                                        o.tipe_unit_diminta
-                                                            ? [
-                                                                  {
-                                                                      type: o.tipe_unit_diminta,
+                                                        Array.isArray(
+                                                            o.fleetRequirements,
+                                                        ) &&
+                                                        o.fleetRequirements
+                                                            .length > 0
+                                                            ? o.fleetRequirements.map(
+                                                                  (
+                                                                      fr: any,
+                                                                  ) => ({
+                                                                      armada_id:
+                                                                          String(
+                                                                              fr.armada_id,
+                                                                          ),
                                                                       qty: Number(
-                                                                          o.jumlah_unit_diminta ||
-                                                                              1,
+                                                                          fr.qty,
                                                                       ),
-                                                                  },
-                                                              ]
+                                                                  }),
+                                                              )
                                                             : [
                                                                   {
-                                                                      type: "Bus",
+                                                                      armada_id:
+                                                                          "",
                                                                       qty: 1,
                                                                   },
                                                               ],
@@ -1010,7 +994,6 @@ const Orders: React.FC = () => {
                                             className="p-2 text-slate-400 hover:text-[#5346F1] hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
                                             title="Edit Cepat Detail Pesanan"
                                         >
-                                            {/* 🎯 KUNCI BESAR: Menaikkan ukuran ke 18 dan menebalkan garis stroke menjadi 2.5 */}
                                             <Edit2
                                                 size={18}
                                                 className="stroke-[2.5]"
@@ -1108,8 +1091,6 @@ const Orders: React.FC = () => {
                                                                 "S 7123 UA",
                                                         },
                                                     ],
-
-                                                    // 🚀 KUNCI REKAT BARU: Menyedot langsung kolom 'lain_lain' dari database MySQL Anda!
                                                     notes: o.lain_lain || "-",
                                                 };
                                                 setActiveInvoiceOrder(
@@ -1227,9 +1208,8 @@ const Orders: React.FC = () => {
                                     </div>
                                 </div>
                             );
-                        }) // <── Batas akhir perulangan map
+                        })
                     ) : (
-                        /* Boks Pemberitahuan Jika Data Yang Dicari Kosong / Tidak Ditemukan */
                         <div className="w-full p-12 text-center bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-400 text-xs my-4">
                             Data pesanan yang Anda cari tidak ditemukan.
                         </div>
@@ -1241,14 +1221,13 @@ const Orders: React.FC = () => {
                 onClose={() => setIsOpenModal(false)}
                 isEditMode={isEditMode}
                 formData={formData}
-                /* 🎯 KUNCI UTAMA: Properti hantu setFormData dan onSubmit DIHAPUS TOTAL dari sini */
+                armada={armada} // <── 🚀 SAKRAL INDUK: PASANG KEMBALI DI SINI AGAR ERROR TS(2741) MATI TOTAL!
             >
-                {/* 🎯 PIPA FORMULA: Fungsi handleSaveOrder disuapi langsung ke dalam tag form HTML legal React */}
                 <form onSubmit={handleSaveOrder} className="space-y-6">
-                    {/* BAGIAN ATAS: DATA OPERASIONAL PERJALANAN (Blok 1, 2, 3, 4) */}
                     <OrderMainForm
                         formData={formData}
                         setFormData={setFormData}
+                        armada={armada}
                     />
                     <OrderFinanceForm
                         formData={formData}
@@ -1282,7 +1261,6 @@ const Orders: React.FC = () => {
                         className="bg-white p-5 rounded-[2rem] max-w-sm w-full text-center shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* 🎯 BERIKUT PERUBAHAN TAG IMG YANG PERLU DI TIMPA SAKRAL */}
                         <img
                             src={
                                 previewUrl.startsWith("data:") ||
@@ -1306,10 +1284,8 @@ const Orders: React.FC = () => {
             )}
             {activeInvoiceOrder && (
                 <Documents
-                    // 🚀 KUNCI REKAT UTAMA: Mengirimkan payload objek order secara utuh lengkap dengan notes dinamisnya!
                     order={{
                         ...activeInvoiceOrder,
-                        // Memastikan properti notes di dalam Documents.tsx diisi dari data activeInvoiceOrder yang sedang aktif diklik
                         notes: activeInvoiceOrder.notes || "-",
                     }}
                     onClose={() => setActiveInvoiceOrder(null)}

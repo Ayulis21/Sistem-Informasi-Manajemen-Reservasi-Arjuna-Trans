@@ -25,6 +25,7 @@ class Pesanan extends Model
         'tipe_unit_diminta',
         'jumlah_unit_diminta',
         'harga_sewa',
+        'jatuh_tempo',
         'status_pesanan',
         'lain_lain',
         'token_akses'
@@ -34,5 +35,13 @@ class Pesanan extends Model
     public function riwayatPembayaran()
     {
         return $this->hasMany(RiwayatPembayaran::class, 'id_pesanan', 'id_pesanan');
+    }
+    public function detailArmada()
+    {
+        return $this->hasMany(
+            PesananDetailArmada::class,
+            'id_pesanan',
+            'id_pesanan'
+        );
     }
 }

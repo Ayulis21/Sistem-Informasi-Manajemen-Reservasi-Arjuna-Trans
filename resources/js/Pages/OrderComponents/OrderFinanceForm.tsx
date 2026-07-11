@@ -93,9 +93,12 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                     </label>
                     <input
                         type="date"
+                        /* Gunakan trim() untuk memastikan tidak ada spasi liar */
                         value={
                             formData.dueDate
-                                ? formData.dueDate.substring(0, 10)
+                                ? String(formData.dueDate)
+                                      .trim()
+                                      .substring(0, 10)
                                 : ""
                         }
                         onChange={(e) =>

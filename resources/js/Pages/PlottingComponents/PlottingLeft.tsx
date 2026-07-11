@@ -6,12 +6,36 @@ interface PlottingLeftProps {
     selectedOrderId: string | null;
     setSelectedOrderId: (id: string) => void;
 }
-
 const PlottingLeft: React.FC<PlottingLeftProps> = ({
-    orders,
+    orders = [],
     selectedOrderId,
     setSelectedOrderId,
 }) => {
+    const ordersAntreanPlotting = orders.filter((o: any) => {
+        const statusSaringan = String(o.status_pesanan || o.status || "")
+            .toLowerCase()
+            .trim();
+
+        // 🚀 FIX MUTLAK: Silakan tambahkan atau kurangi kata status di bawah ini sesuai kebutuhan operasional PO Arjuna Trans Anda!
+        return (
+            statusSaringan === "scheduled" ||
+            statusSaringan === "pending" || // <── Status Pending otomatis diloloskan masuk antrean list kiri
+            statusSaringan === "plotting" ||
+            statusSaringan === "plotted" ||
+            statusSaringan === "terjadwal" ||
+            statusSaringan === "disetujui"
+        );
+    });
+
+    console.log("=== RADAR PO ARJUNA TRANS ===");
+    console.log("1. Data orders asli dari Laravel masuk:", orders);
+    console.log(
+        "2. Hasil orders setelah disaring filter:",
+        ordersAntreanPlotting,
+    );
+    // =========================================================================
+    // 🎯 KUNCI FIX SAKRAL FINAL: SINKRONISASI NAMA PROPERTI DATABASE OPERASIONAL (0 ERR)
+    // =========================================================================
     return (
         <div
             className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm"
@@ -22,56 +46,74 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
                 Antrean Plotting
             </h3>
             <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                {orders.length === 0 ? (
+                {ordersAntreanPlotting.length === 0 ? (
                     <div className="text-center py-10 opacity-40 italic text-xs">
                         Belum ada pesanan disetujui.
                     </div>
                 ) : (
-                    orders.map((o) => {
+                    ordersAntreanPlotting.map((o) => {
+                        // Tolak ukur kalkulasi penyeimbang slot unit sesuai database riil Anda
                         const totalReq =
                             o.fleetRequirements?.reduce(
                                 (s: number, r: any) => s + r.count,
                                 0,
-                            ) || 0;
-                        const isFilled = o.assignments?.length >= totalReq;
+                            ) || Number(o.jumlah_unit_diminta || 1);
+
+                        const assignmentsLength = o.assignments?.length || 0;
+                        const isFilled = assignmentsLength >= totalReq;
+
+                        // 🚀 KUNCI INDUK 1: Mengunci nilai ID secara fleksibel dari id_pesanan atau id
+                        const currentId = o.id_pesanan || o.id;
+                        const currentName =
+                            o.nama_pemesan || o.customerName || "Tanpa Nama";
+                        const currentStatus = String(
+                            o.status_pesanan || o.status || "",
+                        ).toLowerCase();
+
                         return (
                             <button
-                                key={o.id}
-                                onClick={() => setSelectedOrderId(o.id)}
+                                key={currentId}
+                                onClick={() => setSelectedOrderId(currentId)}
                                 className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                                    selectedOrderId === o.id
+                                    String(selectedOrderId).trim() ===
+                                    String(currentId).trim()
                                         ? "bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100/30 -translate-y-1"
                                         : "bg-white border-slate-100 hover:border-indigo-300"
                                 }`}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <div
-                                        className={`text-[8px] font-black uppercase tracking-widest ${selectedOrderId === o.id ? "text-indigo-200" : "text-slate-400"}`}
+                                        className={`text-[8px] font-black uppercase tracking-widest ${String(selectedOrderId).trim() === String(currentId).trim() ? "text-indigo-200" : "text-slate-400"}`}
                                     >
-                                        {o.id}
+                                        {currentId}
                                     </div>
-                                    {o.status === "Scheduled" && (
+                                    {(currentStatus === "scheduled" ||
+                                        currentStatus === "terjadwal" ||
+                                        currentStatus === "plotted") && (
                                         <div className="bg-emerald-400 text-[6px] font-black text-white px-1.5 py-0.5 rounded uppercase tracking-widest">
                                             PLOTTED
                                         </div>
                                     )}
                                 </div>
+
+                                {/* 🚀 KUNCI INDUK 2: Menampilkan nama pemesan asli database secara riil & kapital tebal */}
                                 <p
-                                    className={`font-black tracking-tight ${selectedOrderId === o.id ? "text-white" : "text-slate-800"}`}
+                                    className={`font-black tracking-tight ${String(selectedOrderId).trim() === String(currentId).trim() ? "text-white" : "text-slate-800"}`}
                                 >
-                                    {o.customerName}
+                                    {currentName}
                                 </p>
+
                                 <div className="flex justify-between items-center mt-3">
                                     <div
                                         className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${isFilled ? "bg-emerald-400 text-white" : "bg-red-400 text-white"}`}
                                     >
-                                        {o.assignments?.length || 0} /{" "}
-                                        {totalReq} Unit
+                                        {assignmentsLength} / {totalReq} Unit
                                     </div>
                                     <ChevronRight
                                         size={14}
                                         className={
-                                            selectedOrderId === o.id
+                                            String(selectedOrderId).trim() ===
+                                            String(currentId).trim()
                                                 ? "text-white"
                                                 : "text-slate-200"
                                         }

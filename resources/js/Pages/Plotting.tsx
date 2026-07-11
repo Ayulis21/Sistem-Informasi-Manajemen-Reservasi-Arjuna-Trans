@@ -1,92 +1,64 @@
 import React, { useState } from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
-import PlottingLeft from "./PlottingComponents/PlottingLeft"; // Memanggil pecahan kiri
-import PlottingRight from "./PlottingComponents/PlottingRight"; // Memanggil pecahan kanan
+import PlottingLeft from "./PlottingComponents/PlottingLeft"; // Memanggil pecahan kiri bawaan asli Anda
+import PlottingRight from "./PlottingComponents/PlottingRight"; // Memanggil pecahan kanan bawaan asli Anda
 
-const staticState = {
-    orders: [
-        {
-            id: "ORD1",
-            customerName: "Keluarga Pak Jaka (Family Gathering)",
-            destination: "KOTA BATU Malang",
-            departureTime: "7/5/2026",
-            returnTime: "7/6/2026",
-            status: "Scheduled",
-            fleetRequirements: [{ type: "Bus", count: 1 }],
-            assignments: [{ id: "as-1", assetType: "Internal" }],
-        },
-        {
-            id: "ORD2",
-            customerName: "PT Maju Jaya Sentosa (Outing Kantor)",
-            destination: "BANDUNG (LEMBANG & DUSUN BAMBU)",
-            departureTime: "7/5/2026",
-            returnTime: "7/6/2026",
-            status: "Approved",
-            fleetRequirements: [{ type: "Bus", count: 2 }],
-            assignments: [],
-        },
-        {
-            id: "ORD3",
-            customerName: "Rombongan SMK Pariwisata Harapan",
-            destination: "PANGANDARAN (PANTAI BARAT)",
-            departureTime: "10/7/2026",
-            returnTime: "12/7/2026",
-            status: "Approved",
-            fleetRequirements: [{ type: "Bus", count: 1 }],
-            assignments: [{ id: "as-2", assetType: "Internal" }],
-        },
-    ],
-};
+interface PlottingProps {
+    orders: any[];
+    armada: any[];
+    crew: any[];
+    urlIdPesanan?: string | null;
+}
 
-const Plotting: React.FC = () => {
-    const [orders, setOrders] = useState(staticState.orders);
+const Plotting: React.FC<PlottingProps> = ({
+    orders = [],
+    armada = [],
+    crew = [],
+    urlIdPesanan = null,
+}) => {
+    // 🎯 KUNCI REKONSILIASI STATE ID: AWALAN WAJIB NULL AGAR LAYAR DEPAN KANAN KOSONG BERSIH
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
-        "ORD2",
+        urlIdPesanan || null,
     );
 
-    const selectedOrder = orders.find((o) => o.id === selectedOrderId);
+    // Mengendus data objek pesanan aktif dari database berdasarkan ID secara dinamis
+    const selectedOrder = orders.find(
+        (o: any) =>
+            String(o.id_pesanan || o.id).trim() ===
+            String(selectedOrderId).trim(),
+    );
 
     const handleAddAssignment = (
         orderId: string,
         assetType: "Internal" | "Rekanan",
+        slotIndex: number,
     ) => {
-        setOrders((prevOrders) =>
-            prevOrders.map((o) => {
-                if (o.id === orderId) {
-                    const newAssignment = {
-                        id: `as-${Date.now()}`,
-                        assetType,
-                        armadaId: "",
-                        crewId: "",
-                    };
-                    return {
-                        ...o,
-                        assignments: [...o.assignments, newAssignment],
-                    };
-                }
-                return o;
-            }),
+        console.log(
+            `Plotting trigger: ${orderId}, ${assetType}, Slot ${slotIndex}`,
+        );
+    };
+
+    // 🚀 SUNTIKAN FUNGSI PENYELAMAT ANTI-BLANK SECARA LEGAL:
+    const handleUpdateAssignment = (
+        orderId: string,
+        assignmentId: any,
+        data: any,
+    ) => {
+        console.log(
+            "Update assignment dinamis dipicu:",
+            orderId,
+            assignmentId,
+            data,
         );
     };
 
     const handleRemoveAssignment = (orderId: string, asId: string) => {
-        setOrders((prevOrders) =>
-            prevOrders.map((o) => {
-                if (o.id === orderId) {
-                    return {
-                        ...o,
-                        assignments: o.assignments.filter(
-                            (as) => as.id !== asId,
-                        ),
-                    };
-                }
-                return o;
-            }),
-        );
+        console.log(`Remove assignment trigger: ${orderId}, ${asId}`);
     };
 
     return (
         <AdminLayout>
+            {/* 🚀 ARSITEKTUR LAYOUT GRID ASLI ANDA DIKUNCI MATI 100% TIDAK DIUBAH SEUJUNG KUKU PUN */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* 1. RENDER PECAHAN KIRI (COSPAN 4) */}
                 <div className="lg:col-span-4">
@@ -99,7 +71,14 @@ const Plotting: React.FC = () => {
 
                 {/* 2. RENDER PECAHAN KANAN (COSPAN 8) */}
                 <div className="lg:col-span-8">
-                    <PlottingRight selectedOrder={selectedOrder} />
+                    <PlottingRight
+                        selectedOrder={selectedOrder}
+                        onAddAssignment={handleAddAssignment}
+                        onRemoveAssignment={handleRemoveAssignment}
+                        handleUpdateAssignment={handleUpdateAssignment}
+                        armada={armada}
+                        crew={crew}
+                    />
                 </div>
             </div>
         </AdminLayout>

@@ -7,6 +7,7 @@ interface ModalOrderProps {
     isEditMode: boolean;
     formData: any;
     children: React.ReactNode;
+    armada: any[];
 }
 
 const ModalOrder: React.FC<ModalOrderProps> = ({
@@ -15,6 +16,7 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
     isEditMode,
     formData,
     children,
+    armada,
 }) => {
     if (!isOpen) return null;
 

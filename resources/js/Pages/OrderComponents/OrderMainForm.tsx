@@ -1,19 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { User, MapPin, Bus, FileText, Plus, Trash2 } from "lucide-react";
 
 interface OrderMainFormProps {
     formData: any;
     setFormData: (data: any) => void;
+    armada: any[];
 }
 
 const OrderMainForm: React.FC<OrderMainFormProps> = ({
     formData,
     setFormData,
+    armada,
 }) => {
     // Memastikan fleetRequirements selalu bertipe array dinamis yang aman
     const armadaList = Array.isArray(formData?.fleetRequirements)
         ? formData.fleetRequirements
-        : [{ type: "Bus", qty: 1 }];
+        : [
+              {
+                  armada_id: "",
+                  qty: 1,
+              },
+          ];
+
+    useEffect(() => {
+        console.log(formData.fleetRequirements);
+    }, [formData.fleetRequirements]);
 
     return (
         <div className="space-y-5">
@@ -49,6 +60,23 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 setFormData({
                                     ...formData,
                                     customerName: e.target.value,
+                                })
+                            }
+                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
+                            Alamat
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Masukkan alamat rumah..."
+                            value={formData.customerAddress || ""}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    customerAddress: e.target.value,
                                 })
                             }
                             className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none"
@@ -151,7 +179,10 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                     ...formData,
                                     fleetRequirements: [
                                         ...armadaList,
-                                        { type: "Bus", qty: 1 },
+                                        {
+                                            armada_id: "",
+                                            qty: 1,
+                                        },
                                     ],
                                 })
                             }
@@ -169,7 +200,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 className="space-y-1 border-b border-slate-50 pb-1.5 last:border-none"
                             >
                                 <div className="flex justify-between items-center text-[7px] font-black text-slate-400 uppercase tracking-wider">
-                                    <span>Armada Ke-{index + 1}</span>
+                                    <span>Tipe Armada Ke-{index + 1}</span>
                                     {index > 0 && (
                                         <button
                                             type="button"
@@ -193,10 +224,16 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 </div>
                                 <div className="flex gap-2 items-center">
                                     <select
-                                        value={f.type || "Bus"}
+                                        /* Pastikan value dipaksa string dan handle null */
+                                        value={
+                                            f.armada_id
+                                                ? String(f.armada_id)
+                                                : ""
+                                        }
                                         onChange={(e) => {
                                             const update = [...armadaList];
-                                            update[index].type = e.target.value;
+                                            update[index].armada_id =
+                                                e.target.value; // Simpan sebagai string
                                             setFormData({
                                                 ...formData,
                                                 fleetRequirements: update,
@@ -204,12 +241,19 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                         }}
                                         className="flex-1 p-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none cursor-pointer"
                                     >
-                                        <option value="Bus">Big Bus</option>
-                                        <option value="Medium Bus">
-                                            Medium Bus
+                                        <option value="">
+                                            -- Pilih Tipe --
                                         </option>
-                                        <option value="Hiace">Hiace</option>
-                                        <option value="Coaster">Coaster</option>
+                                        {armada?.map((a: any) => (
+                                            /* value di sini HARUS string agar cocok dengan value di atas */
+                                            <option
+                                                key={String(a.id_armada)}
+                                                value={String(a.id_armada)}
+                                            >
+                                                {a.tipe_armada} | {a.kapasitas}{" "}
+                                                Seat
+                                            </option>
+                                        ))}
                                     </select>
 
                                     <input
@@ -278,10 +322,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     </div>
                 </div>
             </div>
-
-            {/* ========================================================================= */}
-            {/* 4. RUTE PERJALANAN & CATATAN LAIN-LAIN (SINKRON DATA BASE LOKAL 100%)       */}
-            {/* ========================================================================= */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                 {/* BOKS RUTE PERJALANAN (BAWAAN ASLI ANDA) */}
                 <div className="space-y-1">

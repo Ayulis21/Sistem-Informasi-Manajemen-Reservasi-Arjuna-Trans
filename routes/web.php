@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderStatusController;
+use App\Http\Controllers\PlottingControllerController;
 use App\Http\Controllers\CustomerScheduleController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
@@ -24,38 +25,42 @@ Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadB
 // Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
 Route::get('/api/customer-schedule', [CustomerScheduleController::class, 'getSchedule']);
 
-// Rute API Internal Admin: Kelola Master Data Armada Bus
+// agar sinkron 100% dengan link klik sidebar asli bawaan laptop Anda!
+Route::get('/master-data', function () {
+    return Inertia::render('MasterData', [
+        // Data riil langsung ditarik dari DB sejak menu diklik, dikirim utuh ke React
+        'armadaFromBackend' => \App\Models\Armada::orderBy('created_at', 'desc')->get(),
+        'crewFromBackend'   => \App\Models\Kru::orderBy('created_at', 'desc')->get()
+    ]);
+})->name('master-data');
 Route::get('/api/admin/armada', [ArmadaController::class, 'index']);
 Route::post('/api/admin/armada/store', [ArmadaController::class, 'store']);
-
-// Rute API Internal Admin: Kelola Master Data Kru (Sopir & Kernet)
-Route::get('/api/admin/kru', [KruController::class, 'index']);
-Route::post('/api/admin/kru/store', [KruController::class, 'store']);
-
-
-// Ubah rute Master Data Admin Anda menjadi seperti ini:
-Route::get('/admin/master-data', function () {
-    return Inertia::render('MasterData', [
-        // KUNCI UTAMA: Data ditarik dari DB sejak admin klik menu, langsung dikirim ke React
-        'armadaFromBackend' => Armada::orderBy('created_at', 'desc')->get(),
-        'crewFromBackend' => Kru::orderBy('created_at', 'desc')->get()
-    ]);
-});
-
-// Rute API Internal Admin: Update Data Master Armada Bus
 Route::put('/api/admin/armada/update/{id}', [ArmadaController::class, 'update']);
 Route::delete('/api/admin/armada/delete/{id}', [ArmadaController::class, 'destroy']);
+Route::get('/api/admin/kru', [KruController::class, 'index']);
 Route::post('/api/admin/kru/store', [KruController::class, 'store']);
 Route::put('/api/admin/kru/update/{id}', [KruController::class, 'update']);
 Route::delete('/api/admin/kru/delete/{id}', [KruController::class, 'destroy']);
 
+
 // Rute API Internal Admin: Kelola Transaksi Pesanan Masuk Arjuna Trans
+Route::get('/orders', function () {
+    return Inertia::render('Orders', [
+        'orders' => \App\Models\Pesanan::orderBy('created_at', 'desc')->get(),
+        'armada' => \App\Models\Armada::orderBy('nama_armada', 'asc')->get()
+    ]);
+})->name('orders');
 Route::get('/api/admin/pesanan', [PesananController::class, 'index']);
 Route::post('/api/admin/pesanan/store', [PesananController::class, 'store']);
 Route::put('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
 Route::post('/api/admin/pesanan/update-full/{id}', [PesananController::class, 'updateFull'])->where('id', '.*');
 Route::put('/api/admin/pembayaran/verifikasi/{id}', [PesananController::class, 'verifikasiPembayaran'])->where('id', '.*');
 Route::put('/api/admin/pesanan/update-status/{id}', [PesananController::class, 'updateStatus'])->where('id', '.*');
+Route::get('/api/admin/pesanan', [\App\Http\Controllers\PesananController::class, 'getPesananData']);
+
+Route::get('/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('plotting');
+// Rute untuk aksi tombol simpan biner plotting Anda ke database MySQL
+Route::post('/admin/plotting/store', [\App\Http\Controllers\PlottingController::class, 'store'])->name('admin.plotting.store');
 
 
 
@@ -76,12 +81,12 @@ Route::get('/', function () {
     return Inertia::render('Landing');
 });
 
-// Jalur Tombol Halaman Login Admin Anda
+// // Jalur Tombol Halaman Login Admin Anda
 Route::get('/login-admin', function () {
     return Inertia::render('Login');
 })->name('login.admin');
 
-// 3 Menu Pelanggan dari Landing Page (Dikeluarkan dari penguncian)
+// // 3 Menu Pelanggan dari Landing Page (Dikeluarkan dari penguncian)
 Route::get('/customer-order', function () {
     return Inertia::render('CustomerOrder');
 })->name('customer-order');
@@ -99,21 +104,15 @@ Route::get('/schedule', function () {
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->name('dashboard');
-Route::get('/orders', function () {
-    return Inertia::render('Orders');
-})->name('orders');
-Route::get('/plotting', function () {
-    return Inertia::render('Plotting');
-})->name('plotting');
-Route::get('/admin-schedule', function () {
-    return Inertia::render('Schedule');
-})->name('admin.schedule'); // Untuk admin di dalam
-Route::get('/master-data', function () {
-    return Inertia::render('MasterData');
-})->name('master-data');
-Route::get('/reports', function () {
-    return Inertia::render('Reports');
-})->name('reports');
+// Route::get('/plotting', function () {
+//     return Inertia::render('Plotting');
+// })->name('plotting');
+// Route::get('/admin-schedule', function () {
+//     return Inertia::render('Schedule');
+// })->name('admin.schedule'); // Untuk admin di dalam
+// Route::get('/reports', function () {
+//     return Inertia::render('Reports');
+// })->name('reports');
 
 
 
@@ -126,29 +125,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route::get('/dashboard', function () {
     //     return Inertia::render('Dashboard');
     // })->name('dashboard');
-    Route::get('/catalog', function () {
-        return Inertia::render('Catalog');
-    })->name('catalog');
-    Route::get('/documents', function () {
-        return Inertia::render('Documents');
-    })->name('documents');
-    // Route::get('/master-data', function () {
-    //     return Inertia::render('MasterData');
-    // })->name('master-data');
-    // Route::get('/orders', function () {
-    //     return Inertia::render('Orders');
-    // })->name('orders');
-    // Route::get('/plotting', function () {
-    //     return Inertia::render('Plotting');
-    // })->name('plotting');
-    // Route::get('/reports', function () {
-    //     return Inertia::render('Reports');
-    // })->name('reports');
+    // Route::get('/catalog', function () {
+    //     return Inertia::render('Catalog');
+    // })->name('catalog');
+    // Route::get('/documents', function () {
+    //     return Inertia::render('Documents');
+    // })->name('documents');
+    // // Route::get('/master-data', function () {
+    // //     return Inertia::render('MasterData');
+    // // })->name('master-data');
+    // // Route::get('/orders', function () {
+    // //     return Inertia::render('Orders');
+    // // })->name('orders');
+    // // Route::get('/plotting', function () {
+    // //     return Inertia::render('Plotting');
+    // // })->name('plotting');
+    // // Route::get('/reports', function () {
+    // //     return Inertia::render('Reports');
+    // // })->name('reports');
 
-    // Profil Akun Admin
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // // Profil Akun Admin
+    // Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    // Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    // Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__ . '/auth.php';

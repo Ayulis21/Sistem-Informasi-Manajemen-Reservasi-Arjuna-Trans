@@ -18,9 +18,8 @@ return new class extends Migration {
             $table->string('tujuan_main', 255);
             $table->string('rute', 255);
             $table->integer('estimasi_jarak');
-            $table->string('tipe_unit_diminta', 30);
-            $table->integer('jumlah_unit_diminta');
             $table->decimal('harga_sewa', 15, 2);
+            $table->date('jatuh_tempo')->nullable();
             $table->enum('status_pesanan', ['Pending', 'Disetujui', 'Terjadwal', 'Selesai', 'Batal'])->default('Pending');
             $table->text('lain_lain')->nullable();
             $table->string('token_akses', 64)->nullable();
