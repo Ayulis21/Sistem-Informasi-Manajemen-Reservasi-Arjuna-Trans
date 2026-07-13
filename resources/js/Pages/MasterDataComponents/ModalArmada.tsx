@@ -1,7 +1,8 @@
 import React from "react";
 
 interface ModalArmadaProps {
-    busForm: {
+    armadaForm: {
+        status_ketersediaan: string;
         nama_armada: string;
         nopol: string;
         tipe_armada: string;
@@ -9,14 +10,14 @@ interface ModalArmadaProps {
         fasilitas: string;
         status: string;
     };
-    setBusForm: (data: any) => void;
+    setArmadaForm: (data: any) => void;
     onClose: () => void;
     onSubmit: (e: React.FormEvent) => void;
 }
 
 export const ModalArmada: React.FC<ModalArmadaProps> = ({
-    busForm,
-    setBusForm,
+    armadaForm,
+    setArmadaForm,
     onClose,
     onSubmit,
 }) => {
@@ -30,9 +31,12 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     type="text"
                     placeholder="Contoh: Jetbus 5 Plus"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
-                    value={busForm?.nama_armada || ""}
+                    value={armadaForm?.nama_armada || ""}
                     onChange={(e) =>
-                        setBusForm({ ...busForm, nama_armada: e.target.value })
+                        setArmadaForm({
+                            ...armadaForm,
+                            nama_armada: e.target.value,
+                        })
                     }
                 />
             </div>
@@ -44,9 +48,9 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     type="text"
                     placeholder="Contoh: S 1234 XN"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
-                    value={busForm?.nopol || ""}
+                    value={armadaForm?.nopol || ""}
                     onChange={(e) =>
-                        setBusForm({ ...busForm, nopol: e.target.value })
+                        setArmadaForm({ ...armadaForm, nopol: e.target.value })
                     }
                 />
             </div>
@@ -57,10 +61,10 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                 <div className="relative">
                     <select
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
-                        value={busForm?.tipe_armada || "Big Bus"}
+                        value={armadaForm?.tipe_armada || "Big Bus"}
                         onChange={(e) =>
-                            setBusForm({
-                                ...busForm,
+                            setArmadaForm({
+                                ...armadaForm,
                                 tipe_armada: e.target.value,
                             })
                         }
@@ -80,10 +84,10 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                     type="number"
                     placeholder="Contoh: 50"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200"
-                    value={busForm?.kapasitas || ""}
+                    value={armadaForm?.kapasitas || ""}
                     onChange={(e) =>
-                        setBusForm({
-                            ...busForm,
+                        setArmadaForm({
+                            ...armadaForm,
                             kapasitas: e.target.value
                                 ? parseInt(e.target.value)
                                 : 0,
@@ -98,11 +102,39 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                 <textarea
                     placeholder="AC, TV, Karaoke"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 resize-none h-[60px]"
-                    value={busForm?.fasilitas || ""}
+                    value={armadaForm?.fasilitas || ""}
                     onChange={(e) =>
-                        setBusForm({ ...busForm, fasilitas: e.target.value })
+                        setArmadaForm({
+                            ...armadaForm,
+                            fasilitas: e.target.value,
+                        })
                     }
                 />
+            </div>
+            {/* Letakkan di dalam Modal Armada di MasterData.tsx */}
+            <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">
+                    Status Ketersediaan
+                </label>
+                <div className="relative">
+                    <select
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
+                        value={armadaForm.status_ketersediaan || "Ready"}
+                        onChange={(e) =>
+                            setArmadaForm({
+                                ...armadaForm,
+                                status_ketersediaan: e.target.value,
+                            } as any)
+                        }
+                    >
+                        <option value="Tersedia">Ready (Siap Jalan)</option>{" "}
+                        {/* 🎯 Value harus 'Tersedia' */}
+                        <option value="Perbaikan">Perbaikan (Bengkel)</option>
+                        <option value="Perjalanan">
+                            Perjalanan (Sedang Tugas)
+                        </option>
+                    </select>
+                </div>
             </div>
         </div>
     );

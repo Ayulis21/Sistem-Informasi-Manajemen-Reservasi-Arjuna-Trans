@@ -417,7 +417,9 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                         .filter(
                                                             (b) =>
                                                                 b.tipe_armada ===
-                                                                targetType,
+                                                                    targetType &&
+                                                                b.status_ketersediaan ===
+                                                                    "Ready",
                                                         )
                                                         .map((b) => {
                                                             // 1. 🎯 BENTROK LOKAL (Slot 1 vs Slot 2 di pesanan yang sama)

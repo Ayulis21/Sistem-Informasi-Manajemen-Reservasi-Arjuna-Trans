@@ -29,7 +29,6 @@ Route::get('/api/customer-schedule', [CustomerScheduleController::class, 'getSch
 // agar sinkron 100% dengan link klik sidebar asli bawaan laptop Anda!
 Route::get('/master-data', function () {
     return Inertia::render('MasterData', [
-        // Data riil langsung ditarik dari DB sejak menu diklik, dikirim utuh ke React
         'armadaFromBackend' => \App\Models\Armada::orderBy('created_at', 'desc')->get(),
         'crewFromBackend'   => \App\Models\Kru::orderBy('created_at', 'desc')->get()
     ]);

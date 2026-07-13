@@ -15,12 +15,13 @@ const MasterData: React.FC = () => {
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [armada, setArmada] = useState([]);
     const [crew, setCrew] = useState([]);
-    const [busForm, setBusForm] = useState({
+    const [armadaForm, setArmadaForm] = useState({
         nama_armada: "",
         nopol: "",
         tipe_armada: "",
         kapasitas: 50,
         fasilitas: "",
+        status_ketersediaan: "Ready",
         status: "READY",
     });
     const [crewForm, setCrewForm] = useState({
@@ -43,6 +44,20 @@ const MasterData: React.FC = () => {
                 console.error("Gagal menarik data kru:", error);
             });
     };
+    const fetchArmadaData = async () => {
+        try {
+            const response = await axios.get("/api/admin/armada");
+            // Pastikan Anda melakukan set data ke state yang digunakan untuk merender tabel armada
+            // Jika nama statenya 'armadaFromBackend', maka:
+            // setArmadaData(response.data);
+
+            // Agar simpel, Anda bisa menggunakan window.location.reload()
+            // jika tidak ingin ribet mencari nama state tabelnya:
+            window.location.reload();
+        } catch (error) {
+            console.error("Gagal menarik data armada:", error);
+        }
+    };
     React.useEffect(() => {
         if (activeTab === "KRU") {
             axios
@@ -63,13 +78,17 @@ const MasterData: React.FC = () => {
         e.preventDefault();
 
         if (activeTab === "ARMADA") {
-            const nama = busForm?.nama_armada || (busForm as any)?.name || "";
-            const pelat = busForm?.nopol || (busForm as any)?.plate || "";
-            const kursi = busForm?.kapasitas || (busForm as any)?.seats || 0;
+            const nama =
+                armadaForm?.nama_armada || (armadaForm as any)?.name || "";
+            const pelat = armadaForm?.nopol || (armadaForm as any)?.plate || "";
+            const kursi =
+                armadaForm?.kapasitas || (armadaForm as any)?.seats || 0;
             const tipe =
-                busForm?.tipe_armada || (busForm as any)?.type || "Big Bus";
+                armadaForm?.tipe_armada ||
+                (armadaForm as any)?.type ||
+                "Big Bus";
             const fasilitas =
-                busForm?.fasilitas || (busForm as any)?.facilities || "-";
+                armadaForm?.fasilitas || (armadaForm as any)?.facilities || "-";
             if (!nama) {
                 alert("❌ Gagal Simpan: Kolom 'NAMA ARMADA' belum diisi!");
                 return;
@@ -93,6 +112,8 @@ const MasterData: React.FC = () => {
                     nopol: pelat,
                     kapasitas: Number(kursi),
                     fasilitas: fasilitas,
+                    status_ketersediaan:
+                        armadaForm.status_ketersediaan || "Tersedia",
                 };
 
                 let response;
@@ -108,16 +129,17 @@ const MasterData: React.FC = () => {
                     );
                 }
                 alert("✨ Sukses: " + response.data.message);
-                setBusForm({
+                setArmadaForm({
                     nama_armada: "",
                     nopol: "",
                     tipe_armada: "Big Bus",
                     kapasitas: 50,
                     fasilitas: "AC, TV",
-                    status: "READY",
+                    status_ketersediaan: "Tersedia",
+                    // status: "READY",
                 } as any);
                 setIsModalOpen(false);
-                fetchCrewData();
+                fetchArmadaData();
             } catch (error: any) {
                 console.error("Gagal menyimpan ke database:", error);
                 if (error.response && error.response.status === 422) {
@@ -229,12 +251,13 @@ const MasterData: React.FC = () => {
                             onClick={() => {
                                 if (activeTab === "ARMADA") {
                                     setIsEditMode(false);
-                                    setBusForm({
+                                    setArmadaForm({
                                         nama_armada: "",
                                         nopol: "",
                                         tipe_armada: "Big Bus",
                                         kapasitas: 50,
                                         fasilitas: "AC, TV",
+                                        status_ketersediaan: "Ready",
                                         status: "READY",
                                     });
                                 } else {
@@ -270,7 +293,7 @@ const MasterData: React.FC = () => {
                             onEditTrigger={(item: any) => {
                                 setSelectedId(item.id_armada || item.id);
                                 setIsEditMode(true);
-                                setBusForm({
+                                setArmadaForm({
                                     nama_armada:
                                         item.nama_armada || item.name || "",
                                     nopol: item.nopol || item.plate || "",
@@ -289,10 +312,9 @@ const MasterData: React.FC = () => {
                                                   ? item.facilities.join(", ")
                                                   : item.facilities
                                               : "AC, TV",
-                                    status:
-                                        item.status_ketersediaan ||
-                                        item.status ||
-                                        "READY",
+                                    status_ketersediaan:
+                                        item.status_ketersediaan || "Ready",
+                                    status: "READY",
                                 });
                                 setIsModalOpen(true);
                             }}
@@ -386,8 +408,8 @@ const MasterData: React.FC = () => {
                             </div>
                             {activeTab === "ARMADA" ? (
                                 <ModalArmada
-                                    busForm={busForm}
-                                    setBusForm={setBusForm}
+                                    armadaForm={armadaForm}
+                                    setArmadaForm={setArmadaForm}
                                     onClose={() => setIsModalOpen(false)}
                                     onSubmit={function (
                                         e: React.FormEvent,
@@ -430,3 +452,6 @@ const MasterData: React.FC = () => {
 };
 
 export default MasterData;
+function fetchArmadaData() {
+    throw new Error("Function not implemented.");
+}

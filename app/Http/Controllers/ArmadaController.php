@@ -23,6 +23,7 @@ class ArmadaController extends Controller
             'nopol' => 'required|string|max:15|unique:armada,nopol',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',
+            'status_ketersediaan' => 'required|in:Tersedia,Perbaikan,Perjalanan',
         ]);
 
         $armada = Armada::create([
@@ -48,6 +49,7 @@ class ArmadaController extends Controller
             'nopol' => 'required|string|max:15|unique:armada,nopol,' . $id . ',id_armada',
             'kapasitas' => 'required|integer|min:1',
             'fasilitas' => 'nullable|string',
+            'status_ketersediaan' => 'required|in:Tersedia,Perbaikan,Perjalanan',
         ]);
 
         $armada->update([
@@ -56,6 +58,7 @@ class ArmadaController extends Controller
             'nopol' => $request->nopol,
             'kapasitas' => $request->kapasitas,
             'fasilitas' => $request->fasilitas,
+            'status_ketersediaan' => $request->status_ketersediaan,
         ]);
 
         return response()->json(['message' => 'Data unit armada berhasil diperbarui!']);
