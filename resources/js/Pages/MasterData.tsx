@@ -58,6 +58,7 @@ const MasterData: React.FC = () => {
                 });
         }
     }, [activeTab]);
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -137,35 +138,44 @@ const MasterData: React.FC = () => {
             const namaKru = crewForm.name || "";
             const noTelp = crewForm.phone || "";
             const peranKru = crewForm.role || "Driver";
+
+            // 1. Ambil nilai status dari form
+            const statusKetersediaan = crewForm.taskStatus || "Ready";
+            const statusAkun = crewForm.accountStatus || "Aktif"; // 🎯 Variabel ini sudah Anda buat
+
             if (!namaKru.trim()) {
                 alert(
                     "❌ Gagal Simpan: Kolom 'NAMA LENGKAP KRU' tidak boleh kosong!",
                 );
                 return;
             }
-            if (!noTelp.trim()) {
-                alert("❌ Gagal Simpan: Kolom 'NOMOR TELEPON' wajib diisi!");
-                return;
-            }
+
             try {
                 let response;
+                // 2. 🎯 BUNGKUS PAYLOAD (Pastikan 'status' ada di sini!)
+                const payloadKru = {
+                    nama_kru: namaKru,
+                    no_telp: noTelp,
+                    peran: peranKru,
+                    status_ketersediaan: statusKetersediaan,
+                    status: statusAkun, // 🚀 KUNCI: Sekarang status ikut terkirim ke Laravel
+                };
+
                 if (isEditMode) {
                     response = await axios.put(
                         `/api/admin/kru/update/${selectedId}`,
-                        {
-                            nama_kru: namaKru,
-                            no_telp: noTelp,
-                            peran: peranKru,
-                        },
+                        payloadKru, // Kirim objek lengkap
                     );
                 } else {
-                    response = await axios.post("/api/admin/kru/store", {
-                        nama_kru: namaKru,
-                        no_telp: noTelp,
-                        peran: peranKru,
-                    });
+                    response = await axios.post(
+                        "/api/admin/kru/store",
+                        payloadKru, // Kirim objek lengkap
+                    );
                 }
+
                 alert("✨ Sukses: " + response.data.message);
+
+                // 3. Reset Form
                 setCrewForm({
                     name: "",
                     role: "Driver",
@@ -177,13 +187,15 @@ const MasterData: React.FC = () => {
                 });
                 setIsModalOpen(false);
                 fetchCrewData();
-            } catch (error) {
-                alert(
-                    "❌ Gagal: Tidak dapat mendaftarkan kru baru ke database.",
-                );
+            } catch (error: any) {
+                // Tampilkan pesan error detail dari Laravel jika ada
+                const pesanError =
+                    error.response?.data?.message || "Gagal menyimpan data.";
+                alert("❌ Gagal: " + pesanError);
             }
         }
     };
+
     return (
         <AdminLayout>
             <div className="space-y-6 text-left relative">

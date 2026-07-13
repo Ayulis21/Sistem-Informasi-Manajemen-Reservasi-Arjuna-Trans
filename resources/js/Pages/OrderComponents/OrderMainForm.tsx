@@ -224,7 +224,6 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 </div>
                                 <div className="flex gap-2 items-center">
                                     <select
-                                        /* Pastikan value dipaksa string dan handle null */
                                         value={
                                             f.armada_id
                                                 ? String(f.armada_id)
@@ -233,7 +232,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                         onChange={(e) => {
                                             const update = [...armadaList];
                                             update[index].armada_id =
-                                                e.target.value; // Simpan sebagai string
+                                                e.target.value;
                                             setFormData({
                                                 ...formData,
                                                 fleetRequirements: update,
@@ -244,16 +243,71 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                         <option value="">
                                             -- Pilih Tipe --
                                         </option>
-                                        {armada?.map((a: any) => (
-                                            /* value di sini HARUS string agar cocok dengan value di atas */
-                                            <option
-                                                key={String(a.id_armada)}
-                                                value={String(a.id_armada)}
-                                            >
-                                                {a.tipe_armada} | {a.kapasitas}{" "}
-                                                Seat
-                                            </option>
-                                        ))}
+
+                                        {/* 1. Ambil data Tipe Unik (Hanya 4 Tipe) */}
+                                        {armada
+                                            ?.filter(
+                                                (obj, idx, self) =>
+                                                    idx ===
+                                                    self.findIndex(
+                                                        (t) =>
+                                                            t.tipe_armada ===
+                                                            obj.tipe_armada,
+                                                    ),
+                                            )
+                                            .map((a: any) => {
+                                                // 2. 🎯 KUNCI SAKRAL: Cek apakah tipe ini sudah dipilih di baris LAIN
+                                                const isTypeTaken =
+                                                    armadaList.some(
+                                                        (
+                                                            item: {
+                                                                armada_id: any;
+                                                            },
+                                                            itemIdx: number,
+                                                        ) => {
+                                                            // Jangan cek baris yang sedang kita edit sekarang
+                                                            if (
+                                                                itemIdx ===
+                                                                index
+                                                            )
+                                                                return false;
+
+                                                            // Cari data master dari ID yang sudah dipilih di baris lain
+                                                            const selectedMaster =
+                                                                armada.find(
+                                                                    (m) =>
+                                                                        String(
+                                                                            m.id_armada,
+                                                                        ) ===
+                                                                        String(
+                                                                            item.armada_id,
+                                                                        ),
+                                                                );
+                                                            return (
+                                                                selectedMaster?.tipe_armada ===
+                                                                a.tipe_armada
+                                                            );
+                                                        },
+                                                    );
+
+                                                return (
+                                                    <option
+                                                        key={String(
+                                                            a.id_armada,
+                                                        )}
+                                                        value={String(
+                                                            a.id_armada,
+                                                        )}
+                                                        /* 🎯 Jika tipe sudah ada di baris lain, matikan pilihannya */
+                                                        disabled={isTypeTaken}
+                                                    >
+                                                        {a.tipe_armada}{" "}
+                                                        {isTypeTaken
+                                                            ? "(SUDAH DIPILIH)"
+                                                            : `| ${a.kapasitas} Seat`}
+                                                    </option>
+                                                );
+                                            })}
                                     </select>
                                     <input
                                         type="text"

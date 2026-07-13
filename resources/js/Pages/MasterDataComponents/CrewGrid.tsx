@@ -76,18 +76,44 @@ const CrewGrid: React.FC<CrewGridProps> = ({
                     </div>
 
                     <div>
-                        <span
-                            className={`inline-block px-3 py-1 border rounded-lg text-[8px] font-black uppercase tracking-wider ${
-                                c.status === "READY" ||
-                                c.status === "Ready" ||
-                                c.status_tugas === "Ready" ||
-                                c.status_ketersediaan === "Ready"
-                                    ? "bg-emerald-50 text-emerald-500 border-emerald-100"
-                                    : "bg-amber-50 text-amber-500 border-amber-100"
-                            }`}
-                        >
-                            {c.status_ketersediaan || c.status || "Ready"}
-                        </span>
+                        <div>
+                            {(() => {
+                                // 1. Identifikasi status akun dan ketersediaan
+                                const isAccountActive = c.status === "Aktif";
+                                const ketersediaan =
+                                    c.status_ketersediaan || "Ready";
+
+                                // 2. Jika Akun Tidak Aktif, paksa tampilkan status NONAKTIF
+                                if (!isAccountActive) {
+                                    return (
+                                        <span className="inline-block px-3 py-1 border border-slate-200 bg-slate-50 text-slate-400 rounded-lg text-[8px] font-black uppercase tracking-wider">
+                                            Nonaktif / Resign
+                                        </span>
+                                    );
+                                }
+
+                                // 3. Jika Akun Aktif, baru tampilkan status tugasnya
+                                if (ketersediaan === "Ready") {
+                                    return (
+                                        <span className="inline-block px-3 py-1 border border-emerald-100 bg-emerald-50 text-emerald-500 rounded-lg text-[8px] font-black uppercase tracking-wider">
+                                            Ready (Tersedia)
+                                        </span>
+                                    );
+                                } else if (ketersediaan === "Bertugas") {
+                                    return (
+                                        <span className="inline-block px-3 py-1 border border-blue-100 bg-blue-50 text-blue-500 rounded-lg text-[8px] font-black uppercase tracking-wider">
+                                            Bertugas (Di Jalan)
+                                        </span>
+                                    );
+                                } else {
+                                    return (
+                                        <span className="inline-block px-3 py-1 border border-rose-100 bg-rose-50 text-rose-500 rounded-lg text-[8px] font-black uppercase tracking-wider">
+                                            Sedang Cuti
+                                        </span>
+                                    );
+                                }
+                            })()}
+                        </div>
                     </div>
                 </div>
             ))}

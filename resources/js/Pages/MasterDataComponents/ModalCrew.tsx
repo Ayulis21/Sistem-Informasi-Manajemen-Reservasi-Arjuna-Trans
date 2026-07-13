@@ -81,8 +81,8 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                         }
                         className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-slate-700 outline-none cursor-pointer"
                     >
-                        <option>Aktif</option>
-                        <option>Nonaktif</option>
+                        <option value="Aktif">Aktif</option>
+                        <option value="Tidak Aktif">Nonaktif (Off)</option>
                     </select>
                 </div>
                 <div className="space-y-1">
@@ -99,6 +99,7 @@ const ModalCrew: React.FC<ModalCrewProps> = ({ crewForm, setCrewForm }) => {
                     >
                         <option value="Ready">Ready</option>
                         <option value="Bertugas">Bertugas</option>
+                        <option value="Cuti">Cuti (Izin/Libur)</option>
                     </select>
                 </div>
             </div>

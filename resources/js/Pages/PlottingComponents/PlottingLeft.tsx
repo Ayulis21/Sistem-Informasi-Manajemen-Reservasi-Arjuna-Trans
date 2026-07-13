@@ -110,15 +110,14 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
                                     >
                                         {currentId}
                                     </div>
-                                    {(currentStatus === "scheduled" ||
-                                        currentStatus === "terjadwal" ||
-                                        currentStatus === "plotted") && (
-                                        <div className="bg-emerald-400 text-[6px] font-black text-white px-1.5 py-0.5 rounded uppercase tracking-widest">
+
+                                    {/* 🎯 KUNCI PERBAIKAN: Gunakan isFilled, JANGAN gunakan currentStatus */}
+                                    {isFilled && (
+                                        <div className="bg-emerald-400 text-[6px] font-black text-white px-1.5 py-0.5 rounded uppercase tracking-widest animate-in fade-in zoom-in duration-300">
                                             PLOTTED
                                         </div>
                                     )}
                                 </div>
-
                                 {/* 🚀 KUNCI INDUK 2: Menampilkan nama pemesan asli database secara riil & kapital tebal */}
                                 <p
                                     className={`font-black tracking-tight ${String(selectedOrderId).trim() === String(currentId).trim() ? "text-white" : "text-slate-800"}`}
@@ -128,7 +127,12 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
 
                                 <div className="flex justify-between items-center mt-3">
                                     <div
-                                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${isFilled ? "bg-emerald-400 text-white" : "bg-red-400 text-white"}`}
+                                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                            /* 🎯 Jika penuh = Hijau, Jika belum = Merah */
+                                            isFilled
+                                                ? "bg-emerald-400 text-white"
+                                                : "bg-rose-400 text-white"
+                                        }`}
                                     >
                                         {assignmentsLength} / {totalReq} Unit
                                     </div>

@@ -12,25 +12,17 @@ class PlottingController extends Controller
     // Di dalam Controller yang merender halaman Plotting
     public function index()
     {
+        // 1. Ambil data Pesanan + Detail + Penugasan
         $orders = DB::table('pesanan')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($order) {
-                // 1. Ambil data KEBUTUHAN (Ini untuk angka penyebut, misal: /4)
+                // Ambil Kebutuhan Armada
                 $order->fleetRequirements = DB::table('pesanan_detail_armada')
                     ->where('id_pesanan', $order->id_pesanan)
-                    ->get()
-                    ->map(function ($item) {
-                        $armada = DB::table('armada')->where('tipe_armada', $item->tipe_armada)->first();
-                        return [
-                            'armada_id'   => $armada ? $armada->id_armada : "",
-                            'tipe_armada' => $item->tipe_armada,
-                            'qty'         => (int)$item->qty
-                        ];
-                    });
+                    ->get();
 
-                // 2. 🎯 KUNCI PERBAIKAN: Ambil data REALISASI PLOTTING (Ini untuk angka pembilang, misal: 4/)
-                // Kita tarik dari tabel penugasan
+                // Ambil Penugasan yang sudah ada
                 $order->assignments = DB::table('penugasan')
                     ->where('id_pesanan', $order->id_pesanan)
                     ->get();
@@ -38,10 +30,36 @@ class PlottingController extends Controller
                 return $order;
             });
 
+        // 2. 🎯 HITUNG JARAK KRU (VERSI AMAN)
+        $crew = DB::table('kru')->get()->map(function ($c) {
+            // Hitung Total KM
+            $totalKm = DB::table('penugasan')
+                ->join('pesanan', 'penugasan.id_pesanan', '=', 'pesanan.id_pesanan')
+                ->where(function ($q) use ($c) {
+                    $q->where('penugasan.id_driver', $c->id_kru)
+                        ->orWhere('penugasan.id_helper', $c->id_kru);
+                })
+                ->whereIn('pesanan.status_pesanan', ['Terjadwal', 'Selesai'])
+                ->sum('pesanan.estimasi_jarak');
+
+            // Ambil Tanggal Terakhir Selesai
+            $lastTrip = DB::table('penugasan')
+                ->join('pesanan', 'penugasan.id_pesanan', '=', 'pesanan.id_pesanan')
+                ->where(function ($q) use ($c) {
+                    $q->where('penugasan.id_driver', $c->id_kru)
+                        ->orWhere('penugasan.id_helper', $c->id_kru);
+                })
+                ->max('pesanan.tgl_selesai');
+
+            $c->total_km = (int)$totalKm;
+            $c->last_trip_date = $lastTrip;
+            return $c;
+        });
+
         return Inertia::render('Plotting', [
             'orders' => $orders,
             'armada' => DB::table('armada')->get(),
-            'crew'   => DB::table('kru')->get(),
+            'crew'   => $crew,
         ]);
     }
 

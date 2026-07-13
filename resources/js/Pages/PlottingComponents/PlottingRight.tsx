@@ -88,6 +88,7 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
             poLuar: null;
             armadaId: string;
             driverId: string;
+            driver2Id: string;
             helperId: string;
         };
     }>({});
@@ -103,8 +104,6 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
         }));
     };
 
-    // 2. Reset mode setiap kali ganti pesanan (agar form tidak nyangkut dari pesanan sebelumnya)
-    // 🎯 KUNCI UTAMA: Sinkronisasi data Database ke Form di Layar
     useEffect(() => {
         if (
             selectedOrder?.assignments &&
@@ -152,10 +151,11 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
     const [slotAktifDiPlot, setSlotAktifDiPlot] = useState<number | null>(null);
     const [formPlotLokal, setFormPlotLokal] = useState({
         armadaId: "",
-        driver1Id: "",
-        driver2Id: "",
+        driverId: "",
         coDriverId: "",
     });
+    // 🎯 KUNCI: isFilled bernilai TRUE hanya jika tugas sudah sama dengan kebutuhan
+
     // Hitung berapa banyak slot yang sudah diisi (BUKAN Standby)
     const filledSlotsCount = Object.values(slotModes).filter(
         (mode) => mode !== "Standby",
@@ -204,35 +204,63 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
         assetId: string,
         type: "id_armada" | "id_driver" | "id_helper",
     ) => {
-        if (!assetId || !selectedOrder) return false;
+        if (!assetId || !selectedOrder || !Array.isArray(orders)) return false;
 
-        const startCurrent = new Date(selectedOrder.tgl_berangkat).getTime();
-        const endCurrent = new Date(selectedOrder.tgl_selesai).getTime();
+        // 🎯 UPDATE: Jeda Istirahat Minimal 8 Jam (Standar Keselamatan)
+        // 8 jam * 60 menit * 60 detik * 1000 milidetik
+        const JEDA_MS = 8 * 60 * 60 * 1000;
 
-        // Sisir semua pesanan lain
+        // Kita berikan toleransi 8 jam sebelum berangkat dan 8 jam setelah pulang
+        const startCurrent =
+            new Date(selectedOrder.tgl_berangkat).getTime() - JEDA_MS;
+        const endCurrent =
+            new Date(selectedOrder.tgl_selesai).getTime() + JEDA_MS;
+
         return orders.some((order) => {
-            // 1. Abaikan pesanan yang sedang kita edit sekarang
             if (order.id_pesanan === selectedOrder.id_pesanan) return false;
-
-            // 2. Abaikan pesanan yang sudah batal
             if (order.status_pesanan === "Batal") return false;
 
-            // 3. Cek apakah tanggalnya tabrakan (Overlap)
             const startOther = new Date(order.tgl_berangkat).getTime();
             const endOther = new Date(order.tgl_selesai).getTime();
 
+            // Jika jadwal pesanan lain masuk ke dalam zona "Jadwal Tugas + Jeda 8 Jam"
             const isOverlapping =
                 startCurrent <= endOther && endCurrent >= startOther;
 
             if (isOverlapping) {
-                // 4. Cek apakah asset (Bus/Sopir) tersebut ada di dalam daftar assignments pesanan lain ini
+                // Cek apakah kru/armada tersebut sedang bertugas di pesanan tersebut
                 return order.assignments?.some(
-                    (as: any) => String(as[type]) === String(assetId),
+                    (as: any) =>
+                        String(as.id_armada) === String(assetId) ||
+                        String(as.id_driver) === String(assetId) ||
+                        String(as.id_helper) === String(assetId),
                 );
             }
             return false;
         });
     };
+
+    const sortedCrew = useMemo(() => {
+        return [...crew].sort((a, b) => {
+            // --- 1. Saring yang READY & AKTIF dulu agar selalu di atas (Opsional jika sudah difilter di map) ---
+
+            // --- 2. KRITERIA UTAMA: Jarak Tempuh (KM) Terendah ---
+            if (Number(a.total_km) !== Number(b.total_km)) {
+                return Number(a.total_km) - Number(b.total_km);
+            }
+
+            // --- 3. KRITERIA KEDUA (TIE-BREAKER): Tanggal Terakhir Jalan ---
+            // Jika KM sama, yang terakhir jalannya paling lama (atau belum pernah jalan) diletakkan di atas.
+            const dateA = a.last_trip_date
+                ? new Date(a.last_trip_date).getTime()
+                : 0;
+            const dateB = b.last_trip_date
+                ? new Date(b.last_trip_date).getTime()
+                : 0;
+
+            return dateA - dateB; // Tanggal yang lebih lama (angka lebih kecil) akan naik ke atas
+        });
+    }, [crew]);
 
     return (
         <div className="space-y-4 text-left">
@@ -449,99 +477,138 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                         })}
                                                 </select>
                                             </div>
-
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
-                                                    <Users
-                                                        size={12}
-                                                        className="mr-1"
-                                                    />{" "}
-                                                    Sopir (Driver)
-                                                </label>
-                                                <select
-                                                    value={
-                                                        formValues[num]
-                                                            ?.driverId || ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleSelectChange(
-                                                            num,
-                                                            "driverId",
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
-                                                >
-                                                    <option value="">
-                                                        -- Pilih Sopir --
-                                                    </option>
-                                                    {crew
-                                                        ?.filter(
-                                                            (c: any) =>
-                                                                c.peran ===
-                                                                "Driver",
-                                                        )
-                                                        .map((c: any) => {
-                                                            // 1. 🎯 CEK BENTROK LOKAL (Dalam satu pesanan)
-                                                            const isTaken =
-                                                                Object.entries(
-                                                                    formValues,
-                                                                ).some(
-                                                                    ([
-                                                                        slotIdx,
-                                                                        val,
-                                                                    ]) =>
-                                                                        val.driverId ===
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
+                                                        <Users
+                                                            size={12}
+                                                            className="mr-1"
+                                                        />{" "}
+                                                        Sopir
+                                                    </label>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    {/* DROPDOWN SOPIR 1 */}
+                                                    <select
+                                                        value={
+                                                            formValues[num]
+                                                                ?.driverId || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSelectChange(
+                                                                num,
+                                                                "driverId",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
+                                                    >
+                                                        <option value="">
+                                                            -- Pilih Sopir --
+                                                        </option>
+                                                        {sortedCrew
+                                                            ?.filter(
+                                                                (c: any) =>
+                                                                    c.peran ===
+                                                                        "Driver" &&
+                                                                    c.status ===
+                                                                        "Aktif" &&
+                                                                    c.status_ketersediaan ===
+                                                                        "Ready",
+                                                            )
+                                                            .map(
+                                                                (
+                                                                    c: any,
+                                                                    idx: number,
+                                                                ) => {
+                                                                    const isGlobal =
+                                                                        isAssetBusy(
                                                                             String(
                                                                                 c.id_kru,
-                                                                            ) &&
-                                                                        Number(
-                                                                            slotIdx,
-                                                                        ) !==
-                                                                            num,
-                                                                );
+                                                                            ),
+                                                                            "id_driver",
+                                                                        );
+                                                                    const isLocal =
+                                                                        Object.entries(
+                                                                            formValues,
+                                                                        ).some(
+                                                                            ([
+                                                                                sIdx,
+                                                                                val,
+                                                                            ]) =>
+                                                                                (val.driverId ===
+                                                                                    String(
+                                                                                        c.id_kru,
+                                                                                    ) ||
+                                                                                    val.driver2Id ===
+                                                                                        String(
+                                                                                            c.id_kru,
+                                                                                        )) &&
+                                                                                Number(
+                                                                                    sIdx,
+                                                                                ) !==
+                                                                                    num,
+                                                                        );
 
-                                                            // 2. 🎯 CEK BENTROK GLOBAL (Pesanan lain di tanggal yang sama)
-                                                            const isGlobalBusy =
-                                                                isAssetBusy(
-                                                                    String(
-                                                                        c.id_kru,
-                                                                    ),
-                                                                    "id_driver",
-                                                                );
+                                                                    const isRecommended =
+                                                                        idx <
+                                                                            3 &&
+                                                                        !isGlobal &&
+                                                                        !isLocal;
 
-                                                            return (
-                                                                <option
-                                                                    key={
-                                                                        c.id_kru
-                                                                    }
-                                                                    value={
-                                                                        c.id_kru
-                                                                    }
-                                                                    /* 🎯 Gabungkan kedua validasi agar tidak bisa diklik jika salah satu terpenuhi */
-                                                                    disabled={
-                                                                        isTaken ||
-                                                                        isGlobalBusy
-                                                                    }
-                                                                >
-                                                                    {c.nama_kru}
-                                                                    {isTaken
-                                                                        ? " (DIPILIH DI SLOT LAIN)"
-                                                                        : isGlobalBusy
-                                                                          ? " (JADWAL BENTROK)"
-                                                                          : ""}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                </select>
+                                                                    const isNotAvailable =
+                                                                        c.status_ketersediaan ===
+                                                                            "Bertugas" ||
+                                                                        c.status_ketersediaan ===
+                                                                            "Cuti";
+
+                                                                    return (
+                                                                        <option
+                                                                            key={
+                                                                                c.id_kru
+                                                                            }
+                                                                            value={
+                                                                                c.id_kru
+                                                                            }
+                                                                            disabled={
+                                                                                isGlobal ||
+                                                                                isLocal ||
+                                                                                c.status_ketersediaan ===
+                                                                                    "Bertugas"
+                                                                            }
+                                                                        >
+                                                                            {isRecommended
+                                                                                ? ""
+                                                                                : ""}
+                                                                            {
+                                                                                c.nama_kru
+                                                                            }{" "}
+                                                                            |{" "}
+                                                                            {Number(
+                                                                                c.total_km ||
+                                                                                    0,
+                                                                            ).toLocaleString()}{" "}
+                                                                            KM
+                                                                            {isGlobal
+                                                                                ? " (BENTROK)"
+                                                                                : isLocal
+                                                                                  ? " (DIPILIH)"
+                                                                                  : ""}
+                                                                        </option>
+                                                                    );
+                                                                },
+                                                            )}
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
+                                                <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1">
                                                     <UserCheck
-                                                        size={12}
-                                                        className="mr-1 text-emerald-500"
+                                                        size={10}
+                                                        className="text-emerald-500"
                                                     />{" "}
-                                                    Kondektur / Helper
+                                                    Helper
                                                 </label>
                                                 <select
                                                     value={
@@ -555,70 +622,113 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                             e.target.value,
                                                         )
                                                     }
-                                                    /* 🎯 Desain Anda tetap utuh 100% */
                                                     className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
                                                 >
                                                     <option value="">
                                                         -- Tanpa Helper --
                                                     </option>
-                                                    {crew
+                                                    {sortedCrew
+                                                        /* 1. Saring: Hanya Helper, yang berstatus Aktif, dan sedang Ready */
                                                         ?.filter(
                                                             (c: any) =>
                                                                 c.peran ===
-                                                                "Helper",
+                                                                    "Helper" &&
+                                                                c.status ===
+                                                                    "Aktif" &&
+                                                                c.status_ketersediaan ===
+                                                                    "Ready",
                                                         )
-                                                        .map((c: any) => {
-                                                            // 1. 🎯 CEK BENTROK LOKAL (Slot 1 vs Slot 2)
-                                                            const isTaken =
-                                                                Object.entries(
-                                                                    formValues,
-                                                                ).some(
-                                                                    ([
-                                                                        slotIdx,
-                                                                        val,
-                                                                    ]) =>
-                                                                        val.helperId ===
-                                                                            String(
-                                                                                c.id_kru,
-                                                                            ) &&
-                                                                        Number(
-                                                                            slotIdx,
-                                                                        ) !==
-                                                                            num,
-                                                                );
+                                                        .map(
+                                                            (
+                                                                c: any,
+                                                                idx: number,
+                                                            ) => {
+                                                                // 2. Cek Bentrok Global (Jadwal di pesanan lain + Jeda 8 jam)
+                                                                const isGlobal =
+                                                                    isAssetBusy(
+                                                                        String(
+                                                                            c.id_kru,
+                                                                        ),
+                                                                        "id_helper",
+                                                                    );
 
-                                                            // 2. 🎯 CEK BENTROK GLOBAL (Jadwal di pesanan lain)
-                                                            const isGlobalBusy =
-                                                                isAssetBusy(
+                                                                // 3. Cek Bentrok Lokal (Sudah dipilih di slot/bus lain pada pesanan ini)
+                                                                const isLocal =
+                                                                    Object.entries(
+                                                                        formValues,
+                                                                    ).some(
+                                                                        ([
+                                                                            sIdx,
+                                                                            val,
+                                                                        ]) =>
+                                                                            (val.driverId ===
+                                                                                String(
+                                                                                    c.id_kru,
+                                                                                ) ||
+                                                                                val.helperId ===
+                                                                                    String(
+                                                                                        c.id_kru,
+                                                                                    )) &&
+                                                                            Number(
+                                                                                sIdx,
+                                                                            ) !==
+                                                                                num,
+                                                                    );
+
+                                                                // 4. Anti-Merangkap: Cek apakah orang ini sudah dipilih jadi Sopir di bus yang sama
+                                                                const isAlreadyDriver1 =
+                                                                    formValues[
+                                                                        num
+                                                                    ]
+                                                                        ?.driverId ===
                                                                     String(
                                                                         c.id_kru,
-                                                                    ),
-                                                                    "id_helper",
-                                                                );
+                                                                    );
 
-                                                            return (
-                                                                <option
-                                                                    key={
-                                                                        c.id_kru
-                                                                    }
-                                                                    value={
-                                                                        c.id_kru
-                                                                    }
-                                                                    /* 🎯 Kunci jika bentrok lokal ATAU global */
-                                                                    disabled={
-                                                                        isTaken ||
-                                                                        isGlobalBusy
-                                                                    }
-                                                                >
-                                                                    {c.nama_kru}
-                                                                    {isTaken
-                                                                        ? " (DIPILIH DI SLOT LAIN)"
-                                                                        : isGlobalBusy
-                                                                          ? " (JADWAL BENTROK)"
-                                                                          : ""}
-                                                                </option>
-                                                            );
-                                                        })}
+                                                                // 5. 🎯 LOGIKA REKOMENDASI HELPER (KM Terendah & Tersedia)
+                                                                const isRecommended =
+                                                                    idx < 3 &&
+                                                                    !isGlobal &&
+                                                                    !isLocal &&
+                                                                    !isAlreadyDriver1;
+
+                                                                return (
+                                                                    <option
+                                                                        key={
+                                                                            c.id_kru
+                                                                        }
+                                                                        value={
+                                                                            c.id_kru
+                                                                        }
+                                                                        disabled={
+                                                                            isGlobal ||
+                                                                            isLocal ||
+                                                                            isAlreadyDriver1
+                                                                        }
+                                                                    >
+                                                                        {/* 🎯 TAMPILAN BERSIH: ⭐ Nama | KM (Tanpa tulisan status) */}
+                                                                        {isRecommended
+                                                                            ? " "
+                                                                            : ""}
+                                                                        {
+                                                                            c.nama_kru
+                                                                        }{" "}
+                                                                        |{" "}
+                                                                        {Number(
+                                                                            c.total_km ||
+                                                                                0,
+                                                                        ).toLocaleString()}{" "}
+                                                                        KM
+                                                                        {isGlobal
+                                                                            ? " (BENTROK)"
+                                                                            : isLocal ||
+                                                                                isAlreadyDriver1
+                                                                              ? " (DIPILIH)"
+                                                                              : ""}
+                                                                    </option>
+                                                                );
+                                                            },
+                                                        )}
                                                 </select>
                                             </div>
                                         </>
