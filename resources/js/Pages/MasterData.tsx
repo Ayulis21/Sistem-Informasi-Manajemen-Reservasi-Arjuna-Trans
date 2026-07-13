@@ -47,12 +47,6 @@ const MasterData: React.FC = () => {
     const fetchArmadaData = async () => {
         try {
             const response = await axios.get("/api/admin/armada");
-            // Pastikan Anda melakukan set data ke state yang digunakan untuk merender tabel armada
-            // Jika nama statenya 'armadaFromBackend', maka:
-            // setArmadaData(response.data);
-
-            // Agar simpel, Anda bisa menggunakan window.location.reload()
-            // jika tidak ingin ribet mencari nama state tabelnya:
             window.location.reload();
         } catch (error) {
             console.error("Gagal menarik data armada:", error);
