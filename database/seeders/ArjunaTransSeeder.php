@@ -4,111 +4,135 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class TestingArjunaSeeder extends Seeder
+class ArjunaTransSeeder extends Seeder
 {
     public function run()
     {
-        // Bersihkan data lama agar tidak bentrok
+        // 1. KOSONGKAN TABEL (Hati-hati: Menghapus data lama)
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('penugasan')->truncate();
         DB::table('pesanan_detail_armada')->truncate();
+        DB::table('riwayat_pembayaran')->truncate();
         DB::table('pesanan')->truncate();
         DB::table('kru')->truncate();
         DB::table('armada')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // 1. SEED DATA ARMADA (Berbagai Tipe)
-        $armadaList = [
-            ['nama' => 'Arjuna HDD 01', 'tipe' => 'Big Bus', 'nopol' => 'S 7123 UA'],
-            ['nama' => 'Arjuna HDD 02', 'tipe' => 'Big Bus', 'nopol' => 'S 7124 UA'],
-            ['nama' => 'Srikandi Executive', 'tipe' => 'Medium Bus', 'nopol' => 'S 7456 UB'],
-            ['nama' => 'Bima Elf Long', 'tipe' => 'Elf', 'nopol' => 'S 7890 UC'],
-            ['nama' => 'Nakula Avanza', 'tipe' => 'Mobil', 'nopol' => 'S 7321 UD'],
-        ];
+        // 2. DATA MASTER ARMADA
+        $armadaIds = [];
+        $tipeBus = ['Big Bus', 'Medium Bus', 'Elf', 'Mobil'];
+        foreach ($tipeBus as $idx => $tipe) {
+            for ($i = 1; $i <= 3; $i++) {
+                $armadaIds[] = DB::table('armada')->insertGetId([
+                    'nama_armada' => "Arjuna " . $tipe . " " . $i,
+                    'tipe_armada' => $tipe,
+                    'nopol' => "S " . rand(1000, 9999) . " U" . chr(65 + $idx),
+                    'kapasitas' => ($tipe == 'Big Bus' ? 50 : ($tipe == 'Medium Bus' ? 35 : 15)),
+                    'status_ketersediaan' => 'Tersedia',
+                    'created_at' => now(),
+                ]);
+            }
+        }
 
-        foreach ($armadaList as $a) {
-            DB::table('armada')->insert([
-                'nama_armada' => $a['nama'],
-                'tipe_armada' => $a['tipe'],
-                'nopol' => $a['nopol'],
-                'kapasitas' => 50,
-                'status_ketersediaan' => 'Ready',
+        // 3. DATA MASTER KRU (10 Driver, 10 Helper)
+        $kruIds = [];
+        $names = ['Bambang', 'Agus', 'Eko', 'Dedi', 'Roni', 'Siti', 'Budi', 'Ayu', 'Zainal', 'Randi', 'Heri', 'Toto', 'Maman', 'Yanto', 'Slamet', 'Gatot', 'Wawan', 'Dodi', 'Iwan', 'Joko'];
+        foreach ($names as $idx => $name) {
+            $peran = ($idx < 10) ? 'Driver' : 'Helper';
+            $kruIds[] = DB::table('kru')->insertGetId([
+                'nama_kru' => $name . " " . ($peran == 'Driver' ? '(Sopir)' : '(Kernet)'),
+                'no_telp' => '0812' . rand(10000000, 99999999),
+                'peran' => $peran,
+                'status' => 'Aktif',
                 'created_at' => now(),
             ]);
         }
 
-        // 2. SEED DATA KRU (Untuk Tes Rekomendasi KM & Status)
-        $kruList = [
-            // Sopir
-            ['nama' => 'Bambang (Sopir Senior)', 'peran' => 'Driver', 'status' => 'Aktif', 'ready' => 'Ready'], // Akan dibuat KM Tinggi
-            ['nama' => 'Agus (Sopir Baru)', 'peran' => 'Driver', 'status' => 'Aktif', 'ready' => 'Ready'],     // Akan dibuat KM Rendah (⭐)
-            ['nama' => 'Eko (Sopir Cuti)', 'peran' => 'Driver', 'status' => 'Aktif', 'ready' => 'Cuti'],      // Tidak muncul di plot
-            ['nama' => 'Randi (Sopir Keluar)', 'peran' => 'Driver', 'status' => 'Tidak Aktif', 'ready' => 'Ready'], // Tidak muncul di plot
+        // 4. PESANAN MASA LALU (Untuk testing Rekomendasi KM Terendah)
+        // Kita buat pesanan yang sudah "Selesai" agar kru punya riwayat jarak tempuh
+        for ($i = 1; $i <= 5; $i++) {
+            $idPesanan = 'ORD-PAST-00' . $i;
+            $jarak = rand(200, 1000); // Jarak jauh
 
-            // Helper
-            ['nama' => 'Dedi (Helper 1)', 'peran' => 'Helper', 'status' => 'Aktif', 'ready' => 'Ready'],
-            ['nama' => 'Roni (Helper 2)', 'peran' => 'Helper', 'status' => 'Aktif', 'ready' => 'Ready'],
-            ['nama' => 'Siti (Helper Cuti)', 'peran' => 'Helper', 'status' => 'Aktif', 'ready' => 'Cuti'],
-        ];
+            DB::table('pesanan')->insert([
+                'id_pesanan' => $idPesanan,
+                'nama_pemesan' => "Pelanggan Lama " . $i,
+                'alamat' => "Alamat Lama " . $i,
+                'no_telp' => "0857" . rand(1111, 9999),
+                'tgl_berangkat' => Carbon::now()->subDays(10 + $i),
+                'tgl_selesai' => Carbon::now()->subDays(8 + $i),
+                'alamat_penjemputan' => "Mojokerto",
+                'tujuan_main' => "Bali / Jakarta",
+                'rute' => "PP",
+                'estimasi_jarak' => $jarak,
+                'harga_sewa' => 5000000,
+                'status_pesanan' => 'Selesai',
+                'created_at' => now(),
+            ]);
 
-        foreach ($kruList as $k) {
-            DB::table('kru')->insert([
-                'nama_kru' => $k['nama'],
-                'no_telp' => '0812345678',
-                'peran' => $k['peran'],
-                'status' => $k['status'],
-                'status_ketersediaan' => $k['ready'],
+            // Plotting kru tertentu saja agar KM mereka tinggi (Bambang & Agus)
+            DB::table('penugasan')->insert([
+                'id_pesanan' => $idPesanan,
+                'jenis_aset' => 'internal',
+                'id_armada' => $armadaIds[0], // Bus 1
+                'id_driver' => $kruIds[0], // Bambang (Akan punya KM tinggi)
+                'id_helper' => $kruIds[10], // Heri
                 'created_at' => now(),
             ]);
         }
 
-        // 3. SEED PESANAN MASA LALU (Untuk mencatat KM Jalan)
-        // Kita buat Bambang sudah jalan 5000 KM
-        $idLama = 'ORD-PAST-001';
+        // 5. PESANAN SEKARANG (Untuk testing JADWAL BENTROK)
+        // Pesanan yang sedang jalan hari ini
         DB::table('pesanan')->insert([
-            'id_pesanan' => $idLama,
-            'nama_pemesan' => 'Pelanggan Masa Lalu',
-            'alamat' => '-',
-            'no_telp' => '-',
-            'alamat_penjemputan' => '-',
-            'tujuan_main' => '-',
-            'rute' => '-',
-            'tgl_berangkat' => Carbon::now()->subMonth(),
-            'tgl_selesai' => Carbon::now()->subMonth()->addDays(3),
-            'estimasi_jarak' => 5000, // 🎯 JARAK TINGGI
-            'harga_sewa' => 0,
-            'status_pesanan' => 'Selesai'
+            'id_pesanan' => 'ORD-BUSY-001',
+            'nama_pemesan' => "Rombongan Sedang Jalan",
+            'alamat' => "Malang",
+            'no_telp' => "0812333",
+            'tgl_berangkat' => Carbon::now()->subHours(2),
+            'tgl_selesai' => Carbon::now()->addHours(5),
+            'alamat_penjemputan' => "Terminal Malang",
+            'tujuan_main' => "Surabaya",
+            'rute' => "Tol",
+            'estimasi_jarak' => 100,
+            'harga_sewa' => 2000000,
+            'status_pesanan' => 'Terjadwal',
         ]);
 
+        // Plot Eko (ID Driver 3) di pesanan yang sedang jalan ini
         DB::table('penugasan')->insert([
-            'id_pesanan' => $idLama,
+            'id_pesanan' => 'ORD-BUSY-001',
             'jenis_aset' => 'internal',
-            'id_driver' => 1, // Bambang
-            'id_helper' => 5, // Dedi
+            'id_armada' => $armadaIds[1],
+            'id_driver' => $kruIds[2], // Eko (Akan muncul JADWAL BENTROK)
+            'id_helper' => $kruIds[11],
         ]);
 
-        // 4. SEED PESANAN TEST (Yang akan Anda buka di halaman Plotting)
-        $idTest = 'ORD-TEST-999';
+        // 6. PESANAN BARU (Untuk Anda Test Plotting)
+        // Pesanan besok yang butuh 3 armada berbeda
+        $idTest = 'ORD-' . date('Ymd') . '-TEST';
         DB::table('pesanan')->insert([
             'id_pesanan' => $idTest,
-            'nama_pemesan' => 'Bapak Budi (TESTING FITUR)',
-            'alamat' => 'Mojokerto',
-            'no_telp' => '0812',
-            'tgl_berangkat' => Carbon::now()->addDays(2)->setTime(08, 0, 0),
-            'tgl_selesai' => Carbon::now()->addDays(4)->setTime(20, 0, 0),
-            'alamat_penjemputan' => 'Alun-alun',
-            'tujuan_main' => 'Bali',
-            'rute' => 'Mojokerto - Bali',
-            'estimasi_jarak' => 1000,
-            'harga_sewa' => 10000000,
-            'status_pesanan' => 'Disetujui'
+            'nama_pemesan' => "Bapak Budi (Test Plotting Multi)",
+            'alamat' => "Mojokerto Kota",
+            'no_telp' => "0899888777",
+            'tgl_berangkat' => Carbon::now()->addDays(1)->setTime(07, 0, 0),
+            'tgl_selesai' => Carbon::now()->addDays(2)->setTime(21, 0, 0),
+            'alamat_penjemputan' => "Kantor Pemkot",
+            'tujuan_main' => "Yogyakarta",
+            'rute' => "Malioboro - Parangtritis",
+            'estimasi_jarak' => 350,
+            'harga_sewa' => 9000000,
+            'status_pesanan' => 'Disetujui',
         ]);
 
+        // Detail Armadanya: 1 Big Bus, 1 Elf, 1 Mobil
         DB::table('pesanan_detail_armada')->insert([
             ['id_pesanan' => $idTest, 'tipe_armada' => 'Big Bus', 'qty' => 1],
             ['id_pesanan' => $idTest, 'tipe_armada' => 'Elf', 'qty' => 1],
+            ['id_pesanan' => $idTest, 'tipe_armada' => 'Mobil', 'qty' => 1],
         ]);
     }
 }

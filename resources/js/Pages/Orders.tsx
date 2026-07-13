@@ -529,33 +529,34 @@ const Orders: React.FC = () => {
                                     o.total_terbayar || o.nominal || 0,
                                 );
                             }
+                            // --- CARI BAGIAN INI DI Orders.tsx ---
                             const isLunas =
                                 totalHarga > 0 && totalBayar >= totalHarga;
                             let labelKomponen = null;
 
+                            // 🎯 PERBAIKAN: Urutkan dari yang paling penting (Pembayaran & Pembatalan)
                             if (statusSkrg === "Batal") {
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-100 text-red-500 rounded-md uppercase tracking-wider">
                                         Batal
                                     </span>
                                 );
+                            } else if (adakahPembayaranBelumAcc) {
+                            /* 1. CEK: Apakah ada pembayaran yang butuh konfirmasi? (Paling Prioritas) */
+                                labelKomponen = (
+                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider animate-pulse">
+                                        Perlu ACC
+                                    </span>
+                                );
                             } else if (isLunas && statusSkrg === "Terjadwal") {
+                            /* 2. CEK: Apakah sudah lunas? */
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-500 rounded-md uppercase tracking-wider">
                                         Lunas
                                     </span>
                                 );
-                            } else if (
-                                adakahPembayaranBelumAcc &&
-                                statusSkrg === "Disetujui"
-                            ) {
-                                // Jika pesanan sudah disetujui, lalu ada cicilan baru masuk yang berstatus 'Pending'
-                                labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider">
-                                        Perlu ACC
-                                    </span>
-                                );
                             } else if (statusSkrg === "Pending") {
+                            /* 3. CEK: Apakah pesanan masih baru (Pending)? */
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-rose-100 text-rose-500 rounded-md uppercase tracking-wider">
                                         Baru
