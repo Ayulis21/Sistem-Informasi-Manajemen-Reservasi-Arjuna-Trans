@@ -262,60 +262,85 @@ const Orders: React.FC = () => {
     };
 
     const ordersTersaring = React.useMemo(() => {
-        const dataMentahBiner = orders || [];
-        if (!Array.isArray(dataMentahBiner) || dataMentahBiner.length === 0)
-            return [];
-        if (
-            kataKunciPencarian === "" &&
-            statusFilterAktif === "Semua" &&
-            filterPembayaranAktif === "Semua"
-        ) {
-            return dataMentahBiner;
-        }
+        // 1. Jaring pengaman data
+        const dataMentah = Array.isArray(orders) ? orders : [];
+        const sekarang = new Date();
+        const kataKunci = kataKunciPencarian.toLowerCase().trim();
 
-        return dataMentahBiner.filter((o: any) => {
-            // 1. Saringan Boks Pencarian Kata Kunci
-            const kataKunci = kataKunciPencarian.toLowerCase().trim();
-            const cocokKataKunci =
+        return dataMentah.filter((o: any) => {
+            // --- A. LOGIKA PENCARIAN (NAMA, ID, TUJUAN) ---
+            const nama = String(
+                o.nama_pemesan || o.customerName || "",
+            ).toLowerCase();
+            const id = String(o.id_pesanan || o.id || "").toLowerCase();
+            const tujuan = String(
+                o.tujuan_main || o.destination || "",
+            ).toLowerCase();
+
+            const cocokSearch =
                 kataKunci === "" ||
-                String(o.nama_pemesan || "")
-                    .toLowerCase()
-                    .includes(kataKunci) ||
-                String(o.id_pesanan || "")
-                    .toLowerCase()
-                    .includes(kataKunci) ||
-                String(o.tujuan_main || "")
-                    .toLowerCase()
-                    .includes(kataKunci);
+                nama.includes(kataKunci) ||
+                id.includes(kataKunci) ||
+                tujuan.includes(kataKunci);
 
-            // 2. Saringan Dropdown Status Pesanan (Disetujui, Terjadwal, Pending, Batal)
-            const cocokStatus =
-                statusFilterAktif === "Semua" ||
-                String(o.status_pesanan) === statusFilterAktif;
-            let statusPelunasanKartu = "Belum Bayar";
+            // Jika tidak cocok pencarian, langsung buang
+            if (!cocokSearch) return false;
 
-            if (String(o.status_pesanan).toLowerCase() === "disetujui") {
-                statusPelunasanKartu = "DP";
-            } else if (String(o.status_pesanan).toLowerCase() === "terjadwal") {
-                statusPelunasanKartu = "Lunas";
-            } else if (String(o.status_pesanan).toLowerCase() === "batal") {
-                statusPelunasanKartu = "Belum Bayar";
-            } else {
-                statusPelunasanKartu = "Belum Bayar";
+            // --- B. LOGIKA STATUS VISUAL ---
+            const dbStatus = String(o.status_pesanan || o.status || "");
+            const tglBerangkat = o.tgl_berangkat
+                ? new Date(o.tgl_berangkat)
+                : null;
+            const tglSelesai = o.tgl_selesai ? new Date(o.tgl_selesai) : null;
+
+            let statusVisual = dbStatus;
+            if (dbStatus === "Terjadwal" && tglBerangkat && tglSelesai) {
+                if (sekarang >= tglBerangkat && sekarang <= tglSelesai) {
+                    statusVisual = "Sedang Jalan";
+                } else if (sekarang > tglSelesai) {
+                    statusVisual = "Menunggu Selesai";
+                }
             }
 
-            // 🚀 SINKRONISASI DROPDOWN ATAS: Mencocokkan nilai value dropdown monitor Anda
+            const cocokStatus =
+                statusFilterAktif === "Semua" ||
+                statusFilterAktif === "Semua Status" ||
+                statusVisual === statusFilterAktif;
+
+            // --- C. LOGIKA PEMBAYARAN ---
+            const totalHarga = Number(o.harga_sewa || o.totalPrice || 0);
+            let totalBayarRiil = 0;
+            try {
+                const catatan = o.catatan_pembayaran;
+                if (
+                    catatan &&
+                    typeof catatan === "string" &&
+                    catatan.trim().startsWith("[")
+                ) {
+                    JSON.parse(catatan).forEach((p: any) => {
+                        if (p.paymentStatus === "Disetujui")
+                            totalBayarRiil += Number(p.amount || 0);
+                    });
+                } else {
+                    totalBayarRiil = Number(o.total_terbayar || o.nominal || 0);
+                }
+            } catch (e) {
+                totalBayarRiil = 0;
+            }
+
+            let kategoriBayar = "Belum Bayar";
+            if (totalHarga > 0) {
+                if (totalBayarRiil >= totalHarga) kategoriBayar = "Lunas";
+                else if (totalBayarRiil > 0) kategoriBayar = "DP";
+            }
+
             const cocokPembayaran =
                 filterPembayaranAktif === "Semua" ||
                 filterPembayaranAktif === "Semua Pembayaran" ||
-                (filterPembayaranAktif === "Belum Bayar" &&
-                    statusPelunasanKartu === "Belum Bayar") ||
-                (filterPembayaranAktif === "DP" &&
-                    statusPelunasanKartu === "DP") ||
-                (filterPembayaranAktif === "Lunas" &&
-                    statusPelunasanKartu === "Lunas");
+                kategoriBayar === filterPembayaranAktif;
 
-            return cocokKataKunci && cocokStatus && cocokPembayaran;
+            // HARUS LOLOS SEMUA FILTER
+            return cocokStatus && cocokPembayaran;
         });
     }, [orders, kataKunciPencarian, statusFilterAktif, filterPembayaranAktif]);
 
@@ -361,24 +386,35 @@ const Orders: React.FC = () => {
                                         ▼
                                     </div>
                                 </div>
-                                <div className="relative ">
+                                <div className="relative">
                                     <select
                                         value={statusFilterAktif}
                                         onChange={(e) =>
                                             setStatusFilterAktif(e.target.value)
                                         }
-                                        className="appearance-none pl-4 pr-8 py-2.5 bg-white border border-slate-200/70 rounded-[1.2rem] text-[10px] font-black uppercase tracking-wider text-slate-500 outline-none shadow-sm cursor-pointer min-w-[130px]"
+                                        className="appearance-none pl-4 pr-8 py-2.5 bg-white border border-slate-200/70 rounded-[1.2rem] text-[10px] font-black uppercase tracking-wider text-slate-500 outline-none shadow-sm cursor-pointer min-w-[150px]"
                                     >
                                         <option value="Semua">
                                             Semua Status
+                                        </option>
+                                        <option value="Pending">
+                                            Baru (Pending)
                                         </option>
                                         <option value="Disetujui">
                                             Disetujui
                                         </option>
                                         <option value="Terjadwal">
-                                            Terjadwal
+                                            Terjadwal (Mendatang)
                                         </option>
-                                        <option value="Pending">Pending</option>
+                                        <option value="Sedang Jalan">
+                                            Sedang Jalan
+                                        </option>
+                                        <option value="Menunggu Selesai">
+                                            Menunggu Selesai
+                                        </option>
+                                        <option value="Selesai">
+                                            Selesai (Tuntas)
+                                        </option>
                                         <option value="Batal">Batal</option>
                                     </select>
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[8px]">
@@ -478,12 +514,19 @@ const Orders: React.FC = () => {
                 <div className="space-y-3">
                     {ordersTersaring.length > 0 ? (
                         ordersTersaring.map((o: any, idx: number) => {
+                            // 1. DEFINISIKAN SEMUA VARIABEL DASAR (Hanya Sekali)
                             const totalHarga = Number(
                                 o.harga_sewa || o.total_harga || 0,
                             );
                             const statusSkrg = o.status_pesanan || o.status;
-                            let adakahPembayaranBelumAcc = false;
+                            const tglBerangkat = new Date(o.tgl_berangkat);
+                            const tglSelesai = new Date(o.tgl_selesai);
+                            const sekarang = new Date();
+
+                            // 2. HITUNG TOTAL BAYAR & CEK PEMBAYARAN PENDING
                             let totalBayar = 0;
+                            let adakahPembayaranBelumAcc = false;
+
                             try {
                                 if (
                                     o.catatan_pembayaran &&
@@ -493,9 +536,7 @@ const Orders: React.FC = () => {
                                         o.catatan_pembayaran,
                                     );
                                     if (Array.isArray(arrayJson)) {
-                                        const kantongPaymentsLokal = arrayJson;
                                         arrayJson.forEach((p: any) => {
-                                            // Nominal sewa luar HANYA terakumulasi jika statusnya "Disetujui"
                                             if (
                                                 p.paymentStatus === "Disetujui"
                                             ) {
@@ -503,8 +544,6 @@ const Orders: React.FC = () => {
                                                     p.amount || 0,
                                                 );
                                             }
-
-                                            // Label kuning Perlu ACC menyala jika status pending DAN nominal uang diisi > 0
                                             if (
                                                 p.paymentStatus === "Pending" &&
                                                 Number(p.amount || 0) > 0
@@ -529,34 +568,56 @@ const Orders: React.FC = () => {
                                     o.total_terbayar || o.nominal || 0,
                                 );
                             }
-                            // --- CARI BAGIAN INI DI Orders.tsx ---
-                            const isLunas =
-                                totalHarga > 0 && totalBayar >= totalHarga;
+
+                            // 3. DEFINISIKAN isLunas (Agar error "Cannot find name" hilang)
+                            const piutang = totalHarga - totalBayar;
+                            const isLunas = totalHarga > 0 && piutang <= 0;
+
+                            // 4. LOGIKA LABEL STATUS (Gunakan variabel yang sudah ada)
                             let labelKomponen = null;
 
-                            // 🎯 PERBAIKAN: Urutkan dari yang paling penting (Pembayaran & Pembatalan)
                             if (statusSkrg === "Batal") {
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-100 text-red-500 rounded-md uppercase tracking-wider">
                                         Batal
                                     </span>
                                 );
-                            } else if (adakahPembayaranBelumAcc) {
-                            /* 1. CEK: Apakah ada pembayaran yang butuh konfirmasi? (Paling Prioritas) */
+                            } else if (statusSkrg === "Selesai") {
                                 labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-500 rounded-md uppercase tracking-wider animate-pulse">
+                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-500 text-white rounded-md uppercase tracking-wider">
+                                        Selesai
+                                    </span>
+                                );
+                            } else if (statusSkrg === "Terjadwal") {
+                                if (
+                                    sekarang >= tglBerangkat &&
+                                    sekarang <= tglSelesai
+                                ) {
+                                    labelKomponen = (
+                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-blue-600 text-white rounded-md uppercase tracking-wider animate-pulse">
+                                            Sedang Jalan
+                                        </span>
+                                    );
+                                } else if (sekarang > tglSelesai) {
+                                    labelKomponen = (
+                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-md uppercase tracking-wider">
+                                            Menunggu Selesai
+                                        </span>
+                                    );
+                                } else {
+                                    labelKomponen = (
+                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-md uppercase tracking-wider">
+                                            Terjadwal
+                                        </span>
+                                    );
+                                }
+                            } else if (adakahPembayaranBelumAcc) {
+                                labelKomponen = (
+                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-500 text-white rounded-md uppercase tracking-wider animate-bounce">
                                         Perlu ACC
                                     </span>
                                 );
-                            } else if (isLunas && statusSkrg === "Terjadwal") {
-                            /* 2. CEK: Apakah sudah lunas? */
-                                labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-500 rounded-md uppercase tracking-wider">
-                                        Lunas
-                                    </span>
-                                );
                             } else if (statusSkrg === "Pending") {
-                            /* 3. CEK: Apakah pesanan masih baru (Pending)? */
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-rose-100 text-rose-500 rounded-md uppercase tracking-wider">
                                         Baru
@@ -1156,7 +1217,8 @@ const Orders: React.FC = () => {
                                         )}
 
                                         {o.status_pesanan === "Terjadwal" && (
-                                            <>
+                                            <div className="flex flex-wrap gap-2">
+                                                {/* Tombol Terjadwal (Mati) */}
                                                 <button
                                                     type="button"
                                                     disabled
@@ -1164,6 +1226,29 @@ const Orders: React.FC = () => {
                                                 >
                                                     Terjadwal
                                                 </button>
+
+                                                {/* 🎯 TOMBOL BARU: SELESAIKAN PESANAN 
+            Hanya muncul jika tanggal sekarang sudah melewati/sama dengan tanggal selesai
+        */}
+                                                {new Date() >=
+                                                    new Date(o.tgl_selesai) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleUpdateStatus(
+                                                                o.id_pesanan ||
+                                                                    o.id,
+                                                                "Selesai",
+                                                                o.nama_pemesan ||
+                                                                    "",
+                                                            )
+                                                        }
+                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md animate-bounce hover:animate-none"
+                                                    >
+                                                        Selesaikan
+                                                    </button>
+                                                )}
+
                                                 <button
                                                     type="button"
                                                     onClick={() =>
@@ -1173,7 +1258,7 @@ const Orders: React.FC = () => {
                                                 >
                                                     Ubah Plot
                                                 </button>
-                                            </>
+                                            </div>
                                         )}
 
                                         {(o.status_pesanan === "Batal" ||

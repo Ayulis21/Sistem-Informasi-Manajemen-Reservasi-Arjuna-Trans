@@ -21,7 +21,7 @@ const MasterData: React.FC = () => {
         tipe_armada: "",
         kapasitas: 50,
         fasilitas: "",
-        status_ketersediaan: "Ready",
+        status_ketersediaan: "Tersedia",
         status: "READY",
     });
     const [crewForm, setCrewForm] = useState({
@@ -251,7 +251,7 @@ const MasterData: React.FC = () => {
                                         tipe_armada: "Big Bus",
                                         kapasitas: 50,
                                         fasilitas: "AC, TV",
-                                        status_ketersediaan: "Ready",
+                                        status_ketersediaan: "Tersedia",
                                         status: "READY",
                                     });
                                 } else {
@@ -307,7 +307,7 @@ const MasterData: React.FC = () => {
                                                   : item.facilities
                                               : "AC, TV",
                                     status_ketersediaan:
-                                        item.status_ketersediaan || "Ready",
+                                        item.status_ketersediaan || "Tersedia",
                                     status: "READY",
                                 });
                                 setIsModalOpen(true);

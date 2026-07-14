@@ -46,7 +46,7 @@ const ArmadaGrid: React.FC<ArmadaGridProps> = ({
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300 text-left">
             {/* KUNCI UTAMA: Mengubah dari armadaList menjadi finalArmadaList agar terhubung ke database */}
-            {finalArmadaList.map((item: any, idx: number) => (
+            {finalArmadaList.map((item: any, idx: number, a: any) => (
                 <div
                     key={item.id_armada || idx}
                     className="bg-white rounded-[2.5rem] border border-slate-100/90 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-6 space-y-4 relative flex flex-col justify-between min-h-[220px]"
@@ -138,17 +138,50 @@ const ArmadaGrid: React.FC<ArmadaGridProps> = ({
                     </div>
 
                     {/* Status Badge Bawah */}
+                    {/* Status Badge Bawah */}
                     <div className="pt-2">
-                        <span
-                            className={`inline-block px-3 py-1 border rounded-lg text-[8px] font-black uppercase tracking-wider ${
-                                item.status_ketersediaan === "Tersedia" ||
-                                item.status === "READY"
-                                    ? "bg-emerald-50 text-emerald-500 border-emerald-100"
-                                    : "bg-blue-50 text-blue-500 border-blue-100"
-                            }`}
-                        >
-                            {item.status_ketersediaan || item.status}
-                        </span>
+                        <div>
+                            {(() => {
+                                const statusRaw =
+                                    item.status_ketersediaan || "Tersedia";
+
+                                // 🎯 KUNCI: Ubah ke huruf kecil semua agar tidak sensitif (Ready vs ready)
+                                const s = String(statusRaw)
+                                    .toLowerCase()
+                                    .trim();
+
+                                let colorClass = "";
+
+                                // 🎯 COCOKKAN DUA BAHASA SEKALIGUS
+                                if (s === "tersedia" || s === "tersedia") {
+                                    colorClass =
+                                        "bg-emerald-50 text-emerald-600 border-emerald-100"; // HIJAU
+                                } else if (
+                                    s === "perbaikan" ||
+                                    s === "maintenance"
+                                ) {
+                                    colorClass =
+                                        "bg-rose-50 text-rose-600 border-rose-100"; // MERAH
+                                } else if (
+                                    s === "perjalanan" ||
+                                    s === "on duty"
+                                ) {
+                                    colorClass =
+                                        "bg-blue-50 text-blue-600 border-blue-100"; // BIRU
+                                } else {
+                                    colorClass =
+                                        "bg-slate-50 text-slate-600 border-slate-100"; // ABU-ABU
+                                }
+
+                                return (
+                                    <span
+                                        className={`inline-block px-3 py-1 border rounded-lg text-[8px] font-black uppercase tracking-wider ${colorClass}`}
+                                    >
+                                        {statusRaw}
+                                    </span>
+                                );
+                            })()}
+                        </div>
                     </div>
                 </div>
             ))}

@@ -29,6 +29,30 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
     crew,
     handleUpdateAssignment,
 }) => {
+    const [slotModes, setSlotModes] = useState<{
+        [key: number]: "Standby" | "Internal" | "Rekanan";
+    }>({});
+    const [formValues, setFormValues] = useState<{
+        [key: number]: {
+            biayaLuar: null;
+            kapasitasLuar: null;
+            platLuar: null;
+            poLuar: null;
+            armadaId: string;
+            driverId: string;
+            driver2Id: string;
+            helperId: string;
+        };
+    }>({});
+    const [isOpenModalInternal, setIsOpenModalInternal] =
+        useState<boolean>(false);
+    const [slotAktifDiPlot, setSlotAktifDiPlot] = useState<number | null>(null);
+    const [formPlotLokal, setFormPlotLokal] = useState({
+        armadaId: "",
+        driverId: "",
+        coDriverId: "",
+    });
+
     if (!selectedOrder) {
         return (
             <div className="h-full min-h-[400px] bg-white rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-300 space-y-4">
@@ -77,22 +101,6 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
         };
     }, [selectedOrder?.id_pesanan]);
 
-    // 1. Deklarasi State (WAJIB ADA agar error 'Cannot find name' hilang)
-    const [slotModes, setSlotModes] = useState<{
-        [key: number]: "Standby" | "Internal" | "Rekanan";
-    }>({});
-
-    const [formValues, setFormValues] = useState<{
-        [key: number]: {
-            platLuar: null;
-            poLuar: null;
-            armadaId: string;
-            driverId: string;
-            driver2Id: string;
-            helperId: string;
-        };
-    }>({});
-
     const handleSelectChange = (
         slotNum: number,
         field: string,
@@ -115,24 +123,26 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
             selectedOrder.assignments.forEach((as: any, index: number) => {
                 const num = index + 1; // Slot 1, 2, 3...
 
-                // 1. Tentukan mode (Internal / Rekanan)
+                // 1. Tentukan mode
                 initialModes[num] =
                     as.jenis_aset === "internal" ? "Internal" : "Rekanan";
 
-                // 2. Masukkan ID Bus, Sopir, dan Helper ke form
+                // 2. Masukkan semua data dari database ke dalam State Form
                 initialValues[num] = {
                     armadaId: String(as.id_armada || ""),
                     driverId: String(as.id_driver || ""),
                     helperId: String(as.id_helper || ""),
                     poLuar: as.nama_po_mitra || "",
                     platLuar: as.plat_mitra || "",
+                    // 🎯 TAMBAHKAN 2 BARIS INI (Mapping dari Nama Kolom Database Anda)
+                    kapasitasLuar: as.kapasitas_mitra || "",
+                    biayaLuar: as.harga_modal_mitra || "",
                 };
             });
 
             setSlotModes(initialModes);
             setFormValues(initialValues);
         } else {
-            // Jika pesanan baru/belum di-plot, kosongkan form
             setSlotModes({});
             setFormValues({});
         }
@@ -146,17 +156,6 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
     const resetSlotToStandby = (slotNum: number) => {
         setSlotModes((prev: any) => ({ ...prev, [slotNum]: "Standby" }));
     };
-    const [isOpenModalInternal, setIsOpenModalInternal] =
-        useState<boolean>(false);
-    const [slotAktifDiPlot, setSlotAktifDiPlot] = useState<number | null>(null);
-    const [formPlotLokal, setFormPlotLokal] = useState({
-        armadaId: "",
-        driverId: "",
-        coDriverId: "",
-    });
-    // 🎯 KUNCI: isFilled bernilai TRUE hanya jika tugas sudah sama dengan kebutuhan
-
-    // Hitung berapa banyak slot yang sudah diisi (BUKAN Standby)
     const filledSlotsCount = Object.values(slotModes).filter(
         (mode) => mode !== "Standby",
     ).length;
@@ -166,8 +165,17 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
         totalBusesNeeded > 0 ? (filledSlotsCount / totalBusesNeeded) * 100 : 0;
 
     const handleSavePlotting = async () => {
+        const statusSekarang = String(
+            selectedOrder?.status_pesanan || "",
+        ).toLowerCase();
+
+        if (statusSekarang === "pending") {
+            alert(
+                "⚠️ AKSES DITOLAK: Pesanan ini masih berstatus 'PENDING'. Silakan SETUJUI pesanan ini terlebih dahulu di menu Kelola Pesanan!",
+            );
+            return;
+        }
         try {
-            // 1. Kumpulkan data dari formValues dan slotModes
             const assignments = slotRows
                 .map((num) => ({
                     slot: num,
@@ -175,60 +183,69 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                     armadaId: formValues[num]?.armadaId || null,
                     driverId: formValues[num]?.driverId || null,
                     helperId: formValues[num]?.helperId || null,
-                    // Jika rekanan (opsional)
-                    poLuar: formValues[num]?.poLuar || null,
-                    platLuar: formValues[num]?.platLuar || null,
+                    poLuar: formValues[num]?.poLuar || null, // Nama PO Mitra
+                    platLuar: formValues[num]?.platLuar || null, // Plat Nomor Mitra
+                    kapasitasLuar: formValues[num]?.kapasitasLuar || null,
+                    biayaLuar: formValues[num]?.biayaLuar || null,
                 }))
-                .filter((a) => a.mode !== "Standby"); // Hanya kirim yang sudah di-plot
+                .filter((a: any) => {
+                    // 🎯 KUNCI PERBAIKAN:
+                    // Jika mode Internal, harus ada armadaId
+                    if (a.mode === "Internal")
+                        return a.armadaId !== null && a.armadaId !== "";
+
+                    // Jika mode Rekanan, harus ada nama PO Mitra (poLuar)
+                    if (a.mode === "Rekanan")
+                        return a.poLuar !== null && a.poLuar !== "";
+
+                    return false;
+                });
 
             if (assignments.length === 0) {
-                alert("❌ Gagal: Belum ada armada yang di-plot!");
+                alert(
+                    "❌ Gagal: Pilih armada atau isi data Rekanan minimal satu sebelum menyimpan!",
+                );
                 return;
             }
 
-            // 2. Kirim ke Backend Laravel
-            const response = await axios.post("/api/admin/plotting/save", {
+            // Kirim ke Laravel
+            await axios.post("/api/admin/plotting/save", {
                 id_pesanan: selectedOrder.id_pesanan,
                 assignments: assignments,
             });
 
-            alert("✨ SUKSES: Data plotting berhasil disimpan!");
-            window.location.reload(); // 🎯 Refresh halaman agar angka di kiri berubah
+            alert(
+                "✨ SUKSES: Data plotting (Termasuk Rekanan) berhasil disimpan!",
+            );
+            window.location.reload();
         } catch (error) {
             console.error(error);
-            alert("❌ Gagal menyimpan data ke database.");
+            alert("❌ Gagal menyimpan data.");
         }
     };
 
-    const isAssetBusy = (
-        assetId: string,
-        type: "id_armada" | "id_driver" | "id_helper",
-    ) => {
-        if (!assetId || !selectedOrder || !Array.isArray(orders)) return false;
+    const getConflictInfo = (assetId: string) => {
+        if (!assetId || !selectedOrder || !Array.isArray(orders)) return null;
 
-        // 🎯 UPDATE: Jeda Istirahat Minimal 8 Jam (Standar Keselamatan)
-        // 8 jam * 60 menit * 60 detik * 1000 milidetik
         const JEDA_MS = 8 * 60 * 60 * 1000;
-
-        // Kita berikan toleransi 8 jam sebelum berangkat dan 8 jam setelah pulang
         const startCurrent =
             new Date(selectedOrder.tgl_berangkat).getTime() - JEDA_MS;
         const endCurrent =
             new Date(selectedOrder.tgl_selesai).getTime() + JEDA_MS;
 
-        return orders.some((order) => {
+        // Cari pesanan lain yang jadwalnya tabrakan dengan pesanan ini
+        const conflictingOrder = orders.find((order) => {
             if (order.id_pesanan === selectedOrder.id_pesanan) return false;
             if (order.status_pesanan === "Batal") return false;
 
             const startOther = new Date(order.tgl_berangkat).getTime();
             const endOther = new Date(order.tgl_selesai).getTime();
 
-            // Jika jadwal pesanan lain masuk ke dalam zona "Jadwal Tugas + Jeda 8 Jam"
             const isOverlapping =
                 startCurrent <= endOther && endCurrent >= startOther;
 
             if (isOverlapping) {
-                // Cek apakah kru/armada tersebut sedang bertugas di pesanan tersebut
+                // Cek apakah aset tersebut ada di daftar penugasan pesanan yang tabrakan itu
                 return order.assignments?.some(
                     (as: any) =>
                         String(as.id_armada) === String(assetId) ||
@@ -238,6 +255,11 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
             }
             return false;
         });
+
+        // Jika ada yang bentrok, kirimkan Nama Pemesan & ID-nya
+        return conflictingOrder
+            ? `${conflictingOrder.nama_pemesan} (${conflictingOrder.id_pesanan.substring(conflictingOrder.id_pesanan.length - 5)})`
+            : null;
     };
 
     const sortedCrew = useMemo(() => {
@@ -407,22 +429,46 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                             e.target.value,
                                                         )
                                                     }
-                                                    /* 🎯 Desain tetap 100% milik Anda */
                                                     className="w-full bg-slate-50 border-none px-4 py-3 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-600 outline-none"
                                                 >
                                                     <option value="">
                                                         -- Pilih Armada --
                                                     </option>
                                                     {armada
-                                                        .filter(
-                                                            (b) =>
-                                                                b.tipe_armada ===
-                                                                    targetType &&
-                                                                b.status_ketersediaan ===
-                                                                    "Ready",
-                                                        )
+                                                        .filter((b) => {
+                                                            // 🎯 KUNCI 1: Hapus filter status ketersediaan di sini agar 'Perbaikan' tetap lolos
+                                                            const armadaType =
+                                                                String(
+                                                                    b.tipe_armada ||
+                                                                        "",
+                                                                )
+                                                                    .toLowerCase()
+                                                                    .trim();
+                                                            const requestedType =
+                                                                String(
+                                                                    targetType ||
+                                                                        "",
+                                                                )
+                                                                    .toLowerCase()
+                                                                    .trim();
+                                                            return (
+                                                                requestedType ===
+                                                                    "armada" ||
+                                                                armadaType ===
+                                                                    requestedType
+                                                            );
+                                                        })
                                                         .map((b) => {
-                                                            // 1. 🎯 BENTROK LOKAL (Slot 1 vs Slot 2 di pesanan yang sama)
+                                                            const busIdStr =
+                                                                String(
+                                                                    b.id_armada,
+                                                                );
+
+                                                            // 🎯 KUNCI 2: Ambil status asli dari database (Tersedia / Perbaikan / Perjalanan)
+                                                            const statusAsli =
+                                                                b.status_ketersediaan;
+
+                                                            // 1. Cek bentrok lokal (Slot 1 vs Slot 2)
                                                             const isBusTaken =
                                                                 Object.entries(
                                                                     formValues,
@@ -432,24 +478,41 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                         val,
                                                                     ]) =>
                                                                         val.armadaId ===
-                                                                            String(
-                                                                                b.id_armada,
-                                                                            ) &&
+                                                                            busIdStr &&
                                                                         Number(
                                                                             slotIdx,
                                                                         ) !==
                                                                             num,
                                                                 );
 
-                                                            // 2. 🎯 BENTROK GLOBAL (Cek pesanan lain di tanggal yang sama)
-                                                            // Fungsi isAssetBusy harus sudah ada di atas return
-                                                            const isGlobalBusy =
-                                                                isAssetBusy(
+                                                            const conflictWith =
+                                                                getConflictInfo(
                                                                     String(
                                                                         b.id_armada,
                                                                     ),
-                                                                    "id_armada",
-                                                                );
+                                                                ); // Panggil fungsi baru
+
+                                                            // 🎯 KUNCI 3: Tentukan status disable
+                                                            // Bus tidak bisa dipilih jika: Bukan 'Tersedia' (artinya sedang Perbaikan/Perjalanan), Bentrok, atau Sudah Terpilih
+                                                            const isDisabled =
+                                                                statusAsli !==
+                                                                    "Tersedia" ||
+                                                                isBusTaken ||
+                                                                conflictWith;
+
+                                                            // Tentukan Label Status
+                                                            let labelStatus =
+                                                                statusAsli; // Default: 'Perbaikan', 'Perjalanan', atau 'Tersedia'
+                                                            if (isBusTaken)
+                                                                labelStatus =
+                                                                    "Dipilih di Slot Lain";
+                                                            else if (
+                                                                conflictWith
+                                                            )
+                                                                labelStatus =
+                                                                    "Jadwal Bentrok";
+
+                                                            // Di dalam armada.map
 
                                                             return (
                                                                 <option
@@ -459,10 +522,10 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                     value={
                                                                         b.id_armada
                                                                     }
-                                                                    /* 🎯 Gabungkan kedua validasi */
+                                                                    /* 🎯 GANTI isGlobalBusy menjadi !!conflictWith */
                                                                     disabled={
                                                                         isBusTaken ||
-                                                                        isGlobalBusy
+                                                                        !!conflictWith
                                                                     }
                                                                 >
                                                                     {
@@ -470,15 +533,16 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                     }{" "}
                                                                     ({b.nopol})
                                                                     {isBusTaken
-                                                                        ? " (DIPILIH DI SLOT LAIN)"
-                                                                        : isGlobalBusy
-                                                                          ? " (JADWAL BENTROK)"
+                                                                        ? " (DIPILIH)"
+                                                                        : conflictWith /* 🎯 GANTI isGlobalBusy menjadi conflictWith */
+                                                                          ? ` (BENTROK: ${conflictWith})`
                                                                           : " - TERSEDIA"}
                                                                 </option>
                                                             );
                                                         })}
                                                 </select>
                                             </div>
+
                                             <div className="space-y-1">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black uppercase text-slate-400 flex items-center">
@@ -524,12 +588,11 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                     c: any,
                                                                     idx: number,
                                                                 ) => {
-                                                                    const isGlobal =
-                                                                        isAssetBusy(
+                                                                    const conflictWith =
+                                                                        getConflictInfo(
                                                                             String(
                                                                                 c.id_kru,
                                                                             ),
-                                                                            "id_driver",
                                                                         );
                                                                     const isLocal =
                                                                         Object.entries(
@@ -556,7 +619,7 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                     const isRecommended =
                                                                         idx <
                                                                             3 &&
-                                                                        !isGlobal &&
+                                                                        !conflictWith &&
                                                                         !isLocal;
 
                                                                     const isNotAvailable =
@@ -573,16 +636,14 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                             value={
                                                                                 c.id_kru
                                                                             }
+                                                                            /* 🎯 GANTI isGlobal menjadi !!conflictWith */
                                                                             disabled={
-                                                                                isGlobal ||
                                                                                 isLocal ||
+                                                                                !!conflictWith ||
                                                                                 c.status_ketersediaan ===
                                                                                     "Bertugas"
                                                                             }
                                                                         >
-                                                                            {isRecommended
-                                                                                ? ""
-                                                                                : ""}
                                                                             {
                                                                                 c.nama_kru
                                                                             }{" "}
@@ -592,8 +653,8 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                                     0,
                                                                             ).toLocaleString()}{" "}
                                                                             KM
-                                                                            {isGlobal
-                                                                                ? " (BENTROK)"
+                                                                            {conflictWith /* 🎯 GANTI isGlobal menjadi conflictWith */
+                                                                                ? ` (BENTROK: ${conflictWith})`
                                                                                 : isLocal
                                                                                   ? " (DIPILIH)"
                                                                                   : ""}
@@ -646,12 +707,11 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                 idx: number,
                                                             ) => {
                                                                 // 2. Cek Bentrok Global (Jadwal di pesanan lain + Jeda 8 jam)
-                                                                const isGlobal =
-                                                                    isAssetBusy(
+                                                                const conflictWith =
+                                                                    getConflictInfo(
                                                                         String(
                                                                             c.id_kru,
                                                                         ),
-                                                                        "id_helper",
                                                                     );
 
                                                                 // 3. Cek Bentrok Lokal (Sudah dipilih di slot/bus lain pada pesanan ini)
@@ -690,7 +750,7 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                 // 5. 🎯 LOGIKA REKOMENDASI HELPER (KM Terendah & Tersedia)
                                                                 const isRecommended =
                                                                     idx < 3 &&
-                                                                    !isGlobal &&
+                                                                    !conflictWith &&
                                                                     !isLocal &&
                                                                     !isAlreadyDriver1;
 
@@ -702,16 +762,13 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                         value={
                                                                             c.id_kru
                                                                         }
+                                                                        /* 🎯 GANTI isGlobal menjadi !!conflictWith */
                                                                         disabled={
-                                                                            isGlobal ||
+                                                                            !!conflictWith ||
                                                                             isLocal ||
                                                                             isAlreadyDriver1
                                                                         }
                                                                     >
-                                                                        {/* 🎯 TAMPILAN BERSIH: ⭐ Nama | KM (Tanpa tulisan status) */}
-                                                                        {isRecommended
-                                                                            ? " "
-                                                                            : ""}
                                                                         {
                                                                             c.nama_kru
                                                                         }{" "}
@@ -721,8 +778,8 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                                 0,
                                                                         ).toLocaleString()}{" "}
                                                                         KM
-                                                                        {isGlobal
-                                                                            ? " (BENTROK)"
+                                                                        {conflictWith /* 🎯 GANTI isGlobal menjadi conflictWith */
+                                                                            ? ` (BENTROK: ${conflictWith})`
                                                                             : isLocal ||
                                                                                 isAlreadyDriver1
                                                                               ? " (DIPILIH)"
@@ -742,6 +799,18 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                         PO Mitra
                                                     </label>
                                                     <input
+                                                        // 🎯 HUBUNGKAN KE STATE
+                                                        value={
+                                                            formValues[num]
+                                                                ?.poLuar || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSelectChange(
+                                                                num,
+                                                                "poLuar",
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold outline-none"
                                                         placeholder="Nama PO"
                                                     />
@@ -751,6 +820,18 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                         Plat Nomor
                                                     </label>
                                                     <input
+                                                        // 🎯 HUBUNGKAN KE STATE
+                                                        value={
+                                                            formValues[num]
+                                                                ?.platLuar || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSelectChange(
+                                                                num,
+                                                                "platLuar",
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold uppercase outline-none"
                                                         placeholder="Plat"
                                                     />
@@ -761,6 +842,19 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                     </label>
                                                     <input
                                                         type="number"
+                                                        // 🎯 HUBUNGKAN KE STATE
+                                                        value={
+                                                            formValues[num]
+                                                                ?.kapasitasLuar ||
+                                                            ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSelectChange(
+                                                                num,
+                                                                "kapasitasLuar",
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="w-full bg-amber-50/30 border border-amber-100 px-4 py-3 rounded-xl text-sm font-bold outline-none"
                                                         placeholder="Seat"
                                                     />
@@ -771,6 +865,19 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                     </label>
                                                     <input
                                                         type="number"
+                                                        // 🎯 HUBUNGKAN KE STATE
+                                                        value={
+                                                            formValues[num]
+                                                                ?.biayaLuar ||
+                                                            ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSelectChange(
+                                                                num,
+                                                                "biayaLuar",
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="w-full bg-red-50 text-red-600 border border-red-100 px-4 py-3 rounded-xl text-sm font-black outline-none"
                                                         placeholder="0"
                                                     />
@@ -781,8 +888,15 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                             Number(
                                                                 selectedOrder.harga_sewa ||
                                                                     0,
-                                                            ) / totalBusesNeeded
-                                                        ).toLocaleString()}
+                                                            ) /
+                                                                totalBusesNeeded -
+                                                            Number(
+                                                                formValues[num]
+                                                                    ?.biayaLuar ||
+                                                                    0,
+                                                            )
+                                                        ) // 🎯 Sekarang laba terhitung riil
+                                                            .toLocaleString()}
                                                     </p>
                                                 </div>
                                             </div>
@@ -796,20 +910,42 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
             </div>
 
             {/* 3. FOOTER ACTION */}
-            <div className="bg-slate-950 rounded-[2.5rem] p-6 flex items-center justify-between text-white shadow-xl shadow-slate-950/20">
+            <div
+                className={`rounded-[2.5rem] p-6 flex items-center justify-between text-white shadow-xl ${
+                    String(selectedOrder?.status_pesanan).toLowerCase() ===
+                    "pending"
+                        ? "bg-rose-900/80 border-2 border-rose-500" // Warna Merah Peringatan jika Pending
+                        : "bg-slate-950 shadow-slate-950/20" // Warna Hitam Normal
+                }`}
+            >
                 <div className="space-y-0.5">
                     <h4 className="text-base font-black tracking-tight leading-none italic">
-                        Simpan Plotting
+                        {String(selectedOrder?.status_pesanan).toLowerCase() ===
+                        "pending"
+                            ? "Plotting Terkunci"
+                            : "Simpan Plotting"}
                     </h4>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                        Data plotting akan tersimpan secara otomatis di sistem.
+                        {String(selectedOrder?.status_pesanan).toLowerCase() ===
+                        "pending"
+                            ? "❌ PESANAN BELUM DISETUJUI ADMIN"
+                            : "Data plotting akan tersimpan secara otomatis di sistem."}
                     </p>
                 </div>
+
                 <button
-                    onClick={handleSavePlotting} // 🎯 Panggil fungsi axios di atas
-                    className="bg-white text-slate-900 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest cursor-pointer"
+                    onClick={handleSavePlotting}
+                    className={`px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        String(selectedOrder?.status_pesanan).toLowerCase() ===
+                        "pending"
+                            ? "bg-rose-500 text-white cursor-not-allowed opacity-50" // Tombol Merah/Mati jika Pending
+                            : "bg-white text-slate-900 cursor-pointer hover:bg-indigo-50"
+                    }`}
                 >
-                    Selesai & Simpan Plotting
+                    {String(selectedOrder?.status_pesanan).toLowerCase() ===
+                    "pending"
+                        ? "Butuh Persetujuan"
+                        : "Selesai & Simpan Plotting"}
                 </button>
             </div>
         </div>

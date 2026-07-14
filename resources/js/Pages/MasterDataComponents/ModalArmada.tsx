@@ -119,7 +119,7 @@ export const ModalArmada: React.FC<ModalArmadaProps> = ({
                 <div className="relative">
                     <select
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-slate-200 appearance-none"
-                        value={armadaForm.status_ketersediaan || "Ready"}
+                        value={armadaForm.status_ketersediaan || "Tersedia"}
                         onChange={(e) =>
                             setArmadaForm({
                                 ...armadaForm,

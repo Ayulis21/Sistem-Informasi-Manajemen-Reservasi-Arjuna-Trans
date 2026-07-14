@@ -39,8 +39,12 @@ class PlottingController extends Controller
                     $q->where('penugasan.id_driver', $c->id_kru)
                         ->orWhere('penugasan.id_helper', $c->id_kru);
                 })
-                ->whereIn('pesanan.status_pesanan', ['Terjadwal', 'Selesai'])
+                ->where('pesanan.status_pesanan', 'Selesai')
+                ->whereMonth('pesanan.tgl_selesai', now()->month)
+                ->whereYear('pesanan.tgl_selesai', now()->year)
                 ->sum('pesanan.estimasi_jarak');
+
+            $c->total_km = (int)$totalKm;
 
             // Ambil Tanggal Terakhir Selesai
             $lastTrip = DB::table('penugasan')
@@ -66,34 +70,57 @@ class PlottingController extends Controller
     public function savePlotting(Request $request)
     {
         $id_pesanan = $request->id_pesanan;
-        $assignments = $request->assignments; // Array berisi data bus, sopir, helper
+        $assignments = $request->input('assignments', []);
 
         try {
             DB::transaction(function () use ($id_pesanan, $assignments) {
-                // 1. Hapus plotting lama (jika ada) untuk pesanan ini agar tidak dobel
+                // 1. Hapus plotting lama
                 DB::table('penugasan')->where('id_pesanan', $id_pesanan)->delete();
 
-                // 2. Masukkan plotting baru ke tabel penugasan
+                // 2. Simpan hanya yang VALID
                 foreach ($assignments as $a) {
-                    DB::table('penugasan')->insert([
-                        'id_pesanan'   => $id_pesanan,
-                        'jenis_aset'   => strtolower($a['mode']), // internal atau rekanan
-                        'id_armada'    => $a['armadaId'],
-                        'id_driver'    => $a['driverId'],
-                        'id_helper'    => $a['helperId'],
-                        'created_at'   => now(),
-                        'updated_at'   => now(),
-                    ]);
+                    $mode = strtolower($a['mode'] ?? '');
+                    $armadaId = $a['armadaId'] ?? null;
+                    $poLuar = $a['poLuar'] ?? null;
+
+                    // 🎯 KUNCI: Hanya insert jika ada isinya
+                    if (($mode === 'internal' && $armadaId) || ($mode === 'rekanan' && $poLuar)) {
+                        DB::table('penugasan')->insert([
+                            'id_pesanan' => $id_pesanan,
+                            'jenis_aset' => $mode,
+                            'id_armada'  => $armadaId,
+                            'id_driver'  => $a['driverId'] ?? null,
+                            'id_helper'  => $a['helperId'] ?? null,
+                            'nama_po_mitra' => $poLuar,
+                            'plat_mitra'    => $a['platLuar'] ?? null,
+                            'kapasitas_mitra'   => $a['kapasitasLuar'] ?? null,
+                            'harga_modal_mitra' => $a['biayaLuar'] ?? null,
+                        ]);
+                    }
                 }
 
-                // 3. Update status pesanan di tabel pesanan menjadi 'Terjadwal' 
-                // Agar status di list kiri otomatis berubah warna/label
+                // 3. 🎯 LOGIKA POIN 1: Cek kecukupan berdasarkan data riil di DB
+                $totalDiminta = DB::table('pesanan_detail_armada')
+                    ->where('id_pesanan', $id_pesanan)
+                    ->sum('qty');
+
+                // Hitung yang sudah benar-benar terisi di tabel penugasan
+                $jumlahTerplot = DB::table('penugasan')
+                    ->where('id_pesanan', $id_pesanan)
+                    ->where(function ($q) {
+                        $q->whereNotNull('id_armada')->orWhereNotNull('nama_po_mitra');
+                    })
+                    ->count();
+
+                // Update status pesanan: Terjadwal jika PENUH, tetap Disetujui jika belum
+                $statusBaru = ($jumlahTerplot >= $totalDiminta && $totalDiminta > 0) ? 'Terjadwal' : 'Disetujui';
+
                 DB::table('pesanan')
                     ->where('id_pesanan', $id_pesanan)
-                    ->update(['status_pesanan' => 'Terjadwal']);
+                    ->update(['status_pesanan' => $statusBaru]);
             });
 
-            return response()->json(['status' => 'success', 'message' => 'Plotting berhasil disimpan!']);
+            return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
