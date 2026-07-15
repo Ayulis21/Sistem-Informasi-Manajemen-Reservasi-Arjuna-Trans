@@ -172,7 +172,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/dashboard"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >
@@ -189,7 +189,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/orders"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >
@@ -206,7 +206,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/plotting"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >
@@ -223,7 +223,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/schedule"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white  scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >
@@ -240,7 +240,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/master-data"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >
@@ -259,7 +259,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     <div
                         className={`rounded-xl transition-all duration-300 flex items-center justify-center ${
                             url === "/reports"
-                                ? "bg-[#5346F1] text-white shadow-[0_8px_20px_rgba(83,70,241,0.3)] scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
+                                ? "bg-[#5346F1] text-white scale-110 w-11 h-11 absolute -translate-y-4 shadow-md"
                                 : "text-slate-400 hover:text-slate-600"
                         }`}
                     >

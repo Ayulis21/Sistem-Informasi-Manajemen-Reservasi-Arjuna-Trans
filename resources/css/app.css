@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    /* Memaksa browser menggunakan GPU untuk render agar tidak macet */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Optimasi scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none; /* 🎯 Tambahkan ini agar warning hilang */
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield; /* 🎯 Tambahkan ini agar warning hilang */
+}
+
+/* input[type="text"],
+textarea {
+    text-transform: uppercase;
+} */
+
+/* Khusus placeholder agar tetap normal/kecil tidak apa-apa */
+/* input::placeholder {
+    text-transform: none;
+} */

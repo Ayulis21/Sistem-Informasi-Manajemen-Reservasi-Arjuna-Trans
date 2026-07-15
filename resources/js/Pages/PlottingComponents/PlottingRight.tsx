@@ -208,6 +208,25 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                 return;
             }
 
+            const adaPotensiRugi = assignments.some((a: any) => {
+                if (a.mode === "Rekanan") {
+                    const hargaPerUnit =
+                        Number(selectedOrder.harga_sewa) / totalBusesNeeded;
+                    return Number(a.biayaLuar) > hargaPerUnit;
+                }
+                return false;
+            });
+
+            if (adaPotensiRugi) {
+                if (
+                    !confirm(
+                        "⚠️ PERINGATAN: Biaya modal mitra lebih besar dari harga sewa (Potensi Rugi). Tetap simpan?",
+                    )
+                ) {
+                    return;
+                }
+            }
+
             // Kirim ke Laravel
             await axios.post("/api/admin/plotting/save", {
                 id_pesanan: selectedOrder.id_pesanan,
@@ -864,22 +883,42 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                         Biaya Modal Mitra (Rp)
                                                     </label>
                                                     <input
-                                                        type="number"
-                                                        // 🎯 HUBUNGKAN KE STATE
+                                                        type="text" // 🎯 KUNCI 1: Harus 'text' agar bisa menampilkan titik
+                                                        inputMode="numeric"
+                                                        placeholder="0"
+                                                        // 🎯 KUNCI 2: Tampilkan angka dengan titik (id-ID)
                                                         value={
                                                             formValues[num]
-                                                                ?.biayaLuar ||
-                                                            ""
+                                                                ?.biayaLuar
+                                                                ? Number(
+                                                                      formValues[
+                                                                          num
+                                                                      ]
+                                                                          .biayaLuar,
+                                                                  ).toLocaleString(
+                                                                      "id-ID",
+                                                                  )
+                                                                : ""
                                                         }
-                                                        onChange={(e) =>
+                                                        onChange={(e) => {
+                                                            // 🎯 KUNCI 3: Hapus titik saat simpan ke database (biar tetap angka murni)
+                                                            const nominalMurni =
+                                                                e.target.value
+                                                                    .replace(
+                                                                        /\./g,
+                                                                        "",
+                                                                    )
+                                                                    .replace(
+                                                                        /[^0-9]/g,
+                                                                        "",
+                                                                    );
                                                             handleSelectChange(
                                                                 num,
                                                                 "biayaLuar",
-                                                                e.target.value,
-                                                            )
-                                                        }
+                                                                nominalMurni,
+                                                            );
+                                                        }}
                                                         className="w-full bg-red-50 text-red-600 border border-red-100 px-4 py-3 rounded-xl text-sm font-black outline-none"
-                                                        placeholder="0"
                                                     />
                                                     <p className="text-[8px] text-red-400 font-bold italic mt-1 leading-none">
                                                         * Potensi Laba Bersih
@@ -895,8 +934,9 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                                                                     ?.biayaLuar ||
                                                                     0,
                                                             )
-                                                        ) // 🎯 Sekarang laba terhitung riil
-                                                            .toLocaleString()}
+                                                        ).toLocaleString(
+                                                            "id-ID",
+                                                        )}
                                                     </p>
                                                 </div>
                                             </div>

@@ -58,7 +58,9 @@ Route::put('/api/admin/pembayaran/verifikasi/{id}', [PesananController::class, '
 Route::put('/api/admin/pesanan/update-status/{id}', [PesananController::class, 'updateStatus'])->where('id', '.*');
 Route::get('/api/admin/pesanan', [\App\Http\Controllers\PesananController::class, 'getPesananData']);
 
-Route::get('/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('plotting');
+Route::get('/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('admin.plotting');
+Route::get('/admin/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('admin.plotting');
+// Route::get('/admin/plotting', [PlottingController::class, 'index'])->name('admin.plotting');
 // Rute untuk aksi tombol simpan biner plotting Anda ke database MySQL
 Route::post('/api/admin/plotting/store', [\App\Http\Controllers\PlottingController::class, 'store'])->name('admin.plotting.store');
 Route::post('/api/admin/plotting/save', [PlottingController::class, 'savePlotting']);

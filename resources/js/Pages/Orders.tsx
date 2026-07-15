@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { usePage } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import ModalOrder from "./OrderComponents/ModalOrder";
 import OrderMainForm from "./OrderComponents/OrderMainForm";
@@ -118,6 +118,34 @@ const Orders: React.FC = () => {
 
     const handleSaveOrder = async (e: React.FormEvent) => {
         e.preventDefault();
+        const tglBerangkat = new Date(formData.departureDate);
+        const tglPulang = new Date(formData.returnDate);
+
+        // 🎯 KUNCI VALIDASI: Cek rincian pembayaran satu per satu
+        const adaPembayaranTanpaBukti = formData.payments.some((p: any) => {
+            const nominal = Number(p.amount || 0);
+            // Jika nominal diisi (> 0) tapi file baru kosong DAN file lama juga default/kosong
+            const belumAdaFileBaru = !p.evidenceFile;
+            const belumAdaFileLama =
+                !p.bukti_transfer || p.bukti_transfer === "bukti_default.jpg";
+
+            return nominal > 0 && belumAdaFileBaru && belumAdaFileLama;
+        });
+
+        if (tglPulang < tglBerangkat) {
+            alert(
+                "❌ GAGAL: Tanggal Pulang tidak boleh mendahului Tanggal Berangkat!",
+            );
+            return;
+        }
+
+        if (adaPembayaranTanpaBukti) {
+            alert(
+                "❌ GAGAL SIMPAN: Terdapat rincian pembayaran yang nominalnya sudah diisi tapi BELUM UPLOAD bukti transfer. Harap lampirkan bukti terlebih dahulu!",
+            );
+            return; // Hentikan proses simpan
+        }
+
         if (
             !formData.customerName.trim() ||
             !formData.destination.trim() ||
@@ -125,6 +153,13 @@ const Orders: React.FC = () => {
         ) {
             alert(
                 "❌ Gagal Simpan: Mohon lengkapi Nama Pelanggan, Tujuan Utama, dan Waktu Berangkat!",
+            );
+            return;
+        }
+        const nomorWA = formData.whatsapp.replace(/[^0-9]/g, "");
+        if (nomorWA.length < 10) {
+            alert(
+                "❌ GAGAL: Nomor WhatsApp tidak valid (Minimal 10 digit angka)!",
             );
             return;
         }
@@ -165,23 +200,31 @@ const Orders: React.FC = () => {
             }
             const arrayPembayaranBersih = (formData.payments || []).map(
                 (p: any) => {
+                    // 🎯 KUNCI 1: Mapping Nama ke ENUM Database agar tidak 500 (Internal Server Error)
+                    let tipeEnum = p.type;
+                    if (tipeEnum === "CICILAN" || tipeEnum === "Cicilan")
+                        tipeEnum = "Cicil";
+                    if (tipeEnum === "PELUNASAN" || tipeEnum === "Pelunasan")
+                        tipeEnum = "Lunas";
+
                     return {
-                        type: p.type || "DP",
-                        date: p.date || "",
+                        type: tipeEnum || "DP", // Pastikan masuk ke 'DP', 'Cicil', atau 'Lunas'
+                        date:
+                            p.date || new Date().toISOString().substring(0, 10),
                         amount: Number(p.amount || 0),
-                        notes:
-                            p.notes && p.notes.trim().startsWith("{")
-                                ? ""
-                                : p.notes || "",
+                        notes: String(p.notes || ""),
                         bukti_transfer: p.bukti_transfer || "bukti_default.jpg",
                         paymentStatus: p.paymentStatus || "Pending",
                     };
+                    // 🎯 KUNCI 2: JANGAN masukkan 'evidenceFile' ke sini agar JSON tidak rusak/biner
                 },
             );
+
             dataBiner.append(
                 "paymentsData",
                 JSON.stringify(arrayPembayaranBersih),
             );
+
             (formData.payments || []).forEach((p: any, index: number) => {
                 if (p.evidenceFile) {
                     dataBiner.append(`evidenceFile_${index}`, p.evidenceFile);
@@ -297,6 +340,8 @@ const Orders: React.FC = () => {
             if (dbStatus === "Terjadwal" && tglBerangkat && tglSelesai) {
                 if (sekarang >= tglBerangkat && sekarang <= tglSelesai) {
                     statusVisual = "Sedang Jalan";
+                } else if (sekarang < tglBerangkat) {
+                    statusVisual = "Terjadwal";
                 } else if (sekarang > tglSelesai) {
                     statusVisual = "Menunggu Selesai";
                 }
@@ -345,6 +390,7 @@ const Orders: React.FC = () => {
     }, [orders, kataKunciPencarian, statusFilterAktif, filterPembayaranAktif]);
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const sekarang = new Date();
 
     return (
         <AdminLayout>
@@ -409,9 +455,9 @@ const Orders: React.FC = () => {
                                         <option value="Sedang Jalan">
                                             Sedang Jalan
                                         </option>
-                                        <option value="Menunggu Selesai">
+                                        {/* <option value="Menunggu Selesai">
                                             Menunggu Selesai
-                                        </option>
+                                        </option> */}
                                         <option value="Selesai">
                                             Selesai (Tuntas)
                                         </option>
@@ -514,22 +560,20 @@ const Orders: React.FC = () => {
                 <div className="space-y-3">
                     {ordersTersaring.length > 0 ? (
                         ordersTersaring.map((o: any, idx: number) => {
-                            // 1. DEFINISIKAN SEMUA VARIABEL DASAR (Hanya Sekali)
-                            const totalHarga = Number(
-                                o.harga_sewa || o.total_harga || 0,
-                            );
+                            // 🎯 1. DEFINISIKAN VARIABEL DASAR
+                            const totalHarga = Number(o.harga_sewa || 0);
                             const statusSkrg = o.status_pesanan || o.status;
                             const tglBerangkat = new Date(o.tgl_berangkat);
                             const tglSelesai = new Date(o.tgl_selesai);
-                            const sekarang = new Date();
 
-                            // 2. HITUNG TOTAL BAYAR & CEK PEMBAYARAN PENDING
+                            // 🎯 2. HITUNG PEMBAYARAN & PERLU ACC
                             let totalBayar = 0;
                             let adakahPembayaranBelumAcc = false;
 
                             try {
                                 if (
                                     o.catatan_pembayaran &&
+                                    typeof o.catatan_pembayaran === "string" &&
                                     o.catatan_pembayaran.trim().startsWith("[")
                                 ) {
                                     const arrayJson = JSON.parse(
@@ -569,51 +613,15 @@ const Orders: React.FC = () => {
                                 );
                             }
 
-                            // 3. DEFINISIKAN isLunas (Agar error "Cannot find name" hilang)
-                            const piutang = totalHarga - totalBayar;
-                            const isLunas = totalHarga > 0 && piutang <= 0;
+                            // 🎯 3. DEFINISIKAN isLunas (Agar error Ln 647 & 769 Hilang)
+                            const isLunas =
+                                totalHarga > 0 && totalBayar >= totalHarga;
 
-                            // 4. LOGIKA LABEL STATUS (Gunakan variabel yang sudah ada)
-                            let labelKomponen = null;
-
-                            if (statusSkrg === "Batal") {
+                            // 🎯 4. LOGIKA LABEL KIRI (Baru, Perlu ACC, Selesai)
+                            let labelKomponen = null; // (Agar error Ln 689 Hilang)
+                            if (adakahPembayaranBelumAcc) {
                                 labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-red-100 text-red-500 rounded-md uppercase tracking-wider">
-                                        Batal
-                                    </span>
-                                );
-                            } else if (statusSkrg === "Selesai") {
-                                labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-500 text-white rounded-md uppercase tracking-wider">
-                                        Selesai
-                                    </span>
-                                );
-                            } else if (statusSkrg === "Terjadwal") {
-                                if (
-                                    sekarang >= tglBerangkat &&
-                                    sekarang <= tglSelesai
-                                ) {
-                                    labelKomponen = (
-                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-blue-600 text-white rounded-md uppercase tracking-wider animate-pulse">
-                                            Sedang Jalan
-                                        </span>
-                                    );
-                                } else if (sekarang > tglSelesai) {
-                                    labelKomponen = (
-                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded-md uppercase tracking-wider">
-                                            Menunggu Selesai
-                                        </span>
-                                    );
-                                } else {
-                                    labelKomponen = (
-                                        <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-md uppercase tracking-wider">
-                                            Terjadwal
-                                        </span>
-                                    );
-                                }
-                            } else if (adakahPembayaranBelumAcc) {
-                                labelKomponen = (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-500 text-white rounded-md uppercase tracking-wider animate-bounce">
+                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-500 text-white rounded-md uppercase tracking-wider animate-pulse">
                                         Perlu ACC
                                     </span>
                                 );
@@ -623,11 +631,56 @@ const Orders: React.FC = () => {
                                         Baru
                                     </span>
                                 );
+                            } else if (statusSkrg === "Selesai") {
+                                labelKomponen = (
+                                    <span className="text-[8px] font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-600 rounded-md uppercase tracking-wider">
+                                        Selesai
+                                    </span>
+                                );
+                            }
+
+                            // 🎯 5. LOGIKA BADGE KANAN (Status Operasional)
+                            let badgeKanan = null;
+                            if (statusSkrg === "Batal") {
+                                badgeKanan = (
+                                    <span className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-rose-100">
+                                        Batal
+                                    </span>
+                                );
+                            } else if (statusSkrg === "Terjadwal") {
+                                if (
+                                    sekarang >= tglBerangkat &&
+                                    sekarang <= tglSelesai
+                                ) {
+                                    badgeKanan = (
+                                        <span className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm">
+                                            Sedang Jalan
+                                        </span>
+                                    );
+                                } else if (sekarang > tglSelesai) {
+                                    badgeKanan = (
+                                        <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest border border-amber-200">
+                                            Menunggu Selesai
+                                        </span>
+                                    );
+                                } else {
+                                    badgeKanan = (
+                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                                            Terjadwal
+                                        </span>
+                                    );
+                                }
+                            } else if (statusSkrg === "Disetujui") {
+                                badgeKanan = (
+                                    <span className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100">
+                                        Siap Plotting
+                                    </span>
+                                );
                             }
                             return (
                                 <div
                                     key={o.id_pesanan || idx}
-                                    className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100"
+                                    className="bg-white rounded-[1.5rem] border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.01)] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden transition-all hover:border-indigo-100 will-change-transform transform-gpu"
                                 >
                                     <div className="flex items-center gap-3">
                                         {(() => {
@@ -775,522 +828,152 @@ const Orders: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
+                                        {/* 1. TOMBOL EDIT (Paling Kiri) */}
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (o.no_telp) {
-                                                    const nomorBersih = String(
-                                                        o.no_telp,
-                                                    ).replace(/[^0-9]/g, "");
-                                                    const nomorFormatWA =
-                                                        nomorBersih.startsWith(
-                                                            "0",
-                                                        )
-                                                            ? "62" +
-                                                              nomorBersih.slice(
-                                                                  1,
-                                                              )
-                                                            : nomorBersih;
-                                                    window.open(
-                                                        `https://wa.me/${nomorFormatWA}`,
-                                                        "_blank",
-                                                    );
-                                                } else {
-                                                    alert(
-                                                        "📱 Pemberitahuan: Nomor telepon WhatsApp untuk pelanggan ini tidak ditemukan.",
-                                                    );
-                                                }
-                                            }}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl transition-all cursor-pointer flex items-center justify-center"
-                                            title="Hubungi WhatsApp"
-                                        >
-                                            <Phone
-                                                size={18}
-                                                className="stroke-[2.5]"
-                                            />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                let teksCatatanUtama = "";
-                                                let tanggalJatuhTempo = "";
-                                                let kantongPayments: any[] = [];
-
-                                                try {
-                                                    if (
-                                                        o.catatan_pembayaran &&
-                                                        o.catatan_pembayaran
-                                                            .trim()
-                                                            .startsWith("[")
-                                                    ) {
-                                                        const arrayJson =
-                                                            JSON.parse(
-                                                                o.catatan_pembayaran,
-                                                            );
-                                                        if (
-                                                            Array.isArray(
-                                                                arrayJson,
-                                                            ) &&
-                                                            arrayJson.length > 0
-                                                        ) {
-                                                            kantongPayments =
-                                                                arrayJson;
-                                                            teksCatatanUtama =
-                                                                arrayJson[0]
-                                                                    .notes ||
-                                                                "";
-                                                            tanggalJatuhTempo =
-                                                                arrayJson[0]
-                                                                    .date || "";
-                                                        }
-                                                    } else if (
-                                                        o.catatan_pembayaran &&
-                                                        o.catatan_pembayaran
-                                                            .trim()
-                                                            .startsWith("{")
-                                                    ) {
-                                                        const objekJson =
-                                                            JSON.parse(
-                                                                o.catatan_pembayaran,
-                                                            );
-                                                        if (
-                                                            objekJson.riwayat &&
-                                                            Array.isArray(
-                                                                objekJson.riwayat,
-                                                            )
-                                                        ) {
-                                                            kantongPayments =
-                                                                objekJson.riwayat;
-                                                            teksCatatanUtama =
-                                                                objekJson
-                                                                    .riwayat[0]
-                                                                    ?.notes ||
-                                                                "";
-                                                        } else {
-                                                            teksCatatanUtama =
-                                                                objekJson.notes ||
-                                                                "";
-                                                        }
-                                                    } else {
-                                                        teksCatatanUtama =
-                                                            o.catatan_pembayaran ||
-                                                            "";
-                                                        kantongPayments = [
-                                                            {
-                                                                type:
-                                                                    o.tipe_keterangan ||
-                                                                    "DP",
-                                                                date: o.tgl_bayar
-                                                                    ? o.tgl_bayar.substring(
-                                                                          0,
-                                                                          10,
-                                                                      )
-                                                                    : new Date()
-                                                                          .toISOString()
-                                                                          .substring(
-                                                                              0,
-                                                                              10,
-                                                                          ),
-                                                                amount: Number(
-                                                                    o.total_terbayar ||
-                                                                        o.nominal ||
-                                                                        0,
-                                                                ),
-                                                                notes:
-                                                                    o.catatan_pembayaran ||
-                                                                    "",
-                                                                evidenceFile:
-                                                                    null,
-                                                                bukti_transfer:
-                                                                    o.bukti_transfer ||
-                                                                    "bukti_default.jpg",
-                                                                paymentStatus:
-                                                                    o.status_pembayaran ||
-                                                                    "Pending",
-                                                            },
-                                                        ];
-                                                    }
-                                                } catch (e) {
-                                                    teksCatatanUtama =
-                                                        o.catatan_pembayaran ||
-                                                        "";
-                                                    kantongPayments = [
-                                                        {
-                                                            type:
-                                                                o.tipe_keterangan ||
-                                                                "DP",
-                                                            date: o.tgl_bayar
-                                                                ? o.tgl_bayar.substring(
-                                                                      0,
-                                                                      10,
-                                                                  )
-                                                                : new Date()
-                                                                      .toISOString()
-                                                                      .substring(
-                                                                          0,
-                                                                          10,
-                                                                      ),
-                                                            amount: Number(
-                                                                o.total_terbayar ||
-                                                                    o.nominal ||
-                                                                    0,
-                                                            ),
-                                                            notes:
-                                                                o.catatan_pembayaran ||
-                                                                "",
-                                                            evidenceFile: null,
-                                                            bukti_transfer:
-                                                                o.bukti_transfer ||
-                                                                "bukti_default.jpg",
-                                                            paymentStatus:
-                                                                o.status_pembayaran ||
-                                                                "Pending",
-                                                        },
-                                                    ];
-                                                }
-                                                setSelectedId(
-                                                    o.id_pesanan || o.id,
-                                                );
+                                                setSelectedId(o.id_pesanan);
                                                 setIsEditMode(true);
-                                                setFormData({
-                                                    id_pesanan:
-                                                        o.id_pesanan || "",
-                                                    customerName:
-                                                        o.nama_pemesan || "",
-                                                    customerAddress:
-                                                        o.alamat || "",
-                                                    whatsapp: o.no_telp || "",
-                                                    destination:
-                                                        o.tujuan_main || "",
-                                                    pickup:
-                                                        o.alamat_penjemputan ||
-                                                        "",
-                                                    distance: String(
-                                                        o.estimasi_jarak || 0,
-                                                    ),
-                                                    departureDate:
-                                                        o.tgl_berangkat
-                                                            ? o.tgl_berangkat
-                                                                  .replace(
-                                                                      " ",
-                                                                      "T",
-                                                                  )
-                                                                  .substring(
-                                                                      0,
-                                                                      16,
-                                                                  )
-                                                            : "",
-                                                    returnDate: o.tgl_selesai
-                                                        ? o.tgl_selesai
-                                                              .replace(" ", "T")
-                                                              .substring(0, 16)
-                                                        : "",
-                                                    routeNotes: o.rute || "",
-                                                    totalPrice: Number(
-                                                        o.harga_sewa || 0,
-                                                    ),
-                                                    paidAmount: totalBayar,
-                                                    dueDate: o.jatuh_tempo
-                                                        ? o.jatuh_tempo.substring(
-                                                              0,
-                                                              10,
-                                                          )
-                                                        : tanggalJatuhTempo
-                                                          ? tanggalJatuhTempo.substring(
-                                                                0,
-                                                                10,
-                                                            )
-                                                          : "",
-                                                    paymentType:
-                                                        o.tipe_keterangan ||
-                                                        "DP",
-                                                    paymentDate: o.tgl_bayar
-                                                        ? o.tgl_bayar.substring(
-                                                              0,
-                                                              10,
-                                                          )
-                                                        : new Date()
-                                                              .toISOString()
-                                                              .substring(0, 10),
-                                                    bukti_transfer:
-                                                        o.bukti_transfer ||
-                                                        "bukti_default.jpg",
-                                                    evidenceFile: null,
-                                                    lain_lain:
-                                                        o.lain_lain || "",
-                                                    fleetRequirements:
-                                                        Array.isArray(
-                                                            o.fleetRequirements,
-                                                        ) &&
-                                                        o.fleetRequirements
-                                                            .length > 0
-                                                            ? o.fleetRequirements.map(
-                                                                  (
-                                                                      fr: any,
-                                                                  ) => ({
-                                                                      armada_id:
-                                                                          String(
-                                                                              fr.armada_id,
-                                                                          ),
-                                                                      qty: Number(
-                                                                          fr.qty,
-                                                                      ),
-                                                                  }),
-                                                              )
-                                                            : [
-                                                                  {
-                                                                      armada_id:
-                                                                          "",
-                                                                      qty: 1,
-                                                                  },
-                                                              ],
-                                                    paymentStatus:
-                                                        o.status_pembayaran ||
-                                                        "Pending",
-                                                    catatan_pembayaran:
-                                                        teksCatatanUtama,
-                                                    payments: kantongPayments,
-                                                });
+                                                setFormData({ ...o });
                                                 setIsOpenModal(true);
                                             }}
-                                            className="p-2 text-slate-400 hover:text-[#5346F1] hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
-                                            title="Edit Cepat Detail Pesanan"
+                                            className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
                                         >
-                                            <Edit2
-                                                size={18}
-                                                className="stroke-[2.5]"
-                                            />
+                                            <Edit2 size={18} />
                                         </button>
+
+                                        {/* 4. 🎯 TOMBOL TELEPON (Di Kanannya Status) */}
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                let kantongSaringanBiner: any[] =
-                                                    [];
-                                                try {
-                                                    if (
-                                                        o.catatan_pembayaran &&
-                                                        String(
-                                                            o.catatan_pembayaran,
-                                                        )
-                                                            .trim()
-                                                            .startsWith("[")
-                                                    ) {
-                                                        const hasilBongkar =
-                                                            JSON.parse(
-                                                                o.catatan_pembayaran,
-                                                            );
-                                                        if (
-                                                            Array.isArray(
-                                                                hasilBongkar,
-                                                            )
-                                                        ) {
-                                                            kantongSaringanBiner =
-                                                                hasilBongkar;
-                                                        }
-                                                    }
-                                                } catch (e) {
-                                                    kantongSaringanBiner = [];
-                                                }
-
-                                                const payloadOrderMurni = {
-                                                    id: o.id_pesanan || "",
-                                                    customerName:
-                                                        o.nama_pemesan ||
-                                                        "Tanpa Nama",
-                                                    customerAddress:
-                                                        o.alamat || "-",
-                                                    route:
-                                                        o.rute ||
-                                                        o.tujuan_main ||
-                                                        "-",
-                                                    destination:
-                                                        o.tujuan_main || "-",
-                                                    departureTime:
-                                                        o.tgl_berangkat ||
-                                                        new Date().toISOString(),
-                                                    pickupAddress:
-                                                        o.alamat_penjemputan ||
-                                                        "-",
-                                                    totalPrice: Number(
-                                                        o.harga_sewa || 0,
-                                                    ),
-                                                    downPayment: Number(
-                                                        kantongSaringanBiner.find(
-                                                            (p: any) =>
-                                                                p.type ===
-                                                                    "DP" &&
-                                                                p.paymentStatus ===
-                                                                    "Disetujui",
-                                                        )?.amount || 0,
-                                                    ),
-                                                    remainingBalance:
-                                                        Number(
-                                                            o.harga_sewa || 0,
-                                                        ) - totalBayar,
-                                                    fleetRequirements:
-                                                        o.tipe_unit_diminta
-                                                            ? [
-                                                                  {
-                                                                      type: o.tipe_unit_diminta,
-                                                                      count: Number(
-                                                                          o.jumlah_unit_diminta ||
-                                                                              1,
-                                                                      ),
-                                                                  },
-                                                              ]
-                                                            : [
-                                                                  {
-                                                                      type: "Bus",
-                                                                      count: 1,
-                                                                  },
-                                                              ],
-                                                    assignments: [
-                                                        {
-                                                            armadaId: "0",
-                                                            assetType:
-                                                                "Internal",
-                                                            plateNumber:
-                                                                "S 7123 UA",
-                                                        },
-                                                    ],
-                                                    notes: o.lain_lain || "-",
-                                                };
-                                                setActiveInvoiceOrder(
-                                                    payloadOrderMurni,
-                                                );
+                                                /* Logika WA */
                                             }}
-                                            className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-slate-900 transition-colors print:hidden"
-                                            title="Buka Lembar Invoice"
+                                            className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                                        >
+                                            <Phone size={18} />
+                                        </button>
+
+                                        {/* 2. TOMBOL PRINT */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                /* Logika Print */
+                                            }}
+                                            className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center hover:bg-slate-800 transition-all"
                                         >
                                             <Printer size={16} />
                                         </button>
 
-                                        {(o.status_pesanan === "Pending" ||
-                                            o.status === "Baru") && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            o.id_pesanan ||
-                                                                o.id,
-                                                            "Disetujui",
-                                                            o.nama_pemesan ||
-                                                                o.title ||
-                                                                "",
-                                                        )
-                                                    }
-                                                    className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase tracking-wider"
-                                                >
-                                                    Setujui
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleUpdateStatus(
-                                                            o.id_pesanan ||
-                                                                o.id,
-                                                            "Batal",
-                                                            o.nama_pemesan ||
-                                                                o.title ||
-                                                                "",
-                                                        )
-                                                    }
-                                                    className="px-3 py-2 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase tracking-wider"
-                                                >
-                                                    Batal
-                                                </button>
-                                            </>
+                                        {/* 3. 🎯 BADGE STATUS (Sekarang di Kanannya Print) */}
+                                        {statusSkrg === "Batal" && (
+                                            <span className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase border border-rose-100">
+                                                Batal
+                                            </span>
                                         )}
-
-                                        {(o.status_pesanan === "Disetujui" ||
-                                            o.status === "Plotting") && (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    (window.location.href = `/admin/plotting?id=${o.id_pesanan || o.id}`)
-                                                }
-                                                className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm"
-                                            >
-                                                Plotting
-                                            </button>
+                                        {statusSkrg === "Disetujui" && (
+                                            <span className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase border border-indigo-100">
+                                                Siap Plotting
+                                            </span>
                                         )}
-
-                                        {o.status_pesanan === "Terjadwal" && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {/* Tombol Terjadwal (Mati) */}
-                                                <button
-                                                    type="button"
-                                                    disabled
-                                                    className="px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-widest cursor-not-allowed border border-slate-200/40"
-                                                >
-                                                    Terjadwal
-                                                </button>
-
-                                                {/* 🎯 TOMBOL BARU: SELESAIKAN PESANAN 
-            Hanya muncul jika tanggal sekarang sudah melewati/sama dengan tanggal selesai
-        */}
-                                                {new Date() >=
-                                                    new Date(o.tgl_selesai) && (
+                                        {statusSkrg === "Terjadwal" &&
+                                            sekarang >= tglBerangkat &&
+                                            sekarang <= tglSelesai && (
+                                                <span className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase shadow-sm">
+                                                    Sedang Jalan
+                                                </span>
+                                            )}
+                                        {statusSkrg === "Selesai" && (
+                                            <span className="px-3 py-1.5 bg-emerald-100 text-emerald-600 rounded-xl text-[9px] font-black uppercase border border-emerald-200">
+                                                Selesai
+                                            </span>
+                                        )}
+                                        {/* 5. TOMBOL AKSI UTAMA (Setujui / Plotting / Selesai / Ubah Plot) */}
+                                        <div className="flex gap-1.5 ml-1">
+                                            {statusSkrg === "Pending" && (
+                                                <>
                                                     <button
-                                                        type="button"
                                                         onClick={() =>
                                                             handleUpdateStatus(
-                                                                o.id_pesanan ||
-                                                                    o.id,
-                                                                "Selesai",
-                                                                o.nama_pemesan ||
-                                                                    "",
+                                                                o.id_pesanan,
+                                                                "Disetujui",
+                                                                o.nama_pemesan,
                                                             )
                                                         }
-                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md animate-bounce hover:animate-none"
+                                                        className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase"
                                                     >
-                                                        Selesaikan
+                                                        Setujui
                                                     </button>
-                                                )}
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        (window.location.href = `/admin/plotting?edit=true&id=${o.id_pesanan || o.id}`)
-                                                    }
-                                                    className="px-3 py-2 bg-slate-50 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-wider border border-slate-200/60"
-                                                >
-                                                    Ubah Plot
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {(o.status_pesanan === "Batal" ||
-                                            o.status === "Batal") && (
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    if (
-                                                        confirm(
-                                                            "⚠️ Apakah Anda yakin ingin menghapus data pesanan batal ini secara permanen dari database?",
-                                                        )
-                                                    ) {
-                                                        try {
-                                                            await axios.delete(
-                                                                `/api/admin/pesanan/destroy/${o.id_pesanan || o.id}`,
-                                                            );
-                                                            alert(
-                                                                "✨ Sukses: Data pesanan berhasil dihapus.",
-                                                            );
-                                                            fetchOrdersData();
-                                                        } catch (error) {
-                                                            alert(
-                                                                "❌ Gagal menghapus data.",
-                                                            );
+                                                    <button
+                                                        onClick={() =>
+                                                            handleUpdateStatus(
+                                                                o.id_pesanan,
+                                                                "Batal",
+                                                                o.nama_pemesan,
+                                                            )
                                                         }
+                                                        className="px-3 py-2 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase"
+                                                    >
+                                                        Batal
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {statusSkrg === "Disetujui" && (
+                                                <button
+                                                    onClick={() =>
+                                                        (window.location.href = `/plotting?id=${o.id_pesanan}`)
                                                     }
-                                                }}
-                                                className="p-2 bg-red-50 text-red-500 rounded-xl transition-all"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        )}
+                                                    className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase shadow-sm"
+                                                >
+                                                    Plotting
+                                                </button>
+                                            )}
+
+                                            {statusSkrg === "Terjadwal" && (
+                                                <>
+                                                    {sekarang > tglSelesai ? (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleUpdateStatus(
+                                                                    o.id_pesanan,
+                                                                    "Selesai",
+                                                                    o.nama_pemesan,
+                                                                )
+                                                            }
+                                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-md "
+                                                        >
+                                                            Selesaikan
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => {
+                                                                // 🎯 LOGIKA PERINGATAN DARURAT
+                                                                if (
+                                                                    sekarang >=
+                                                                        tglBerangkat &&
+                                                                    sekarang <=
+                                                                        tglSelesai
+                                                                ) {
+                                                                    if (
+                                                                        confirm(
+                                                                            "⚠️ PERINGATAN: Bus ini statusnya SEDANG JALAN. Mengubah plotting saat bus di jalan dapat memengaruhi perhitungan KM Kru. Yakin ingin melanjutkan?",
+                                                                        )
+                                                                    ) {
+                                                                        window.location.href = `/plotting?id=${o.id_pesanan}`;
+                                                                    }
+                                                                } else {
+                                                                    // Jika masih terjadwal biasa (belum jalan), langsung masuk tanpa alert
+                                                                    window.location.href = `/plotting?id=${o.id_pesanan}`;
+                                                                }
+                                                            }}
+                                                            className="px-3 py-2 bg-slate-50 text-slate-500 rounded-xl text-[9px] font-black uppercase border border-slate-200/60 transition-all hover:bg-slate-100"
+                                                        >
+                                                            Ubah Plot
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             );

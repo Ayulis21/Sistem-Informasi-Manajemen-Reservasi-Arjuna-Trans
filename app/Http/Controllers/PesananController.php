@@ -163,130 +163,92 @@ class PesananController extends Controller
      */
     public function updateFull(Request $request, string $id)
     {
+        // 1. Validasi Input Dasar
         $request->validate([
             'customerName' => 'required|string|max:255',
-            'destination'  => 'required|string|max:255',
+            'totalPrice'   => 'required|numeric',
             'departureDate' => 'required',
-            'totalPrice'   => 'required|numeric|min:0',
-            'dueDate'      => 'nullable|date', // <--- Tambahkan baris ini
-            'whatsapp'     => 'nullable|string|max:15',
         ]);
 
         DB::transaction(function () use ($request, $id) {
-            $fleetInput = $request->fleetRequirements;
-            $fleetData = [];
-            if (is_string($fleetInput)) {
-                $fleetData = json_decode($fleetInput, true) ?? [];
-            } else if (is_array($fleetInput)) {
-                $fleetData = $fleetInput;
-            }
-            $fleet = is_array($fleetData) ? $fleetData : [];
-
+            // 2. Update Tabel Utama Pesanan
             DB::table('pesanan')
                 ->where('id_pesanan', $id)
                 ->update([
                     'nama_pemesan'       => $request->customerName,
-                    'alamat'              => $request->alamat,
-                    'no_telp'            => $request->whatsapp,
+                    'alamat'             => $request->alamat ?: '-',
+                    'no_telp'            => $request->whatsapp ?: '-',
                     'tgl_berangkat'      => date('Y-m-d H:i:s', strtotime($request->departureDate)),
-                    'tgl_selesai'        => $request->returnDate
-                        ? date('Y-m-d H:i:s', strtotime($request->returnDate))
-                        : now()->addDay(),
-                    'alamat_penjemputan' => $request->pickup ?? '-',
-                    'tujuan_main'        => $request->destination,
-                    'rute'               => $request->routeNotes ?? '-',
-                    'estimasi_jarak'     => intval($request->distance ?? 0),
-                    'harga_sewa'         => $request->totalPrice,
-                    'jatuh_tempo' => $request->input('dueDate'),
-                    'lain_lain'          => $request->lain_lain ?? '-',
+                    'tgl_selesai'        => $request->returnDate ? date('Y-m-d H:i:s', strtotime($request->returnDate)) : now(),
+                    'alamat_penjemputan' => $request->pickup ?: '-',
+                    'tujuan_main'        => $request->destination ?: '-',
+                    'rute'               => $request->routeNotes ?: '-',
+                    'estimasi_jarak'     => intval($request->distance ?: 0),
+                    'harga_sewa'         => floatval($request->totalPrice ?: 0),
+                    'jatuh_tempo'        => $request->dueDate,
+                    'lain_lain'          => $request->lain_lain ?: '-',
                     'updated_at'         => now(),
                 ]);
+
+            // 3. Update Detail Armada (Hapus lalu isi ulang)
+            $fleetInput = $request->fleetRequirements;
+            $fleet = is_string($fleetInput) ? json_decode($fleetInput, true) : ($fleetInput ?? []);
             DB::table('pesanan_detail_armada')->where('id_pesanan', $id)->delete();
 
-
             foreach ($fleet as $item) {
-                // Mengantisipasi jika 'armada_id' kosong atau tidak valid
-                if (empty($item['armada_id'])) {
-                    continue;
-                }
-
-                $targetIdArmada = is_array($item['armada_id']) ? ($item['armada_id']['id_armada'] ?? null) : $item['armada_id'];
-
-                $armada = DB::table('armada')
-                    ->where('id_armada', $targetIdArmada)
-                    ->first();
-
-                if ($armada) {
-                    DB::table('pesanan_detail_armada')->insert([
-                        'id_pesanan' => $id,
-                        'tipe_armada' => $armada->tipe_armada,
-                        'qty'         => intval($item['qty'] ?? 1),
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ]);
+                if (!empty($item['armada_id'])) {
+                    $armada = DB::table('armada')->where('id_armada', $item['armada_id'])->first();
+                    if ($armada) {
+                        DB::table('pesanan_detail_armada')->insert([
+                            'id_pesanan' => $id,
+                            'tipe_armada' => $armada->tipe_armada,
+                            'qty' => $item['qty'] ?? 1,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
                 }
             }
+
+            // 4. Update Riwayat Pembayaran (JSON dan Tabel Riwayat)
             $paymentsInput = $request->paymentsData;
             $paymentsArray = is_string($paymentsInput) ? json_decode($paymentsInput, true) : ($paymentsInput ?? []);
-            if (!is_array($paymentsArray)) {
-                $paymentsArray = [];
-            }
 
             $totalPaidCalculated = 0;
+            $tipeTerakhir = 'DP';
+
             foreach ($paymentsArray as $index => $p) {
-                if (is_array($p)) {
-                    $totalPaidCalculated += floatval($p['amount'] ?? 0);
+                $totalPaidCalculated += floatval($p['amount'] ?? 0);
 
-                    // Proses pemindahan file fisik gambar struk cicilan ke folder publik Anda
-                    if ($request->hasFile("evidenceFile_{$index}")) {
-                        $fileCicilan = $request->file("evidenceFile_{$index}");
-                        $namaFotoCicilan = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $fileCicilan->getClientOriginalExtension();
-                        $fileCicilan->move(public_path('uploads/bukti_transfer'), $namaFotoCicilan);
+                // Simpan Tipe untuk kolom tipe_keterangan (ENUM: DP, Cicil, Lunas)
+                $tipeTerakhir = $p['type'];
 
-                        // Kunci teks nama filenya ke dalam array
-                        $paymentsArray[$index]['bukti_transfer'] = $namaFotoCicilan;
-                    }
-
-                    // 🎯 KUNCI SAKRAL PENYEMBUHAN: Wajib membuang objek biner mentah pengganggu dari baris array!
-                    unset($paymentsArray[$index]['evidenceFile']);
+                // Cek file baru
+                if ($request->hasFile("evidenceFile_{$index}")) {
+                    $file = $request->file("evidenceFile_{$index}");
+                    $namaFoto = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $file->getClientOriginalExtension();
+                    $file->move(public_path('uploads/bukti_transfer'), $namaFoto);
+                    $paymentsArray[$index]['bukti_transfer'] = $namaFoto;
                 }
             }
 
-            // Sekarang teks JSON dijamin super ringan, bersih, polos, dan murni hanya berisi string teks pendek!
+            // Simpan JSON yang sudah bersih dari biner
             $stringPembayaranJson = json_encode($paymentsArray);
 
-            $tipeTerakhir = 'DP';
-            if (count($paymentsArray) > 0) {
-                $barisAkhir = end($paymentsArray);
-                $tipeMentah = is_array($barisAkhir) ? ($barisAkhir['type'] ?? 'DP') : 'DP';
-                $tipeTerakhir = ($tipeMentah === 'Cicilan' || $tipeMentah === 'Cicil') ? 'Cicil' : $tipeMentah;
-            }
-            $pembayaranAda = DB::table('riwayat_pembayaran')->where('id_pesanan', $id)->exists();
-            if ($pembayaranAda) {
-                DB::table('riwayat_pembayaran')
-                    ->where('id_pesanan', $id)
-                    ->update([
-                        'nominal'            => $totalPaidCalculated,
-                        'tipe_keterangan'    => substr($tipeTerakhir, 0, 20),
-                        'catatan_pembayaran' => $stringPembayaranJson,
-                        'updated_at'         => now(),
-                    ]);
-            } else if ($totalPaidCalculated > 0) {
-                DB::table('riwayat_pembayaran')->insert([
-                    'id_pesanan'         => $id,
+            // Update atau Insert ke tabel riwayat_pembayaran
+            DB::table('riwayat_pembayaran')->updateOrInsert(
+                ['id_pesanan' => $id],
+                [
                     'nominal'            => $totalPaidCalculated,
                     'tgl_bayar'          => now(),
-                    'tipe_keterangan'    => substr($tipeTerakhir, 0, 20),
-                    'bukti_transfer'     => 'bukti_default.jpg',
-                    'status_pembayaran'  => 'Pending',
+                    'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
                     'catatan_pembayaran' => $stringPembayaranJson,
-                    'created_at'         => now(),
                     'updated_at'         => now(),
-                ]);
-            }
+                ]
+            );
         });
 
-        return response()->json(['message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
+        return response()->json(['status' => 'success', 'message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
     }
 
     // Memproses tombol verifikasi "SESUAI" atau "TOLAK" beserta perekaman teks alasan dari admin
