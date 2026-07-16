@@ -4,8 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderStatusController;
-use App\Http\Controllers\PlottingControllerController;
-use App\Http\Controllers\CustomerScheduleController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
 use App\Http\Controllers\PesananController;
@@ -24,7 +23,7 @@ Route::post('/api/order/search', [OrderStatusController::class, 'search']);
 Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
 
 // Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
-Route::get('/api/customer-schedule', [CustomerScheduleController::class, 'getSchedule']);
+Route::get('/api/customer-schedule', [ScheduleController::class, 'getSchedule']);
 
 // agar sinkron 100% dengan link klik sidebar asli bawaan laptop Anda!
 Route::get('/master-data', function () {
@@ -41,7 +40,6 @@ Route::get('/api/admin/kru', [KruController::class, 'index']);
 Route::post('/api/admin/kru/store', [KruController::class, 'store']);
 Route::put('/api/admin/kru/update/{id}', [KruController::class, 'update']);
 Route::delete('/api/admin/kru/delete/{id}', [KruController::class, 'destroy']);
-
 
 // Rute API Internal Admin: Kelola Transaksi Pesanan Masuk Arjuna Trans
 Route::get('/orders', function () {
@@ -60,10 +58,13 @@ Route::get('/api/admin/pesanan', [\App\Http\Controllers\PesananController::class
 
 Route::get('/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('admin.plotting');
 Route::get('/admin/plotting', [\App\Http\Controllers\PlottingController::class, 'index'])->name('admin.plotting');
-// Route::get('/admin/plotting', [PlottingController::class, 'index'])->name('admin.plotting');
-// Rute untuk aksi tombol simpan biner plotting Anda ke database MySQL
 Route::post('/api/admin/plotting/store', [\App\Http\Controllers\PlottingController::class, 'store'])->name('admin.plotting.store');
 Route::post('/api/admin/plotting/save', [PlottingController::class, 'savePlotting']);
+
+Route::get('/schedule', [App\Http\Controllers\ScheduleController::class, 'index'])->name('schedule');
+
+
+
 
 
 
@@ -99,9 +100,9 @@ Route::get('/booking-success', function () {
 Route::get('/order-status', function () {
     return Inertia::render('OrderStatus');
 })->name('order-status');
-Route::get('/schedule', function () {
-    return Inertia::render('CustomerSchedule');
-})->name('schedule'); // Untuk luar
+// Route::get('/schedule', function () {
+//     return Inertia::render('CustomerSchedule');
+// })->name('schedule');
 
 //admin route
 Route::get('/dashboard', function () {
@@ -110,9 +111,7 @@ Route::get('/dashboard', function () {
 // Route::get('/plotting', function () {
 //     return Inertia::render('Plotting');
 // })->name('plotting');
-// Route::get('/admin-schedule', function () {
-//     return Inertia::render('Schedule');
-// })->name('admin.schedule'); // Untuk admin di dalam
+// Untuk admin di dalam
 // Route::get('/reports', function () {
 //     return Inertia::render('Reports');
 // })->name('reports');
@@ -128,21 +127,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route::get('/dashboard', function () {
     //     return Inertia::render('Dashboard');
     // })->name('dashboard');
+
     // Route::get('/catalog', function () {
     //     return Inertia::render('Catalog');
     // })->name('catalog');
+
     // Route::get('/documents', function () {
     //     return Inertia::render('Documents');
     // })->name('documents');
+
     // // Route::get('/master-data', function () {
     // //     return Inertia::render('MasterData');
     // // })->name('master-data');
+
     // // Route::get('/orders', function () {
     // //     return Inertia::render('Orders');
     // // })->name('orders');
+
     // // Route::get('/plotting', function () {
     // //     return Inertia::render('Plotting');
     // // })->name('plotting');
+
     // // Route::get('/reports', function () {
     // //     return Inertia::render('Reports');
     // // })->name('reports');

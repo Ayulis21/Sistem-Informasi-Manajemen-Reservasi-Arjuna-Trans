@@ -45,7 +45,7 @@ const Landing: React.FC = () => {
                 <div className="container mx-auto text-center max-w-4xl">
                     <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full mb-8">
                         <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest text-[8px] sm:text-[10px]">
+                        <span className=" font-black text-indigo-600 uppercase tracking-widest text-[8px] sm:text-[10px]">
                             Sewa Bus Pariwisata Terbaik
                         </span>
                     </div>
@@ -101,7 +101,7 @@ const Landing: React.FC = () => {
                         </Link>
 
                         <Link
-                            href="/schedule"
+                            href="/customerSchedule"
                             className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-100/50 hover:border-indigo-500 transition-all text-left relative overflow-hidden sm:col-span-2 lg:col-span-1"
                         >
                             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">

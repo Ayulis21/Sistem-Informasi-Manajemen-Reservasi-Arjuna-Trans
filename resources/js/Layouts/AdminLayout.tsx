@@ -78,8 +78,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                 <span>Plotting Armada</span>
                             </Link>
                             <Link
-                                href="/admin-schedule"
-                                className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all ${url === "/admin-schedule" ? "bg-[#5346F1] text-white shadow-lg" : "hover:bg-slate-50 hover:text-slate-600"}`}
+                                href="/schedule"
+                                className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all ${url === "/schedule" ? "bg-[#5346F1] text-white shadow-lg" : "hover:bg-slate-50 hover:text-slate-600"}`}
                             >
                                 <Calendar size={16} />{" "}
                                 <span>Kalender Jalan</span>
