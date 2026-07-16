@@ -657,12 +657,6 @@ const Orders: React.FC = () => {
                                             Sedang Jalan
                                         </span>
                                     );
-                                } else if (sekarang > tglSelesai) {
-                                    badgeKanan = (
-                                        <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-widest border border-amber-200">
-                                            Menunggu Selesai
-                                        </span>
-                                    );
                                 } else {
                                     badgeKanan = (
                                         <span className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200">
@@ -670,12 +664,6 @@ const Orders: React.FC = () => {
                                         </span>
                                     );
                                 }
-                            } else if (statusSkrg === "Disetujui") {
-                                badgeKanan = (
-                                    <span className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest border border-indigo-100">
-                                        Siap Plotting
-                                    </span>
-                                );
                             }
                             return (
                                 <div
@@ -868,11 +856,6 @@ const Orders: React.FC = () => {
                                         {statusSkrg === "Batal" && (
                                             <span className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase border border-rose-100">
                                                 Batal
-                                            </span>
-                                        )}
-                                        {statusSkrg === "Disetujui" && (
-                                            <span className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase border border-indigo-100">
-                                                Siap Plotting
                                             </span>
                                         )}
                                         {statusSkrg === "Terjadwal" &&
