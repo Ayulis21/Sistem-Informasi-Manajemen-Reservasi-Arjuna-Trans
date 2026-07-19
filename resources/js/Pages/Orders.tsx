@@ -820,34 +820,392 @@ const Orders: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setSelectedId(o.id_pesanan);
+                                                let teksCatatanUtama = "";
+                                                let tanggalJatuhTempo = "";
+                                                let kantongPayments: any[] = [];
+
+                                                try {
+                                                    if (
+                                                        o.catatan_pembayaran &&
+                                                        o.catatan_pembayaran
+                                                            .trim()
+                                                            .startsWith("[")
+                                                    ) {
+                                                        const arrayJson =
+                                                            JSON.parse(
+                                                                o.catatan_pembayaran,
+                                                            );
+                                                        if (
+                                                            Array.isArray(
+                                                                arrayJson,
+                                                            ) &&
+                                                            arrayJson.length > 0
+                                                        ) {
+                                                            kantongPayments =
+                                                                arrayJson;
+                                                            teksCatatanUtama =
+                                                                arrayJson[0]
+                                                                    .notes ||
+                                                                "";
+                                                            tanggalJatuhTempo =
+                                                                arrayJson[0]
+                                                                    .date || "";
+                                                        }
+                                                    } else if (
+                                                        o.catatan_pembayaran &&
+                                                        o.catatan_pembayaran
+                                                            .trim()
+                                                            .startsWith("{")
+                                                    ) {
+                                                        const objekJson =
+                                                            JSON.parse(
+                                                                o.catatan_pembayaran,
+                                                            );
+                                                        if (
+                                                            objekJson.riwayat &&
+                                                            Array.isArray(
+                                                                objekJson.riwayat,
+                                                            )
+                                                        ) {
+                                                            kantongPayments =
+                                                                objekJson.riwayat;
+                                                            teksCatatanUtama =
+                                                                objekJson
+                                                                    .riwayat[0]
+                                                                    ?.notes ||
+                                                                "";
+                                                        } else {
+                                                            teksCatatanUtama =
+                                                                objekJson.notes ||
+                                                                "";
+                                                        }
+                                                    } else {
+                                                        teksCatatanUtama =
+                                                            o.catatan_pembayaran ||
+                                                            "";
+                                                        kantongPayments = [
+                                                            {
+                                                                type:
+                                                                    o.tipe_keterangan ||
+                                                                    "DP",
+                                                                date: o.tgl_bayar
+                                                                    ? o.tgl_bayar.substring(
+                                                                          0,
+                                                                          10,
+                                                                      )
+                                                                    : new Date()
+                                                                          .toISOString()
+                                                                          .substring(
+                                                                              0,
+                                                                              10,
+                                                                          ),
+                                                                amount: Number(
+                                                                    o.total_terbayar ||
+                                                                        o.nominal ||
+                                                                        0,
+                                                                ),
+                                                                notes:
+                                                                    o.catatan_pembayaran ||
+                                                                    "",
+                                                                evidenceFile:
+                                                                    null,
+                                                                bukti_transfer:
+                                                                    o.bukti_transfer ||
+                                                                    "bukti_default.jpg",
+                                                                paymentStatus:
+                                                                    o.status_pembayaran ||
+                                                                    "Pending",
+                                                            },
+                                                        ];
+                                                    }
+                                                } catch (e) {
+                                                    teksCatatanUtama =
+                                                        o.catatan_pembayaran ||
+                                                        "";
+                                                    kantongPayments = [
+                                                        {
+                                                            type:
+                                                                o.tipe_keterangan ||
+                                                                "DP",
+                                                            date: o.tgl_bayar
+                                                                ? o.tgl_bayar.substring(
+                                                                      0,
+                                                                      10,
+                                                                  )
+                                                                : new Date()
+                                                                      .toISOString()
+                                                                      .substring(
+                                                                          0,
+                                                                          10,
+                                                                      ),
+                                                            amount: Number(
+                                                                o.total_terbayar ||
+                                                                    o.nominal ||
+                                                                    0,
+                                                            ),
+                                                            notes:
+                                                                o.catatan_pembayaran ||
+                                                                "",
+                                                            evidenceFile: null,
+                                                            bukti_transfer:
+                                                                o.bukti_transfer ||
+                                                                "bukti_default.jpg",
+                                                            paymentStatus:
+                                                                o.status_pembayaran ||
+                                                                "Pending",
+                                                        },
+                                                    ];
+                                                }
+                                                setSelectedId(
+                                                    o.id_pesanan || o.id,
+                                                );
                                                 setIsEditMode(true);
-                                                setFormData({ ...o });
+                                                setFormData({
+                                                    id_pesanan:
+                                                        o.id_pesanan || "",
+                                                    customerName:
+                                                        o.nama_pemesan || "",
+                                                    customerAddress:
+                                                        o.alamat || "",
+                                                    whatsapp: o.no_telp || "",
+                                                    destination:
+                                                        o.tujuan_main || "",
+                                                    pickup:
+                                                        o.alamat_penjemputan ||
+                                                        "",
+                                                    distance: String(
+                                                        o.estimasi_jarak || 0,
+                                                    ),
+                                                    departureDate:
+                                                        o.tgl_berangkat
+                                                            ? o.tgl_berangkat
+                                                                  .replace(
+                                                                      " ",
+                                                                      "T",
+                                                                  )
+                                                                  .substring(
+                                                                      0,
+                                                                      16,
+                                                                  )
+                                                            : "",
+                                                    returnDate: o.tgl_selesai
+                                                        ? o.tgl_selesai
+                                                              .replace(" ", "T")
+                                                              .substring(0, 16)
+                                                        : "",
+                                                    routeNotes: o.rute || "",
+                                                    totalPrice: Number(
+                                                        o.harga_sewa || 0,
+                                                    ),
+                                                    paidAmount: totalBayar,
+                                                    dueDate: o.jatuh_tempo
+                                                        ? o.jatuh_tempo.substring(
+                                                              0,
+                                                              10,
+                                                          )
+                                                        : tanggalJatuhTempo
+                                                          ? tanggalJatuhTempo.substring(
+                                                                0,
+                                                                10,
+                                                            )
+                                                          : "",
+                                                    paymentType:
+                                                        o.tipe_keterangan ||
+                                                        "DP",
+                                                    paymentDate: o.tgl_bayar
+                                                        ? o.tgl_bayar.substring(
+                                                              0,
+                                                              10,
+                                                          )
+                                                        : new Date()
+                                                              .toISOString()
+                                                              .substring(0, 10),
+                                                    bukti_transfer:
+                                                        o.bukti_transfer ||
+                                                        "bukti_default.jpg",
+                                                    evidenceFile: null,
+                                                    lain_lain:
+                                                        o.lain_lain || "",
+                                                    fleetRequirements:
+                                                        Array.isArray(
+                                                            o.fleetRequirements,
+                                                        ) &&
+                                                        o.fleetRequirements
+                                                            .length > 0
+                                                            ? o.fleetRequirements.map(
+                                                                  (
+                                                                      fr: any,
+                                                                  ) => ({
+                                                                      armada_id:
+                                                                          String(
+                                                                              fr.armada_id,
+                                                                          ),
+                                                                      qty: Number(
+                                                                          fr.qty,
+                                                                      ),
+                                                                  }),
+                                                              )
+                                                            : [
+                                                                  {
+                                                                      armada_id:
+                                                                          "",
+                                                                      qty: 1,
+                                                                  },
+                                                              ],
+                                                    paymentStatus:
+                                                        o.status_pembayaran ||
+                                                        "Pending",
+                                                    catatan_pembayaran:
+                                                        teksCatatanUtama,
+                                                    payments: kantongPayments,
+                                                });
                                                 setIsOpenModal(true);
                                             }}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                                            className="p-2 text-slate-400 hover:text-[#5346F1] hover:bg-indigo-50/50 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                            title="Edit Cepat Detail Pesanan"
                                         >
-                                            <Edit2 size={18} />
+                                            <Edit2
+                                                size={18}
+                                                className="stroke-[2.5]"
+                                            />
                                         </button>
 
                                         {/* 4. 🎯 TOMBOL TELEPON (Di Kanannya Status) */}
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                /* Logika WA */
+                                                if (o.no_telp) {
+                                                    const nomorBersih = String(
+                                                        o.no_telp,
+                                                    ).replace(/[^0-9]/g, "");
+                                                    const nomorFormatWA =
+                                                        nomorBersih.startsWith(
+                                                            "0",
+                                                        )
+                                                            ? "62" +
+                                                              nomorBersih.slice(
+                                                                  1,
+                                                              )
+                                                            : nomorBersih;
+                                                    window.open(
+                                                        `https://wa.me/${nomorFormatWA}`,
+                                                        "_blank",
+                                                    );
+                                                } else {
+                                                    alert(
+                                                        "📱 Pemberitahuan: Nomor telepon WhatsApp untuk pelanggan ini tidak ditemukan.",
+                                                    );
+                                                }
                                             }}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 transition-all"
+                                            className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                            title="Hubungi WhatsApp"
                                         >
-                                            <Phone size={18} />
+                                            <Phone
+                                                size={18}
+                                                className="stroke-[2.5]"
+                                            />
                                         </button>
-
                                         {/* 2. TOMBOL PRINT */}
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                /* Logika Print */
+                                                let kantongSaringanBiner: any[] =
+                                                    [];
+                                                try {
+                                                    if (
+                                                        o.catatan_pembayaran &&
+                                                        String(
+                                                            o.catatan_pembayaran,
+                                                        )
+                                                            .trim()
+                                                            .startsWith("[")
+                                                    ) {
+                                                        const hasilBongkar =
+                                                            JSON.parse(
+                                                                o.catatan_pembayaran,
+                                                            );
+                                                        if (
+                                                            Array.isArray(
+                                                                hasilBongkar,
+                                                            )
+                                                        ) {
+                                                            kantongSaringanBiner =
+                                                                hasilBongkar;
+                                                        }
+                                                    }
+                                                } catch (e) {
+                                                    kantongSaringanBiner = [];
+                                                }
+
+                                                const payloadOrderMurni = {
+                                                    id: o.id_pesanan || "",
+                                                    customerName:
+                                                        o.nama_pemesan ||
+                                                        "Tanpa Nama",
+                                                    customerAddress:
+                                                        o.alamat || "-",
+                                                    route:
+                                                        o.rute ||
+                                                        o.tujuan_main ||
+                                                        "-",
+                                                    destination:
+                                                        o.tujuan_main || "-",
+                                                    departureTime:
+                                                        o.tgl_berangkat ||
+                                                        new Date().toISOString(),
+                                                    pickupAddress:
+                                                        o.alamat_penjemputan ||
+                                                        "-",
+                                                    totalPrice: Number(
+                                                        o.harga_sewa || 0,
+                                                    ),
+                                                    downPayment: Number(
+                                                        kantongSaringanBiner.find(
+                                                            (p: any) =>
+                                                                p.type ===
+                                                                    "DP" &&
+                                                                p.paymentStatus ===
+                                                                    "Disetujui",
+                                                        )?.amount || 0,
+                                                    ),
+                                                    remainingBalance:
+                                                        Number(
+                                                            o.harga_sewa || 0,
+                                                        ) - totalBayar,
+                                                    fleetRequirements:
+                                                        o.tipe_unit_diminta
+                                                            ? [
+                                                                  {
+                                                                      type: o.tipe_unit_diminta,
+                                                                      count: Number(
+                                                                          o.jumlah_unit_diminta ||
+                                                                              1,
+                                                                      ),
+                                                                  },
+                                                              ]
+                                                            : [
+                                                                  {
+                                                                      type: "Bus",
+                                                                      count: 1,
+                                                                  },
+                                                              ],
+                                                    assignments: [
+                                                        {
+                                                            armadaId: "0",
+                                                            assetType:
+                                                                "Internal",
+                                                            plateNumber:
+                                                                "S 7123 UA",
+                                                        },
+                                                    ],
+                                                    notes: o.lain_lain || "-",
+                                                };
+                                                setActiveInvoiceOrder(
+                                                    payloadOrderMurni,
+                                                );
                                             }}
-                                            className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center hover:bg-slate-800 transition-all"
+                                            className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-slate-900 transition-colors print:hidden"
+                                            title="Buka Lembar Invoice"
                                         >
                                             <Printer size={16} />
                                         </button>

@@ -243,6 +243,7 @@ class PesananController extends Controller
                     'tgl_bayar'          => now(),
                     'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
                     'catatan_pembayaran' => $stringPembayaranJson,
+                    'bukti_transfer' => $totalPaidCalculated,
                     'updated_at'         => now(),
                 ]
             );
