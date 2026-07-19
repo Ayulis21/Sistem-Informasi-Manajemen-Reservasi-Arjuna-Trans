@@ -11,12 +11,24 @@ Aplikasi ini dibangun menggunakan arsitektur modern perpaduan **Laravel (Back-En
 ### 1. Manajemen Master Data (Aset & Kru)
 
 - **Modul Kelola Armada (100% DONE)**: Fitur CRUD lengkap (Tambah unit, Tampil kartu grid dinamis, Validasi cerdas, Edit data via modal, dan Hapus permanen) terintegrasi lurus ke database MySQL.
-- **Modul Kelola Kru Lapangan (In Progress)**: Manajemen registrasi tim driver (sopir) dan helper (kernet) operasional.
+- **Modul Kelola Kru Lapangan (100% DONE)**: Registrasi lengkap Driver (Sopir) & Helper (Kernet) dengan Sistem Jam Terbang (KM) Otomatis dan Reset Bulanan setiap tanggal 1 awal bulan.
 
-### 2. Transaksi & Reservasi (In Progress)
+### 2. Modul Operasional & Plotting (100% DONE)
 
-- **Kelola Transaksi Pesanan**: Memproses pengajuan reservasi masuk dari pelanggan (Ubah status pending, verifikasi pembayaran, cetak manifes).
-- **Plotting Jadwal & Penugasan**: Menghubungkan pesanan pariwisata aktif dengan ketersediaan bus dan kru secara interaktif.
+- **Manajemen Antrean Cerdas**: Sistem otomatis menyaring pesanan yang belum di-plot dan mengurutkan jadwal berdasarkan waktu keberangkatan terdekat.
+- **Validasi Jeda Istirahat (8 Jam Rule)**: Fitur keamanan yang otomatis mendeteksi bentrok jadwal dan mewajibkan jeda istirahat minimal 8 jam antar perjalanan bagi kru.
+- **Integrasi Armada Rekanan (Sub-Contractor)**: Mendukung pengisian data bus luar (PO Mitra, Plat, Seat, dan Biaya Modal) tanpa memotong jatah kapasitas garasi internal.
+
+### 3. Modul Kelola Pesanan & Keuangan (100% DONE)
+
+- **Otomasi Visual Real-Time**: Status pesanan berubah otomatis di dashboard (🚀 Sedang Jalan atau ⏳ Menunggu Selesai) berdasarkan jam berangkat dan pulang secara otomatis.
+- **Validasi Keuangan Ketat**: Penguncian nominal (Locked) untuk data yang disetujui, wajib upload bukti transfer, dan pemisahan status pembayaran per baris.
+- **Instant Search**: Fitur pencarian cepat berdasarkan nama pelanggan, ID Pesanan, atau Kota Tujuan yang langsung menyaring data saat diketik.
+
+### 4. Pusat Laporan & Analitik (100% DONE)
+
+- **Laporan Pembayaran**: Monitoring piutang pelanggan, status pelunasan, dan riwayat cicilan secara detail dan transparan.
+- **Laporan Kinerja Kru**: Analisis produktivitas tim berdasarkan akumulasi Jarak Tempuh (KM) dan jumlah perjalanan (Total Trips) yang telah diselesaikan.
 
 ---
 
