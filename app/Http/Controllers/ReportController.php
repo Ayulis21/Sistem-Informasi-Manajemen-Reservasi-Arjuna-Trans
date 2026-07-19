@@ -8,6 +8,8 @@ use Inertia\Inertia;
 
 class ReportController extends Controller
 {
+    // app/Http/Controllers/ReportController.php
+
     public function index()
     {
         $payments = DB::table('pesanan')

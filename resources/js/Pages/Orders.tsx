@@ -672,33 +672,30 @@ const Orders: React.FC = () => {
                                 >
                                     <div className="flex items-center gap-3">
                                         {(() => {
+                                            // 1. DEFAULT: JAM BIRU (Berlaku untuk 'Disetujui' & 'Terjadwal' walau sudah LUNAS)
                                             let bgBoks = "bg-indigo-50";
                                             let warnaIkon = "text-indigo-600";
                                             let KomponenIkon = Clock;
 
                                             if (statusSkrg === "Batal") {
+                                                // 2. BATAL -> X Merah
                                                 bgBoks = "bg-rose-50";
                                                 warnaIkon = "text-rose-500";
                                                 KomponenIkon = XCircle;
                                             } else if (
-                                                isLunas &&
-                                                statusSkrg === "Terjadwal"
+                                                statusSkrg === "Selesai"
                                             ) {
-                                                bgBoks = "bg-emerald-50/80";
+                                                // 3. 🎯 SELESAI -> CENTANG HIJAU (Hanya muncul jika status tuntas)
+                                                bgBoks = "bg-emerald-50";
                                                 warnaIkon = "text-emerald-600";
                                                 KomponenIkon = Check;
                                             } else if (
-                                                adakahPembayaranBelumAcc &&
-                                                statusSkrg === "Disetujui"
+                                                statusSkrg === "Pending" ||
+                                                adakahPembayaranBelumAcc
                                             ) {
-                                                bgBoks = "bg-amber-50/80";
-                                                warnaIkon = "text-amber-600";
-                                                KomponenIkon = Clock;
-                                            } else if (
-                                                statusSkrg === "Pending"
-                                            ) {
-                                                bgBoks = "bg-amber-50/80";
-                                                warnaIkon = "text-amber-600";
+                                                // 4. PENDING / PERLU ACC -> JAM ORANYE (Butuh tindakan admin)
+                                                bgBoks = "bg-amber-50";
+                                                warnaIkon = "text-amber-500";
                                                 KomponenIkon = Clock;
                                             }
 

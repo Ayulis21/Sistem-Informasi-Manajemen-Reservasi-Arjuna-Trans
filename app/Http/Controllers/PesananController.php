@@ -61,9 +61,9 @@ class PesananController extends Controller
         // Membuat ID Pesanan acak yang unik otomatis jika tidak dikirim dari frontend
         $idPesananUnik = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $idPesananUnik, $fleet) {
+        DB::transaction(function () use ($request, $idPesananUnik, $fleet) {
             // Baris 79
-            \Illuminate\Support\Facades\DB::table('pesanan')->insert([
+            DB::table('pesanan')->insert([
                 'id_pesanan'         => $idPesananUnik,
                 'nama_pemesan'       => $request->input('customerName') ?: $request->input('nama_pemesan'),
                 'alamat'             => $request->input('alamat') ?: $request->input('customerAddress') ?: '-',
@@ -82,7 +82,7 @@ class PesananController extends Controller
                 'jatuh_tempo'        => $request->input('dueDate'),
                 'status_pesanan'     => 'Pending',
                 'lain_lain'          => $request->input('lain_lain') ?: '-',
-                'token_akses'        => \Illuminate\Support\Str::random(32),
+                'token_akses'        => Str::random(32),
                 'created_at'         => now(),
                 'updated_at'         => now(),
             ]);
@@ -95,12 +95,12 @@ class PesananController extends Controller
 
                 $targetIdArmada = is_array($item['armada_id']) ? ($item['armada_id']['id_armada'] ?? null) : $item['armada_id'];
 
-                $armada = \Illuminate\Support\Facades\DB::table('armada')
+                $armada = DB::table('armada')
                     ->where('id_armada', $targetIdArmada)
                     ->first();
 
                 if ($armada) {
-                    \Illuminate\Support\Facades\DB::table('pesanan_detail_armada')->insert([
+                    DB::table('pesanan_detail_armada')->insert([
                         'id_pesanan' => $idPesananUnik,
                         'tipe_armada' => $armada->tipe_armada,
                         'qty'         => intval($item['qty'] ?? 1),
@@ -119,28 +119,28 @@ class PesananController extends Controller
      */
     public function getPesananData()
     {
-        $pesanan = \Illuminate\Support\Facades\DB::table('pesanan')
+        $pesanan = DB::table('pesanan')
             ->select(
                 'pesanan.*',
                 // 🚀 KUNCI SAKRAL: Panggil secara eksplisit agar kolom jatuh_tempo dipaksa ikut keluar ke JSON!
                 'pesanan.jatuh_tempo as jatuh_tempo',
-                \Illuminate\Support\Facades\DB::raw('(SELECT SUM(nominal) FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan) as total_terbayar'),
-                \Illuminate\Support\Facades\DB::raw('(SELECT bukti_transfer FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as bukti_transfer'),
-                \Illuminate\Support\Facades\DB::raw('(SELECT status_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as status_pembayaran'),
-                \Illuminate\Support\Facades\DB::raw('(SELECT catatan_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as catatan_pembayaran'),
-                \Illuminate\Support\Facades\DB::raw('(SELECT tipe_keterangan FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tipe_keterangan'),
-                \Illuminate\Support\Facades\DB::raw('(SELECT tgl_bayar FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tgl_bayar')
+                DB::raw('(SELECT SUM(nominal) FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan) as total_terbayar'),
+                DB::raw('(SELECT bukti_transfer FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as bukti_transfer'),
+                DB::raw('(SELECT status_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as status_pembayaran'),
+                DB::raw('(SELECT catatan_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as catatan_pembayaran'),
+                DB::raw('(SELECT tipe_keterangan FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tipe_keterangan'),
+                DB::raw('(SELECT tgl_bayar FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tgl_bayar')
             )
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($order) {
                 // 🚀 KUNCI SAKRAL: Menarik data dari tabel anak yang terbukti sukses menyimpan data Anda!
-                $detailArmada = \Illuminate\Support\Facades\DB::table('pesanan_detail_armada')
+                $detailArmada = DB::table('pesanan_detail_armada')
                     ->where('id_pesanan', $order->id_pesanan)
                     ->get();
 
                 $order->fleetRequirements = $detailArmada->map(function ($item) {
-                    $masterArmada = \Illuminate\Support\Facades\DB::table('armada')
+                    $masterArmada = DB::table('armada')
                         ->where('tipe_armada', $item->tipe_armada)
                         ->first();
 
@@ -243,7 +243,7 @@ class PesananController extends Controller
                     'tgl_bayar'          => now(),
                     'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
                     'catatan_pembayaran' => $stringPembayaranJson,
-                    'bukti_transfer' => $totalPaidCalculated,
+                    'bukti_transfer'     => 'bukti_default.jpg',
                     'updated_at'         => now(),
                 ]
             );

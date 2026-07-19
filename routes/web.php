@@ -63,6 +63,10 @@ Route::post('/api/admin/plotting/save', [PlottingController::class, 'savePlottin
 
 Route::get('/schedule', [App\Http\Controllers\ScheduleController::class, 'index'])->name('schedule');
 
+Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('report');
+// Route::get('/reports', function () {
+//     return Inertia::render('Reports');
+// })->name('reports');
 
 
 
@@ -112,9 +116,7 @@ Route::get('/dashboard', function () {
 //     return Inertia::render('Plotting');
 // })->name('plotting');
 // Untuk admin di dalam
-// Route::get('/reports', function () {
-//     return Inertia::render('Reports');
-// })->name('reports');
+
 
 
 
