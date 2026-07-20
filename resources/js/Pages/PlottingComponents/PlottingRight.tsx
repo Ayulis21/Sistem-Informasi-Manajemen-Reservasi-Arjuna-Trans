@@ -233,9 +233,7 @@ const PlottingRight: React.FC<PlottingRightProps> = ({
                 assignments: assignments,
             });
 
-            alert(
-                "✨ SUKSES: Data plotting (Termasuk Rekanan) berhasil disimpan!",
-            );
+            alert("✨ SUKSES: Data plotting berhasil disimpan!");
             window.location.reload();
         } catch (error) {
             console.error(error);

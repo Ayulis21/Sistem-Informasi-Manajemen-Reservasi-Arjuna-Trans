@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
 use App\Http\Controllers\PesananController;
@@ -14,16 +15,19 @@ use App\Models\Kru;
 
 
 // Rute Halaman Portal Pelanggan Arjuna Trans
-Route::get('/order-status', [OrderStatusController::class, 'index'])->name('order.status');
+// Route::get('/order-status', [OrderStatusController::class, 'index'])->name('order.status');
 
 // Rute API: Pencarian Pesanan via ID / WhatsApp (Form Pencarian)
-Route::post('/api/order/search', [OrderStatusController::class, 'search']);
+// Route::post('/api/order/search', [OrderStatusController::class, 'search']);
 
 // Rute API: Aksi Kirim Bukti Transfer Pelanggan (Tombol Kirim Bukti Pembayaran)
-Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
+// Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
 
 // Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
-Route::get('/api/customer-schedule', [ScheduleController::class, 'getSchedule']);
+// Route::get('/api/customer-schedule', [ScheduleController::class, 'getSchedule']);
+
+
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
 // agar sinkron 100% dengan link klik sidebar asli bawaan laptop Anda!
 Route::get('/master-data', function () {
@@ -109,9 +113,9 @@ Route::get('/order-status', function () {
 // })->name('schedule');
 
 //admin route
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->name('dashboard');
+// Route::get('/dashboard', function () {
+//     return Inertia::render('Dashboard');
+// })->name('dashboard');
 // Route::get('/plotting', function () {
 //     return Inertia::render('Plotting');
 // })->name('plotting');

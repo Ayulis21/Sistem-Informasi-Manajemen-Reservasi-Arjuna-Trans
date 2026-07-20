@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import AdminLayout from "@/Layouts/AdminLayout";
 import {
     XAxis,
@@ -12,217 +12,137 @@ import {
     PieChart,
     Pie,
 } from "recharts";
-// import { AppState } from "../types";
 import {
     Truck,
     AlertCircle,
     BarChart3,
     CheckCircle2,
     Calendar,
+    ArrowRight,
 } from "lucide-react";
 
-const Dashboard: React.FC = () => {
-    const state = {
-        armada: [
-            { id: "A001", status: "Ready" },
-            { id: "A002", status: "Ready" },
-            { id: "A003", status: "On Trip" },
-            { id: "A004", status: "Maintenance" },
-            { id: "A005", status: "Ready" },
-        ],
-
-        orders: [
-            {
-                status: "Pending",
-                departureTime: "2026-07-10",
-                returnTime: "2026-07-12",
-                assignments: [],
-            },
-            {
-                status: "Approved",
-                departureTime: "2026-07-15",
-                returnTime: "2026-07-18",
-                assignments: [],
-            },
-            {
-                status: "Completed",
-                departureTime: "2026-07-01",
-                returnTime: "2026-07-03",
-                assignments: [],
-            },
-        ],
+interface DashboardProps {
+    stats: {
+        totalMasuk: number;
+        totalPiutang: number;
+        needPlotting: number;
+        onTrip: number;
+        pendingVerify: number;
     };
-    const [checkDates, setCheckDates] = useState({
-        start: "",
-        end: "",
-    });
+    revenueData: any[];
+    unplottedOrders: any[];
+    pendingPayments: any[];
+    armadaStats: any[];
+}
 
-    const [availableResult, setAvailableResult] = useState<{
-        total: number;
-        ready: number;
-    } | null>(null);
-
-    const handleCheckAvailability = () => {
-        setAvailableResult({
-            total: state.armada.length,
-            ready: 3,
-        });
-    };
-    const readyBuses = state.armada.filter((a) => a.status === "Ready").length;
-    const onTripBuses = state.armada.filter(
-        (a) => a.status === "On Trip",
-    ).length;
-
-    const maintenanceBuses = state.armada.filter(
-        (a) => a.status === "Maintenance",
-    ).length;
-
-    const pendingCount = state.orders.filter(
-        (o) => o.status === "Pending",
-    ).length;
-
-    const approvedCount = state.orders.filter(
-        (o) => o.status === "Approved",
-    ).length;
-
-    const completedCount = state.orders.filter(
-        (o) => o.status === "Completed",
-    ).length;
-
-    const orderData = [
-        { name: "Baru", value: pendingCount, color: "#f59e0b" },
-        { name: "Disetujui", value: approvedCount, color: "#6366f1" },
-        { name: "Selesai", value: completedCount, color: "#10b981" },
-    ];
-
-    const revenueHistory = [
-        { day: "Sen", total: 12000000 },
-        { day: "Sel", total: 9000000 },
-        { day: "Rab", total: 18000000 },
-        { day: "Kam", total: 15000000 },
-        { day: "Jum", total: 21000000 },
-        { day: "Sab", total: 27000000 },
-        { day: "Min", total: 31000000 },
-    ];
-
+const Dashboard: React.FC<DashboardProps> = ({
+    stats,
+    revenueData,
+    unplottedOrders,
+    pendingPayments,
+    armadaStats,
+}) => {
     return (
         <AdminLayout>
             <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="grid grid-cols-1 gap-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                                    Ringkasan Operasional
-                                </h2>
-                            </div>
-                            <p className="text-slate-500 text-sm italic">
-                                Status real-time {state.armada.length} armada
-                                dan antrean pesanan.
-                            </p>
-                        </div>
-                        <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-[2rem] border border-slate-200 shadow-sm">
-                            <div className="space-y-1">
-                                <label className="text-[8px] font-black uppercase text-slate-400 pl-2">
-                                    Cek Slot Tanggal
-                                </label>
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="date"
-                                        className="bg-slate-50 border-none rounded-xl px-3 py-2 text-[10px] font-bold"
-                                        value={checkDates.start}
-                                        onChange={(e) =>
-                                            setCheckDates({
-                                                ...checkDates,
-                                                start: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <span className="text-slate-300 text-[10px]">
-                                        s/d
-                                    </span>
-                                    <input
-                                        type="date"
-                                        className="bg-slate-50 border-none rounded-xl px-3 py-2 text-[10px] font-bold"
-                                        value={checkDates.end}
-                                        onChange={(e) =>
-                                            setCheckDates({
-                                                ...checkDates,
-                                                end: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleCheckAvailability}
-                                className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all"
-                            >
-                                Check
-                            </button>
-                            {availableResult !== null && (
-                                <div className="bg-emerald-50 text-emerald-600 px-4 py-2.5 rounded-xl border border-emerald-100 animate-in zoom-in-95">
-                                    <p className="text-[10px] font-black uppercase">
-                                        {availableResult.ready} Unit Tersedia
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                {/* HEADER SECTION */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                            KONTROL OPERASIONAL
+                        </h2>
+                        <p className="text-slate-400 text-xs font-bold italic mt-1">
+                            Ringkasan aktivitas PO Arjuna Trans hari ini.
+                        </p>
+                    </div>
+                    <div className="bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm text-right">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                            Server Time
+                        </p>
+                        <p className="text-xs font-bold text-indigo-600">
+                            {new Date().toLocaleDateString("id-ID", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            })}
+                        </p>
                     </div>
                 </div>
 
+                {/* ROW 1: CORE METRICS */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
-                        title="Total Armada"
-                        value={state.armada.length.toString()}
+                        title="Tagihan Aktif"
+                        value={`Rp ${(stats.totalPiutang / 1000000).toFixed(1)}jt`} // Tampil 11.0jt
+                        icon={AlertCircle}
+                        color="bg-rose-500"
+                        trend="Sisa Piutang"
+                        subColor="bg-rose-50 text-rose-600"
+                    />
+                    <StatCard
+                        title="Perlu Plotting"
+                        value={stats.needPlotting.toString()}
+                        icon={Calendar}
+                        color="bg-amber-500"
+                        trend="Segera Berangkat"
+                        subColor="bg-amber-50 text-amber-600"
+                    />
+                    <StatCard
+                        title="Bus di Jalan"
+                        value={stats.onTrip.toString()}
                         icon={Truck}
                         color="bg-indigo-600"
-                        trend="Semua Unit"
-                        subColor="bg-slate-100 text-slate-600"
-                    />
-                    <StatCard
-                        title="Unit Ready"
-                        value={readyBuses.toString()}
-                        icon={CheckCircle2}
-                        color="bg-emerald-500"
-                        trend="Tersedia"
-                        subColor="bg-emerald-50 text-emerald-600"
-                    />
-                    <StatCard
-                        title="On Trip"
-                        value={onTripBuses.toString()}
-                        icon={Calendar}
-                        color="bg-indigo-500"
-                        trend="Sedang Jalan"
+                        trend="Sedang Operasional"
                         subColor="bg-indigo-50 text-indigo-600"
                     />
                     <StatCard
-                        title="Maintenance"
-                        value={maintenanceBuses.toString()}
+                        title="Verifikasi Bayar"
+                        // Menampilkan angka '2' (Jumlah transaksi yang BELUM di-ACC)
+                        value={stats.pendingVerify.toString()}
+                        // Ganti ikon ke AlertCircle agar terasa seperti "Tugas/Warning"
                         icon={AlertCircle}
-                        color="bg-red-500"
-                        trend="Dalam Servis"
-                        subColor="bg-red-50 text-red-600"
+                        // Ganti warna ke AMBER (Kuning/Oranye) karena ini status "Action Required"
+                        color="bg-amber-500"
+                        trend="Perlu Check"
+                        subColor="bg-amber-50 text-amber-600"
                     />
+                    {/* <StatCard
+                        title="Uang Masuk (Riil)"
+                        value={`Rp ${(stats.totalMasuk / 1000000).toFixed(1)}jt`}
+                        icon={CheckCircle2}
+                        color="bg-emerald-500"
+                        trend="Sudah ACC"
+                        subColor="bg-emerald-50 text-emerald-600"
+                    />
+
+                    <StatCard
+                        title="Sisa Piutang"
+                        value={`Rp ${(stats.totalPiutang / 1000000).toFixed(1)}jt`}
+                        icon={AlertCircle}
+                        color="bg-rose-500"
+                        trend="Belum Bayar"
+                        subColor="bg-rose-50 text-rose-600"
+                    /> */}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* CHART REVENUE */}
                     <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50">
+                        <div className="absolute top-0 right-0 p-8 text-slate-50/50">
                             <BarChart3 size={100} />
                         </div>
                         <div className="relative z-10">
-                            <h3 className="text-lg font-black mb-8 flex items-center text-slate-800 uppercase tracking-widest">
-                                <Calendar
+                            <h3 className="text-sm font-black mb-8 flex items-center text-slate-800 uppercase tracking-widest">
+                                <BarChart3
                                     className="mr-3 text-indigo-500"
-                                    size={20}
+                                    size={18}
                                 />
-                                Arus Kas Mingguan
+                                Tren Pendapatan (6 Bulan)
                             </h3>
                             <div className="h-72">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={revenueHistory}>
+                                    <AreaChart data={revenueData}>
                                         <defs>
                                             <linearGradient
                                                 id="colorRevenue"
@@ -264,9 +184,17 @@ const Dashboard: React.FC = () => {
                                                 fill: "#94a3b8",
                                                 fontSize: 11,
                                             }}
-                                            tickFormatter={(val) =>
-                                                `Rp${val / 1000000}M`
-                                            }
+                                            // 🎯 KUNCI: Paksa skala minimal dari 0 sampai 10 Juta agar labelnya tidak "Rp 1, Rp 2"
+                                            domain={[0, 10000000]}
+                                            // Menentukan kelipatan label yang muncul (0, 5jt, 10jt)
+                                            ticks={[
+                                                0, 2500000, 5000000, 7500000,
+                                                10000000,
+                                            ]}
+                                            tickFormatter={(val) => {
+                                                if (val === 0) return "Rp 0";
+                                                return `Rp ${(val / 1000000).toFixed(1)}jt`;
+                                            }}
                                         />
                                         <Tooltip
                                             contentStyle={{
@@ -276,8 +204,13 @@ const Dashboard: React.FC = () => {
                                                     "0 20px 25px -5px rgb(0 0 0 / 0.1)",
                                                 padding: "15px",
                                             }}
+                                            // 🎯 FORMATTER TOOLTIP BIAR MUNCUL RUPIAH ASLI
                                             formatter={(value: any) =>
-                                                `Rp ${Number(value).toLocaleString()}`
+                                                new Intl.NumberFormat("id-ID", {
+                                                    style: "currency",
+                                                    currency: "IDR",
+                                                    minimumFractionDigits: 0,
+                                                }).format(value)
                                             }
                                         />
                                         <Area
@@ -294,62 +227,161 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <h3 className="text-lg font-black mb-8 text-slate-800 uppercase tracking-widest">
-                                Status Booking
-                            </h3>
-                            <div className="h-60 flex flex-col justify-center">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={orderData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={90}
-                                            paddingAngle={10}
-                                            dataKey="value"
-                                            animationBegin={0}
-                                            animationDuration={1500}
-                                            stroke="none"
+                    {/* URGENT ACTION: BELUM PLOTTING */}
+                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                        <h3 className="text-sm font-black mb-6 text-slate-800 uppercase tracking-widest flex items-center">
+                            <AlertCircle
+                                className="mr-2 text-rose-500"
+                                size={18}
+                            />{" "}
+                            ⚠️ Belum Plotting
+                        </h3>
+                        <div className="space-y-4">
+                            {unplottedOrders.length > 0 ? (
+                                unplottedOrders.map((ord) => (
+                                    <div
+                                        key={ord.id}
+                                        className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-all group"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight">
+                                                    {ord.customerName}
+                                                </p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5">
+                                                    {ord.destination}
+                                                </p>
+                                            </div>
+                                            <span
+                                                className={`text-[8px] font-black px-1.5 py-0.5 rounded ${ord.daysLeft <= 2 ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}
+                                            >
+                                                H-{ord.daysLeft}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() =>
+                                                (window.location.href = `/plotting?id=${ord.id}`)
+                                            }
+                                            className="w-full mt-3 py-2 bg-white border border-slate-200 rounded-xl text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-2 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all"
                                         >
-                                            {orderData.map((entry, index) => (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill={entry.color}
-                                                />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{
-                                                borderRadius: "20px",
-                                                border: "none",
-                                                boxShadow:
-                                                    "0 20px 25px -5px rgb(0 0 0 / 0.1)",
-                                            }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
+                                            Pasang Armada{" "}
+                                            <ArrowRight size={10} />
+                                        </button>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-[10px] font-bold text-slate-400 text-center py-10 italic">
+                                    Semua pesanan sudah di-plotting.
+                                </p>
+                            )}
                         </div>
-                        <div className="space-y-4 mt-6">
-                            {orderData.map((d) => (
+                    </div>
+                </div>
+
+                {/* ROW 3: RECENT PAYMENTS VERIFICATION */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                        <h3 className="text-sm font-black mb-6 text-slate-800 uppercase tracking-widest flex items-center">
+                            <CheckCircle2
+                                className="mr-2 text-emerald-500"
+                                size={18}
+                            />{" "}
+                            Daftar Pembayaran Terbaru
+                        </h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                                        <td className="pb-4">Pelanggan</td>
+                                        <td className="pb-4">Nominal</td>
+                                        <td className="pb-4">Tipe</td>
+                                        <td className="pb-4 text-right">
+                                            Aksi
+                                        </td>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-[11px] font-bold text-slate-600">
+                                    {pendingPayments.map((pay) => (
+                                        <tr
+                                            key={pay.id}
+                                            className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                                        >
+                                            <td className="py-4">
+                                                {pay.customerName}
+                                            </td>
+                                            <td className="py-4 text-slate-800">
+                                                Rp{" "}
+                                                {pay.amount.toLocaleString(
+                                                    "id-ID",
+                                                )}
+                                            </td>
+                                            <td className="py-4">
+                                                <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-[9px] uppercase font-black">
+                                                    {pay.type}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-right">
+                                                <button
+                                                    onClick={() =>
+                                                        (window.location.href = `/orders?search=${pay.customerName}`)
+                                                    }
+                                                    className="text-indigo-600 hover:text-indigo-800 flex items-center justify-end gap-1 ml-auto"
+                                                >
+                                                    Cek <ArrowRight size={12} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                        <h3 className="text-sm font-black mb-8 text-slate-800 uppercase tracking-widest">
+                            Status Armada
+                        </h3>
+                        <div className="h-48">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={armadaStats}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={50}
+                                        outerRadius={70}
+                                        paddingAngle={8}
+                                        dataKey="value"
+                                        stroke="none"
+                                    >
+                                        {armadaStats.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={entry.color}
+                                            />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-3 mt-4">
+                            {armadaStats.map((d) => (
                                 <div
                                     key={d.name}
-                                    className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest"
+                                    className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest"
                                 >
                                     <div className="flex items-center">
                                         <div
-                                            className="w-3 h-3 rounded-full mr-3 shadow-sm"
+                                            className="w-2.5 h-2.5 rounded-full mr-3"
                                             style={{ backgroundColor: d.color }}
                                         ></div>
-                                        <span className="text-slate-500">
+                                        <span className="text-slate-400">
                                             {d.name}
                                         </span>
                                     </div>
                                     <span className="text-slate-800">
-                                        {d.value} Pesanan
+                                        {d.value} Unit
                                     </span>
                                 </div>
                             ))}
@@ -361,6 +393,7 @@ const Dashboard: React.FC = () => {
     );
 };
 
+// --- KOMPONEN STATCARD (Didefinisikan di sini untuk memperbaiki error) ---
 const StatCard = ({
     title,
     value,
@@ -383,7 +416,7 @@ const StatCard = ({
                 <h4 className="text-3xl font-black text-slate-800 tracking-tighter">
                     {value}
                 </h4>
-                <p className="mt-1 text-xs font-bold text-slate-400 uppercase tracking-tight">
+                <p className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-tight">
                     {title}
                 </p>
             </div>
