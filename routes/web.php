@@ -26,8 +26,9 @@ use App\Models\Kru;
 // Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
 // Route::get('/api/customer-schedule', [ScheduleController::class, 'getSchedule']);
 
-
+// Cara alternatif kalau ::class tetep rewel
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
 
 // agar sinkron 100% dengan link klik sidebar asli bawaan laptop Anda!
 Route::get('/master-data', function () {
@@ -68,25 +69,11 @@ Route::post('/api/admin/plotting/save', [PlottingController::class, 'savePlottin
 Route::get('/schedule', [App\Http\Controllers\ScheduleController::class, 'index'])->name('schedule');
 
 Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('report');
-// Route::get('/reports', function () {
-//     return Inertia::render('Reports');
-// })->name('reports');
 
 
 
 
 
-
-
-
-
-
-
-
-
-// =========================================================================
-// 1. JALUR UMUM / PELANGGAN (Bisa diakses siapa saja tanpa login)
-// =========================================================================
 
 // Halaman Utama / Landing Page
 Route::get('/', function () {
@@ -108,18 +95,7 @@ Route::get('/booking-success', function () {
 Route::get('/order-status', function () {
     return Inertia::render('OrderStatus');
 })->name('order-status');
-// Route::get('/schedule', function () {
-//     return Inertia::render('CustomerSchedule');
-// })->name('schedule');
 
-//admin route
-// Route::get('/dashboard', function () {
-//     return Inertia::render('Dashboard');
-// })->name('dashboard');
-// Route::get('/plotting', function () {
-//     return Inertia::render('Plotting');
-// })->name('plotting');
-// Untuk admin di dalam
 
 
 
@@ -128,40 +104,6 @@ Route::get('/order-status', function () {
 // =========================================================================
 // 2. JALUR BACKOFFICE / ADMIN (Wajib Login Baru Bisa Diakses)
 // =========================================================================
-Route::middleware(['auth', 'verified'])->group(function () {
-
-    // Route::get('/dashboard', function () {
-    //     return Inertia::render('Dashboard');
-    // })->name('dashboard');
-
-    // Route::get('/catalog', function () {
-    //     return Inertia::render('Catalog');
-    // })->name('catalog');
-
-    // Route::get('/documents', function () {
-    //     return Inertia::render('Documents');
-    // })->name('documents');
-
-    // // Route::get('/master-data', function () {
-    // //     return Inertia::render('MasterData');
-    // // })->name('master-data');
-
-    // // Route::get('/orders', function () {
-    // //     return Inertia::render('Orders');
-    // // })->name('orders');
-
-    // // Route::get('/plotting', function () {
-    // //     return Inertia::render('Plotting');
-    // // })->name('plotting');
-
-    // // Route::get('/reports', function () {
-    // //     return Inertia::render('Reports');
-    // // })->name('reports');
-
-    // // Profil Akun Admin
-    // Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    // Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    // Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+Route::middleware(['auth', 'verified'])->group(function () {});
 
 require __DIR__ . '/auth.php';

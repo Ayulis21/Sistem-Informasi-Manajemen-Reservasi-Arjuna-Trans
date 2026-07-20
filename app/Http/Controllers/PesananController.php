@@ -211,39 +211,42 @@ class PesananController extends Controller
             }
 
             // 4. Update Riwayat Pembayaran (JSON dan Tabel Riwayat)
+            // 4. Update Riwayat Pembayaran (JSON dan Tabel Riwayat)
             $paymentsInput = $request->paymentsData;
             $paymentsArray = is_string($paymentsInput) ? json_decode($paymentsInput, true) : ($paymentsInput ?? []);
 
             $totalPaidCalculated = 0;
             $tipeTerakhir = 'DP';
+            $statusTerakhir = 'Pending'; // Default awal
 
             foreach ($paymentsArray as $index => $p) {
                 $totalPaidCalculated += floatval($p['amount'] ?? 0);
+                $tipeTerakhir = $p['type'] ?? 'DP';
 
-                // Simpan Tipe untuk kolom tipe_keterangan (ENUM: DP, Cicil, Lunas)
-                $tipeTerakhir = $p['type'];
+                // 🎯 KUNCI FIX 1: Ambil status dari baris pembayaran (Disetujui/Pending)
+                // Kita ambil status yang paling update dari array
+                $statusTerakhir = $p['paymentStatus'] ?? 'Pending';
 
-                // Cek file baru
                 if ($request->hasFile("evidenceFile_{$index}")) {
                     $file = $request->file("evidenceFile_{$index}");
-                    $namaFoto = 'BUKTI-' . time() . '-' . Str::random(5) . '.' . $file->getClientOriginalExtension();
+                    $namaFoto = 'BUKTI-' . time() . '-' . \Illuminate\Support\Str::random(5) . '.' . $file->getClientOriginalExtension();
                     $file->move(public_path('uploads/bukti_transfer'), $namaFoto);
                     $paymentsArray[$index]['bukti_transfer'] = $namaFoto;
                 }
             }
 
-            // Simpan JSON yang sudah bersih dari biner
+            // Simpan JSON yang sudah bersih
             $stringPembayaranJson = json_encode($paymentsArray);
 
-            // Update atau Insert ke tabel riwayat_pembayaran
+            // 🎯 KUNCI FIX 2: Update kolom fisik status_pembayaran dan nominal
             DB::table('riwayat_pembayaran')->updateOrInsert(
                 ['id_pesanan' => $id],
                 [
-                    'nominal'            => $totalPaidCalculated,
+                    'nominal'            => $totalPaidCalculated, // Pastikan nominal masuk (Biar gak 0.00)
+                    'status_pembayaran'  => $statusTerakhir,     // UPDATE STATUS NYATA (Biar Dashboard jadi 0)
                     'tgl_bayar'          => now(),
                     'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
                     'catatan_pembayaran' => $stringPembayaranJson,
-                    'bukti_transfer'     => 'bukti_default.jpg',
                     'updated_at'         => now(),
                 ]
             );
@@ -257,20 +260,22 @@ class PesananController extends Controller
     {
         $request->validate([
             'status_pembayaran'  => 'required|in:Disetujui,Ditolak',
-            'catatan_pembayaran' => 'required|string|max:255' // ← VALIDASI KOLOM CATATAN BARU ANDA
+            'catatan_pembayaran' => 'required|string|max:255'
         ]);
 
-        // KUNCI SAKRAL BACKEND: Menyimpan pembaruan status beserta alasan penolakan secara serentak ke MySQL
+        // 🎯 KUNCI FIX: Ganti 'id_pesanan' menjadi 'id_pembayaran'
+        // Karena $id yang dikirim dari tombol di tabel adalah ID Baris Pembayaran
         $affected = DB::table('riwayat_pembayaran')
-            ->where('id_pesanan', $id)
+            ->where('id_pembayaran', $id)
             ->update([
                 'status_pembayaran'  => $request->status_pembayaran,
-                'catatan_pembayaran' => $request->catatan_pembayaran, // Mengunci ketikan alasan admin ke database
+                'catatan_pembayaran' => $request->catatan_pembayaran,
                 'updated_at'         => now()
             ]);
 
         return response()->json([
-            'message' => 'Validasi bukti pembayaran berhasil diperbarui menjadi ' . $request->status_pembayaran
+            'message' => 'Validasi berhasil diperbarui menjadi ' . $request->status_pembayaran,
+            'debug_id' => $id // Opsional: buat nge-cek ID mana yang diproses
         ]);
     }
 

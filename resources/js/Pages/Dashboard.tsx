@@ -36,11 +36,18 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
-    stats,
-    revenueData,
-    unplottedOrders,
-    pendingPayments,
-    armadaStats,
+    // Kasih nilai default kosong ({}) atau array ([]) biar gak error undefined
+    stats = {
+        totalPiutang: 0,
+        needPlotting: 0,
+        onTrip: 0,
+        pendingVerify: 0,
+        totalMasuk: 0,
+    },
+    revenueData = [],
+    unplottedOrders = [],
+    pendingPayments = [],
+    armadaStats = [],
 }) => {
     return (
         <AdminLayout>
@@ -98,14 +105,26 @@ const Dashboard: React.FC<DashboardProps> = ({
                     />
                     <StatCard
                         title="Verifikasi Bayar"
-                        // Menampilkan angka '2' (Jumlah transaksi yang BELUM di-ACC)
                         value={stats.pendingVerify.toString()}
-                        // Ganti ikon ke AlertCircle agar terasa seperti "Tugas/Warning"
-                        icon={AlertCircle}
-                        // Ganti warna ke AMBER (Kuning/Oranye) karena ini status "Action Required"
-                        color="bg-amber-500"
-                        trend="Perlu Check"
-                        subColor="bg-amber-50 text-amber-600"
+                        icon={
+                            stats.pendingVerify > 0 ? AlertCircle : CheckCircle2
+                        }
+                        // 🎯 KUNCI VISUAL: Jika 0 maka Hijau, Jika > 0 maka Kuning (Amber)
+                        color={
+                            stats.pendingVerify > 0
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                        }
+                        trend={
+                            stats.pendingVerify > 0
+                                ? "Perlu Check Bukti"
+                                : "Semua Sudah ACC"
+                        }
+                        subColor={
+                            stats.pendingVerify > 0
+                                ? "bg-amber-50 text-amber-600"
+                                : "bg-emerald-50 text-emerald-600"
+                        }
                     />
                     {/* <StatCard
                         title="Uang Masuk (Riil)"

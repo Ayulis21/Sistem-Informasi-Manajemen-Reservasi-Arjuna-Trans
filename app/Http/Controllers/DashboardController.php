@@ -37,8 +37,10 @@ class DashboardController extends Controller
 
         // 6. LOGIKA OPERASIONAL (Label Perlu ACC, Plotting, dll)
         $pendingVerifyCount = DB::table('riwayat_pembayaran')
-            ->where('status_pembayaran', 'Pending')
-            ->where('nominal', '>', 0)
+            ->join('pesanan', 'riwayat_pembayaran.id_pesanan', '=', 'pesanan.id_pesanan')
+            ->whereIn('pesanan.status_pesanan', ['Disetujui', 'Terjadwal', 'Selesai']) // Hanya pesanan resmi
+            ->where('riwayat_pembayaran.status_pembayaran', 'Pending') // Status kolom MySQL
+            ->where('riwayat_pembayaran.nominal', '>', 0)
             ->count();
         $onTrip = DB::table('armada')->where('status_ketersediaan', 'Perjalanan')->count();
         $needPlotting = DB::table('pesanan')->where('status_pesanan', 'Disetujui')
