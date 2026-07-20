@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
+
 import {
     BarChart3,
     Bus,
@@ -134,7 +135,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                 : "Tampilkan Menu"}
                         </span>
                     </div>
-
                     <div className="flex items-center gap-2">
                         <div className="bg-white px-4 py-2 rounded-2xl border border-slate-100 flex items-center gap-2 shadow-sm">
                             <User size={12} className="text-[#5346F1]" />
@@ -145,12 +145,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                 </span>
                             </span>
                         </div>
-                        <Link
-                            href="/login-admin"
-                            className="w-9 h-9 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl flex items-center justify-center"
+
+                        {/* 🎯 GANTI LINK JADI BUTTON INI */}
+                        <button
+                            onClick={() => {
+                                if (confirm("Yakin ingin keluar?")) {
+                                    router.post(route("logout"));
+                                }
+                            }}
+                            className="w-9 h-9 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+                            title="Logout"
                         >
                             <LogOut size={14} />
-                        </Link>
+                        </button>
                     </div>
                 </header>
 

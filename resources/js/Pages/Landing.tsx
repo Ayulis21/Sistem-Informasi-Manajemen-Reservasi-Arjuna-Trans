@@ -30,7 +30,7 @@ const Landing: React.FC = () => {
                     <div className="flex items-center gap-6">
                         {/* Perbaikan: Mengubah 'to' menjadi 'href' */}
                         <Link
-                            href="/login-admin"
+                            href="/login"
                             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#94A3B8] hover:text-slate-600 transition-colors"
                         >
                             <User size={18} />

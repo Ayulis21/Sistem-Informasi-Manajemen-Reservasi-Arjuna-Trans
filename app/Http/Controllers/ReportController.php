@@ -10,7 +10,11 @@ class ReportController extends Controller
 {
     public function index()
     {
-        // 1. LAPORAN PEMBAYARAN (Tetap seperti commit sebelumnya yang stabil)
+        // 1. Tentukan status pesanan yang dianggap SAH untuk masuk laporan
+        // Kita buang status 'Pending' dan 'Batal'
+        $statusSah = ['Disetujui', 'Terjadwal', 'Selesai'];
+
+        // 2. LAPORAN PEMBAYARAN & PIUTANG
         $payments = DB::table('pesanan')
             ->leftJoin('riwayat_pembayaran', 'pesanan.id_pesanan', '=', 'riwayat_pembayaran.id_pesanan')
             ->select(
@@ -20,10 +24,13 @@ class ReportController extends Controller
                 'pesanan.jatuh_tempo as dueDate',
                 'riwayat_pembayaran.catatan_pembayaran'
             )
-            ->where('pesanan.status_pesanan', '!=', 'Batal')
+            // 🎯 KUNCI: Saring hanya pesanan yang sudah disetujui/jalan/selesai
+            ->whereIn('pesanan.status_pesanan', $statusSah)
             ->get()
             ->map(function ($p) {
                 $totalBayarValid = 0;
+
+                // Bongkar JSON untuk menghitung pembayaran yang SUDAH DI-ACC saja
                 if ($p->catatan_pembayaran && strpos($p->catatan_pembayaran, '[') === 0) {
                     $history = json_decode($p->catatan_pembayaran, true);
                     foreach ($history as $item) {
@@ -32,6 +39,7 @@ class ReportController extends Controller
                         }
                     }
                 }
+
                 return [
                     'id' => $p->id,
                     'customerName' => $p->customerName,
@@ -42,15 +50,14 @@ class ReportController extends Controller
                 ];
             });
 
-        // 2. LAPORAN KINERJA KRU (DEVELOPMENT MODUL)
+        // 3. LAPORAN KINERJA KRU (Tetap gunakan filter 'Selesai' untuk jam terbang)
         $crew = DB::table('kru')
             ->where('status', 'Aktif')
             ->get()
             ->map(function ($c) {
-                // Hitung Statistik berdasarkan Pesanan yang statusnya 'Selesai'
                 $stats = DB::table('penugasan')
                     ->join('pesanan', 'penugasan.id_pesanan', '=', 'pesanan.id_pesanan')
-                    ->where('pesanan.status_pesanan', 'Selesai')
+                    ->where('pesanan.status_pesanan', 'Selesai') // Kru hanya dapat KM jika sudah selesai
                     ->where(function ($query) use ($c) {
                         $query->where('penugasan.id_driver', $c->id_kru)
                             ->orWhere('penugasan.id_helper', $c->id_kru);
@@ -61,7 +68,6 @@ class ReportController extends Controller
                     )
                     ->first();
 
-                // Ambil Rute Terakhir yang pernah dijalani
                 $lastOrder = DB::table('penugasan')
                     ->join('pesanan', 'penugasan.id_pesanan', '=', 'pesanan.id_pesanan')
                     ->where('pesanan.status_pesanan', 'Selesai')

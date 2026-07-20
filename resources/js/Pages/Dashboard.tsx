@@ -126,23 +126,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 : "bg-emerald-50 text-emerald-600"
                         }
                     />
-                    {/* <StatCard
-                        title="Uang Masuk (Riil)"
-                        value={`Rp ${(stats.totalMasuk / 1000000).toFixed(1)}jt`}
-                        icon={CheckCircle2}
-                        color="bg-emerald-500"
-                        trend="Sudah ACC"
-                        subColor="bg-emerald-50 text-emerald-600"
-                    />
-
-                    <StatCard
-                        title="Sisa Piutang"
-                        value={`Rp ${(stats.totalPiutang / 1000000).toFixed(1)}jt`}
-                        icon={AlertCircle}
-                        color="bg-rose-500"
-                        trend="Belum Bayar"
-                        subColor="bg-rose-50 text-rose-600"
-                    /> */}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

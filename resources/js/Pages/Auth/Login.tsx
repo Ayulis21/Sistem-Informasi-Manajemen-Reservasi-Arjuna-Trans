@@ -1,110 +1,197 @@
-import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import React, { useState } from "react";
+import { router } from "@inertiajs/react";
+import { Link, useForm } from "@inertiajs/react";
+import {
+    Lock,
+    User,
+    BarChart3,
+    ArrowRight,
+    Loader2,
+    ArrowLeft,
+    Bus,
+} from "lucide-react";
 
-export default function Login({
-    status,
-    canResetPassword,
-}: {
-    status?: string;
-    canResetPassword: boolean;
-}) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
-        password: '',
-        remember: false as boolean,
+const Login: React.FC = () => {
+    const { data, setData, post, processing, errors } = useForm({
+        username: "",
+        password: "",
     });
 
-    const submit: FormEventHandler = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        post(route('login'), {
-            onFinish: () => reset('password'),
+        post("/login", {
+            onFinish: () => {
+                setData("password", "");
+            },
         });
     };
 
+    const handleLogout = () => {
+        if (confirm("Yakin ingin keluar dari sistem?")) {
+            router.post(route("logout"));
+        }
+    };
+
     return (
-        <GuestLayout>
-            <Head title="Log in" />
-
-            {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
-
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
-                    />
-
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
-                            name="remember"
-                            checked={data.remember}
-                            onChange={(e) =>
-                                setData(
-                                    'remember',
-                                    (e.target.checked || false) as false,
-                                )
-                            }
-                        />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
-                        </span>
-                    </label>
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    {canResetPassword && (
+        <div className="min-h-screen w-full flex items-center justify-center bg-[#F1F3F6] font-sans px-4">
+            <div className="w-full max-w-[340px]">
+                <div className="bg-white rounded-[24px] p-6 shadow-[0_15px_45px_-10px_rgba(0,0,0,0.05)] text-center relative">
+                    <div className="flex justify-center mb-5">
                         <Link
-                            href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            href="/"
+                            className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8] hover:text-indigo-600 transition-all"
                         >
-                            Forgot your password?
+                            <ArrowLeft size={12} />
+                            KEMBALI KE BERANDA
                         </Link>
-                    )}
+                    </div>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
-                    </PrimaryButton>
+                    <div className="mb-6">
+                        <div className="w-16 h-16 mx-auto relative mb-4">
+                            <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full"></div>
+                            <div className="absolute inset-0 bg-blue-500 rounded-full clip-path-wave"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[6px] bg-white -rotate-[25deg] shadow-sm"></div>
+                            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[3px] bg-white -rotate-[25deg] opacity-80"></div>
+
+                            <svg
+                                viewBox="0 0 100 100"
+                                className="absolute inset-0 w-full h-full shadow-lg rounded-full"
+                            >
+                                <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="50"
+                                    fill="url(#logoGradient)"
+                                />
+                                <path
+                                    d="M0,50 C20,30 80,70 100,50 L100,100 L0,100 Z"
+                                    fill="#3B82F6"
+                                />
+                                <path
+                                    d="M0,50 C20,30 80,70 100,50"
+                                    stroke="white"
+                                    strokeWidth="4"
+                                    fill="none"
+                                />
+                                <path
+                                    d="M0,42 C20,22 80,62 100,42"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    fill="none"
+                                    opacity="0.6"
+                                />
+                                <defs>
+                                    <linearGradient
+                                        id="logoGradient"
+                                        x1="0%"
+                                        y1="0%"
+                                        x2="100%"
+                                        y2="100%"
+                                    >
+                                        <stop offset="0%" stopColor="#FB923C" />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#F97316"
+                                        />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+
+                        <div className="space-y-0.5">
+                            <h1 className="text-[24px] font-bold text-slate-900 tracking-tight leading-tight">
+                                Arjuna Trans
+                            </h1>
+                            <p className="text-[#94A3B8] text-[11px] font-medium italic">
+                                Sistem Informasi Penjadwalan Armada
+                            </p>
+                        </div>
+                    </div>
+
+                    <form
+                        onSubmit={handleSubmit}
+                        className="space-y-4 text-left"
+                    >
+                        {Object.keys(errors).length > 0 && (
+                            <div className="bg-rose-50 border border-rose-100 text-rose-500 p-3 rounded-xl text-[10px] font-black uppercase text-center">
+                                ⚠️ {Object.values(errors)[0]}
+                            </div>
+                        )}
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-[#64748B] uppercase tracking-widest ml-1">
+                                USERNAME
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8] group-focus-within:text-[#5346F1] transition-colors">
+                                    <User size={18} />
+                                </div>
+                                <input
+                                    type="text"
+                                    required
+                                    value={data.username}
+                                    onChange={(e) =>
+                                        setData("username", e.target.value)
+                                    }
+                                    className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-350 font-medium text-slate-700 text-sm shadow-sm"
+                                    placeholder="admin_arjuna"
+                                />
+                            </div>
+                            {errors.username && (
+                                <span className="text-red-500 text-xs mt-1">
+                                    {errors.username}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-[#64748B] uppercase tracking-widest ml-1">
+                                PASSWORD
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8] group-focus-within:text-[#5346F1] transition-colors">
+                                    <Lock size={18} />
+                                </div>
+                                <input
+                                    type="password"
+                                    required
+                                    value={data.password}
+                                    onChange={(e) =>
+                                        setData("password", e.target.value)
+                                    }
+                                    className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-350 font-medium text-slate-700 text-sm shadow-sm"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            {errors.password && (
+                                <span className="text-red-500 text-xs mt-1">
+                                    {errors.password}
+                                </span>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="w-full bg-[#5346F1] hover:bg-[#4338CA] text-white font-bold py-2.5 rounded-xl shadow-[0_8px_24px_-4px_rgba(83,70,241,0.25)] flex items-center justify-center space-x-2 transition-all active:scale-[0.98] disabled:opacity-70 mt-2"
+                        >
+                            {processing ? (
+                                <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                                <>
+                                    <span className="uppercase tracking-widest text-[11px] font-bold">
+                                        {processing
+                                            ? "SEDANG MASUK..."
+                                            : "LOGIN DASHBOARD"}
+                                    </span>
+                                    <ArrowRight size={16} strokeWidth={2.5} />
+                                </>
+                            )}
+                        </button>
+                    </form>
                 </div>
-            </form>
-        </GuestLayout>
+            </div>
+        </div>
     );
-}
+};
+
+export default Login;
