@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "@inertiajs/react"; // Perbaikan: Menggunakan Router bawaan Inertia
+import { Link } from "@inertiajs/react";
 import {
     Bus,
     Calendar,
@@ -101,7 +101,7 @@ const Landing: React.FC = () => {
                         </Link>
 
                         <Link
-                            href="/customerSchedule"
+                            href="/schedule"
                             className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-100/50 hover:border-indigo-500 transition-all text-left relative overflow-hidden sm:col-span-2 lg:col-span-1"
                         >
                             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">

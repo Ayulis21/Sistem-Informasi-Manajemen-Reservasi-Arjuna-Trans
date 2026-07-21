@@ -299,4 +299,41 @@ class PesananController extends Controller
             'message' => 'Status operasional reservasi bus berhasil diperbarui menjadi ' . $request->status_pembayaran
         ]);
     }
+
+    public function storePublic(Request $request)
+    {
+        // 1. Validasi Input Pelanggan
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'whatsapp' => 'required',
+            'destination' => 'required',
+            'departDate' => 'required|date',
+            'returnDate' => 'required|date',
+        ]);
+
+        // 2. Buat ID Pesanan Unik
+        $idPesanan = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+
+        // 3. Simpan ke Database
+        DB::table('pesanan')->insert([
+            'id_pesanan' => $idPesanan,
+            'nama_pemesan' => $request->name,
+            'alamat' => $request->address ?: '-',
+            'no_telp' => $request->whatsapp,
+            'tgl_berangkat' => str_replace('T', ' ', $request->departDate),
+            'tgl_selesai'   => str_replace('T', ' ', $request->returnDate),
+            'alamat_penjemputan' => $request->pickup ?: '-',
+            'tujuan_main' => $request->destination,
+            'rute' => $request->routeNotes ?: '-',
+            'estimasi_jarak' => 0, // Admin yang isi nanti
+            'harga_sewa' => 0,      // Admin yang isi nanti
+            'status_pesanan' => 'Pending', // Default masuk ke antrean Baru
+            'token_akses' => \Illuminate\Support\Str::random(32),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 4. Redirect ke halaman sukses
+        return redirect()->route('booking.success', ['id' => $idPesanan]);
+    }
 }

@@ -23,15 +23,37 @@ use App\Models\Pesanan;
 Route::get('/', function () {
     return Inertia::render('Landing');
 });
+
 Route::get('/customer-order', function () {
-    return Inertia::render('CustomerOrder');
+    // 🎯 Ganti 'OrderComponents' menjadi 'CustomerComponents'
+    return Inertia::render('CustomerComponents/CustomerOrder');
 })->name('customer-order');
-Route::get('/booking-success', function () {
-    return Inertia::render('OrderSuccess');
+
+// Route untuk proses simpan (API)
+Route::post('/api/customer/booking', [PesananController::class, 'storePublic']);
+
+Route::get('/booking-success/{id}', function ($id) {
+    return Inertia::render('CustomerComponents/OrderSuccess', [
+        'id' => $id // 🎯 KUNCI: Namanya harus 'id' agar dibaca oleh React di atas
+    ]);
 })->name('booking.success');
+
+// Portal Pelanggan
 Route::get('/order-status', function () {
-    return Inertia::render('OrderStatus');
+    return Inertia::render('CustomerComponents/OrderStatus');
 })->name('order-status');
+
+// API Pencarian & Upload (Public)
+Route::post('/api/order/search', [OrderStatusController::class, 'search']);
+Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
+
+
+// Route::get('/booking-success', function () {
+//     return Inertia::render('OrderSuccess');
+// })->name('booking.success');
+// Route::get('/order-status', function () {
+//     return Inertia::render('OrderStatus');
+// })->name('order-status');
 
 // route login
 Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');

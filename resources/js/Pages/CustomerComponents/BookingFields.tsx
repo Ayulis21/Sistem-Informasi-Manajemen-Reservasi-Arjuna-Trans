@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Phone, MapPin, Calendar, Bus } from "lucide-react";
+import { User, Phone, MapPin, Calendar, FileText } from "lucide-react";
 
 interface BookingFieldsProps {
     formData: any;
@@ -10,67 +10,58 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
     formData,
     setFormData,
 }) => {
+    // Gaya CSS Signature Admin Arjuna Trans
+    const labelStyle =
+        "text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1";
+    const inputStyle =
+        "w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm";
+    const headerStyle =
+        "text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1.5 pb-1 border-b border-slate-50";
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-[9px] font-black uppercase tracking-widest text-[#94A3B8]">
-            {/* ========================================================================= */}
-            {/* KOLOM SEBELAH KIRI: INFORMASI KONTAK                                      */}
-            {/* ========================================================================= */}
-            <div className="space-y-4">
-                <h4 className="text-[#5346F1] font-black tracking-wider text-[10px] pb-1 border-b border-slate-50">
-                    Informasi Kontak
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 1. INFORMASI KONTAK */}
+            <div className="space-y-4 text-left">
+                <h4 className={headerStyle}>
+                    <User size={12} /> 1. Informasi Kontak
                 </h4>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">Nama Lengkap</label>
-                    <div className="relative">
-                        <User
-                            size={13}
-                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Contoh: Pak Andi"
-                            value={formData.name}
-                            onChange={(e) =>
-                                setFormData({
-                                    ...formData,
-                                    name: e.target.value,
-                                })
-                            }
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
-                            required
-                        />
-                    </div>
+                <div className="space-y-1">
+                    <label className={labelStyle}>Nama Lengkap</label>
+                    <input
+                        type="text"
+                        placeholder="Masukkan nama sesuai KTP..."
+                        value={formData.name}
+                        onChange={(e) =>
+                            setFormData({ ...formData, name: e.target.value })
+                        }
+                        className={inputStyle}
+                        required
+                    />
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">WhatsApp (Utama)</label>
-                    <div className="relative">
-                        <Phone
-                            size={13}
-                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Contoh: 081234567890"
-                            value={formData.whatsapp}
-                            onChange={(e) =>
-                                setFormData({
-                                    ...formData,
-                                    whatsapp: e.target.value,
-                                })
-                            }
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
-                            required
-                        />
-                    </div>
+                <div className="space-y-1">
+                    <label className={labelStyle}>WhatsApp (Wajib Aktif)</label>
+                    <input
+                        type="text"
+                        placeholder="Contoh: 081234567890"
+                        value={formData.whatsapp}
+                        onChange={(e) =>
+                            setFormData({
+                                ...formData,
+                                whatsapp: e.target.value,
+                            })
+                        }
+                        className={inputStyle}
+                        required
+                    />
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">Alamat Domisili</label>
+                <div className="space-y-1">
+                    <label className={labelStyle}>Alamat Domisili</label>
                     <textarea
-                        rows={4}
-                        placeholder="Alamat penagihan..."
+                        rows={3}
+                        placeholder="Alamat lengkap untuk penagihan..."
                         value={formData.address}
                         onChange={(e) =>
                             setFormData({
@@ -78,26 +69,26 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
                                 address: e.target.value,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none text-xs leading-relaxed"
+                        className={`${inputStyle} resize-none`}
                         required
                     />
                 </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* KOLOM SEBELAH KANAN: DETAIL PERJALANAN                                    */}
-            {/* ========================================================================= */}
-            <div className="space-y-4">
-                <h4 className="text-[#5346F1] font-black tracking-wider text-[10px] pb-1 border-b border-slate-50">
-                    Detail Perjalanan
+            {/* 2. DETAIL PERJALANAN */}
+            <div className="space-y-4 text-left">
+                <h4 className={headerStyle}>
+                    <MapPin size={12} /> 2. Detail Perjalanan
                 </h4>
 
-                {/* Baris Tanggal Berangkat & Pulang Sejajar */}
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <label className="pl-1">Keberangkatan</label>
+                    <div className="space-y-1">
+                        <label className={labelStyle}>
+                            Tgl & Jam Berangkat
+                        </label>
                         <input
-                            type="date"
+                            type="datetime-local"
+                            lang="id-ID" // 🎯 KUNCI: Memancing format 24 Jam di browser
                             value={formData.departDate}
                             onChange={(e) =>
                                 setFormData({
@@ -105,14 +96,18 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
                                     departDate: e.target.value,
                                 })
                             }
-                            className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-600 outline-none cursor-pointer"
+                            className={inputStyle}
                             required
                         />
+                        <p className="text-[7px] text-slate-400 italic pl-1">
+                            *Cek kembali Jam Keberangkatan
+                        </p>
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="pl-1">Pulang</label>
+                    <div className="space-y-1">
+                        <label className={labelStyle}>Tgl & Jam Pulang</label>
                         <input
-                            type="date"
+                            type="datetime-local"
+                            lang="id-ID" // 🎯 KUNCI: Memancing format 24 Jam di browser
                             value={formData.returnDate}
                             onChange={(e) =>
                                 setFormData({
@@ -120,31 +115,31 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
                                     returnDate: e.target.value,
                                 })
                             }
-                            className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-600 outline-none cursor-pointer"
+                            className={inputStyle}
                             required
                         />
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">Titik Jemput</label>
+                <div className="space-y-1">
+                    <label className={labelStyle}>Titik Penjemputan</label>
                     <input
                         type="text"
-                        placeholder="Jl. Raya No. 123..."
+                        placeholder="Lokasi jemput (Sekolah/Kantor/Rumah)..."
                         value={formData.pickup}
                         onChange={(e) =>
                             setFormData({ ...formData, pickup: e.target.value })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
+                        className={inputStyle}
                         required
                     />
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">Tujuan Utama</label>
+                <div className="space-y-1">
+                    <label className={labelStyle}>Tujuan Utama</label>
                     <input
                         type="text"
-                        placeholder="Contoh: Pantai Pangandaran"
+                        placeholder="Contoh: Pantai Pangandaran / Bali"
                         value={formData.destination}
                         onChange={(e) =>
                             setFormData({
@@ -152,16 +147,18 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
                                 destination: e.target.value,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none"
+                        className={inputStyle}
                         required
                     />
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="pl-1">Rute Perjalanan</label>
+                <div className="space-y-1">
+                    <label className={labelStyle}>
+                        Rute Perjalanan & Catatan Khusus
+                    </label>
                     <textarea
                         rows={2}
-                        placeholder="Sebutkan rute yang akan dilewati (Contoh: Cilacap - Bandung - Lembang - Cilacap)"
+                        placeholder="Contoh: Lewat jalur selatan, Minta unit bus terbaru..."
                         value={formData.routeNotes}
                         onChange={(e) =>
                             setFormData({
@@ -169,7 +166,7 @@ const BookingFields: React.FC<BookingFieldsProps> = ({
                                 routeNotes: e.target.value,
                             })
                         }
-                        className="w-full p-3 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none text-xs leading-relaxed"
+                        className={`${inputStyle} resize-none`}
                         required
                     />
                 </div>

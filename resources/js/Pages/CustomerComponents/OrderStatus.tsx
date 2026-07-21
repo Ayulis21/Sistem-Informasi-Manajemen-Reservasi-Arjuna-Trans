@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
-import ModalSuccessPayment from "./ReportComponents/ModalSuccessPayment";
+import ModalSuccessPayment from "../ReportComponents/ModalSuccessPayment";
 import axios from "axios";
 import {
     ArrowLeft,
