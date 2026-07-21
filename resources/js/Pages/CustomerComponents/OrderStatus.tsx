@@ -39,6 +39,7 @@ const OrderStatus: React.FC = () => {
     // State form upload bukti transfer pelanggan
     const [inputTanggal, setInputTanggal] = useState("");
     const [inputNominal, setInputNominal] = useState("");
+    const [inputCatatan, setInputCatatan] = useState("");
     const [buktiFile, setBuktiFile] = useState<File | null>(null);
 
     // Dummy data cadangan aman agar link WA tidak putus saat inisialisasi awal
@@ -100,7 +101,7 @@ const OrderStatus: React.FC = () => {
             String(inputNominal).replace(/[^0-9]/g, ""),
         );
         dataBiner.append("tgl_bayar", inputTanggal);
-        dataBiner.append("tipe_keterangan", tipeEnum); // <--- Kirim yang sudah di-mapping
+        dataBiner.append("catatan", inputCatatan);
         dataBiner.append("bukti_transfer", buktiFile as File);
 
         try {
@@ -131,6 +132,7 @@ const OrderStatus: React.FC = () => {
         window.open(`https://wa.me{message}`, "_blank");
         setIsWAConfirmOpen(false);
     };
+
     const handleDownloadPDF = async () => {
         const element = document.getElementById("arjuna-invoice-print-sheet");
         if (!element) {
@@ -515,6 +517,9 @@ const OrderStatus: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder="Contoh: Transfer via m-banking Mandiri an. Ahmad"
+                                        onChange={(e) =>
+                                            setInputCatatan(e.target.value)
+                                        }
                                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm"
                                     />
                                 </div>

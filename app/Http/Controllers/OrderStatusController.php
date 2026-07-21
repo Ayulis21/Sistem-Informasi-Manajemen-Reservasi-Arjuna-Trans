@@ -113,6 +113,7 @@ class OrderStatusController extends Controller
         try {
             $idPesanan = $request->id_pesanan;
             $nominalBaru = floatval($request->nominal);
+            $catatanPelanggan = $request->catatan ?: 'Pembayaran via Portal';
 
             // 1. Cari baris pembayaran milik pesanan ini (ID 32)
             $row = DB::table('riwayat_pembayaran')->where('id_pesanan', $idPesanan)->first();
@@ -136,8 +137,8 @@ class OrderStatusController extends Controller
                     'type'           => $request->tipe_keterangan ?: 'Cicil',
                     'amount'         => $nominalBaru,
                     'date'           => $request->tgl_bayar ?: date('Y-m-d'),
-                    'notes'          => 'Input mandiri oleh pelanggan via Portal.',
-                    'paymentStatus'  => 'Pending', // Agar Admin harus Verifikasi lagi
+                    'notes'          => $catatanPelanggan,
+                    'paymentStatus'  => 'Pending',
                     'bukti_transfer' => $namaFile
                 ];
 
@@ -154,7 +155,7 @@ class OrderStatusController extends Controller
                     'type' => 'DP',
                     'amount' => $nominalBaru,
                     'date' => $request->tgl_bayar ?: date('Y-m-d'),
-                    'notes' => 'Input mandiri pelanggan',
+                    'notes' => $catatanPelanggan,
                     'paymentStatus' => 'Pending',
                     'bukti_transfer' => $namaFile
                 ]];
