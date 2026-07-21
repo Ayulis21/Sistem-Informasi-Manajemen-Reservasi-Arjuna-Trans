@@ -22,7 +22,7 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
     const filteredOrders = useMemo(() => {
         return orders
             .filter((o: any) => {
-                // Saringan Awal: Hanya status yang boleh di-plot
+                // Filter Awal: Hanya status yang boleh di-plot
                 const status = String(
                     o.status_pesanan || o.status || "",
                 ).toLowerCase();
@@ -48,14 +48,14 @@ const PlottingLeft: React.FC<PlottingLeftProps> = ({
                 const filled = o.assignments?.length || 0;
                 const isPlotted = filled >= totalReq;
 
-                // Saringan Search
+                // Search
                 const keyword = searchTerm.toLowerCase();
                 const matchesSearch =
                     o.nama_pemesan?.toLowerCase().includes(keyword) ||
                     o.id_pesanan?.toLowerCase().includes(keyword) ||
                     o.tujuan_main?.toLowerCase().includes(keyword);
 
-                // Saringan Tab
+                // Filter Tab
                 let matchesTab = true;
                 if (activeTab === "BELUM") matchesTab = !isPlotted;
                 if (activeTab === "SUDAH") matchesTab = isPlotted;

@@ -18,7 +18,7 @@ const Schedule: React.FC<ScheduleProps> = ({
     totalFleet = 0,
 }) => {
     // 1. STATE MANAGEMENT (Navigasi Tanggal)
-    const [viewDate, setViewDate] = useState(new Date()); // Sekarang dinamis, bukan kunci mati
+    const [viewDate, setViewDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<number>(
         new Date().getDate(),
     );

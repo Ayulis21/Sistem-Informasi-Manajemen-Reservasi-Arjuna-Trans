@@ -171,7 +171,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                             <Bus size={12} className="text-[#5346F1]" /> 3.
                             Logistik Perjalanan
                         </span>
-                        {/* 🎯 BUTTON TAMBAH KOLOM ARMADA BARU */}
+                        {/* BUTTON TAMBAH KOLOM ARMADA BARU */}
                         <button
                             type="button"
                             onClick={() =>
@@ -256,7 +256,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                                     ),
                                             )
                                             .map((a: any) => {
-                                                // 2. 🎯 KUNCI SAKRAL: Cek apakah tipe ini sudah dipilih di baris LAIN
+                                                // 2. Cek apakah tipe ini sudah dipilih di baris LAIN
                                                 const isTypeTaken =
                                                     armadaList.some(
                                                         (
@@ -298,7 +298,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                                         value={String(
                                                             a.id_armada,
                                                         )}
-                                                        /* 🎯 Jika tipe sudah ada di baris lain, matikan pilihannya */
+                                                        /* Jika tipe sudah ada di baris lain, matikan pilihannya */
                                                         disabled={isTypeTaken}
                                                     >
                                                         {a.tipe_armada}{" "}
@@ -392,7 +392,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                     />
                 </div>
 
-                {/* 🎯 SELEMPANGAN BOKS BARU: CATATAN OPERASIONAL LAIN-LAIN PO ARJUNA TRANS */}
+                {/* CATATAN OPERASIONAL LAIN-LAIN PO ARJUNA TRANS */}
                 <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[#5346F1] flex items-center gap-1 mb-1">
                         📝 Catatan Khusus / Lain-Lain

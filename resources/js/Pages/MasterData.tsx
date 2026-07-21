@@ -130,7 +130,6 @@ const MasterData: React.FC = () => {
                     kapasitas: 50,
                     fasilitas: "AC, TV",
                     status_ketersediaan: "Tersedia",
-                    // status: "READY",
                 } as any);
                 setIsModalOpen(false);
                 fetchArmadaData();
@@ -157,7 +156,7 @@ const MasterData: React.FC = () => {
 
             // 1. Ambil nilai status dari form
             const statusKetersediaan = crewForm.taskStatus || "Ready";
-            const statusAkun = crewForm.accountStatus || "Aktif"; // 🎯 Variabel ini sudah Anda buat
+            const statusAkun = crewForm.accountStatus || "Aktif";
 
             if (!namaKru.trim()) {
                 alert(
@@ -168,30 +167,27 @@ const MasterData: React.FC = () => {
 
             try {
                 let response;
-                // 2. 🎯 BUNGKUS PAYLOAD (Pastikan 'status' ada di sini!)
                 const payloadKru = {
                     nama_kru: namaKru,
                     no_telp: noTelp,
                     peran: peranKru,
                     status_ketersediaan: statusKetersediaan,
-                    status: statusAkun, // 🚀 KUNCI: Sekarang status ikut terkirim ke Laravel
+                    status: statusAkun,
                 };
 
                 if (isEditMode) {
                     response = await axios.put(
                         `/api/admin/kru/update/${selectedId}`,
-                        payloadKru, // Kirim objek lengkap
+                        payloadKru,
                     );
                 } else {
                     response = await axios.post(
                         "/api/admin/kru/store",
-                        payloadKru, // Kirim objek lengkap
+                        payloadKru,
                     );
                 }
 
                 alert("✨ Sukses: " + response.data.message);
-
-                // 3. Reset Form
                 setCrewForm({
                     name: "",
                     role: "Driver",
@@ -204,7 +200,6 @@ const MasterData: React.FC = () => {
                 setIsModalOpen(false);
                 fetchCrewData();
             } catch (error: any) {
-                // Tampilkan pesan error detail dari Laravel jika ada
                 const pesanError =
                     error.response?.data?.message || "Gagal menyimpan data.";
                 alert("❌ Gagal: " + pesanError);
@@ -446,6 +441,3 @@ const MasterData: React.FC = () => {
 };
 
 export default MasterData;
-function fetchArmadaData() {
-    throw new Error("Function not implemented.");
-}

@@ -16,7 +16,6 @@ const Reports: React.FC<ReportsProps> = ({ dbPayments = [], dbCrew = [] }) => {
     );
     const [search, setSearch] = useState("");
 
-    // 🎯 KUNCI PERBAIKAN: Tambahkan kembali state modal yang hilang
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [selectedRowData, setSelectedRowData] = useState<any>(null);
 
@@ -86,7 +85,6 @@ const Reports: React.FC<ReportsProps> = ({ dbPayments = [], dbCrew = [] }) => {
 
                 <div className="pt-1">
                     {activeTab === "PEMBAYARAN" ? (
-                        /* 🎯 KIRIM handleOpenHistory KE COMPONENT ANAK */
                         <PaymentTable
                             reportData={filteredPayments}
                             onOpenHistory={handleOpenHistory}

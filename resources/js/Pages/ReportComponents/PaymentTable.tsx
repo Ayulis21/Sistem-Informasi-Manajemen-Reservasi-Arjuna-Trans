@@ -3,7 +3,7 @@ import { Printer } from "lucide-react";
 
 interface PaymentTableProps {
     reportData: any[];
-    onOpenHistory: (row: any) => void; // 🎯 Tambahkan prop ini
+    onOpenHistory: (row: any) => void;
 }
 
 const PaymentTable: React.FC<PaymentTableProps> = ({
@@ -26,7 +26,6 @@ const PaymentTable: React.FC<PaymentTableProps> = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 text-xs font-medium text-slate-600">
-                        {/* 🎯 KUNCI: Gunakan 'reportData' dan definisikan tipe 'r: any' */}
                         {reportData.map((r: any, i: number) => {
                             const sisa = r.totalPrice - r.paidAmount;
                             const isLunas = sisa <= 0;
@@ -62,7 +61,7 @@ const PaymentTable: React.FC<PaymentTableProps> = ({
                                     <td className="py-5 px-6 text-center">
                                         <div className="flex items-center justify-center gap-4">
                                             <button
-                                                onClick={() => onOpenHistory(r)} // 🎯 Panggil prop Riwayat
+                                                onClick={() => onOpenHistory(r)}
                                                 className="text-[10px] font-black text-indigo-500 uppercase"
                                             >
                                                 Riwayat

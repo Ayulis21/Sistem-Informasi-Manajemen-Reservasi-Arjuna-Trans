@@ -36,7 +36,6 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
-    // Kasih nilai default kosong ({}) atau array ([]) biar gak error undefined
     stats = {
         totalPiutang: 0,
         needPlotting: 0,
@@ -52,7 +51,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     return (
         <AdminLayout>
             <div className="space-y-6 animate-in fade-in duration-500">
-                {/* HEADER SECTION */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                         <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
@@ -81,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
                         title="Tagihan Aktif"
-                        value={`Rp ${(stats.totalPiutang / 1000000).toFixed(1)}jt`} // Tampil 11.0jt
+                        value={`Rp ${(stats.totalPiutang / 1000000).toFixed(1)}jt`}
                         icon={AlertCircle}
                         color="bg-rose-500"
                         trend="Sisa Piutang"
@@ -109,7 +107,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                         icon={
                             stats.pendingVerify > 0 ? AlertCircle : CheckCircle2
                         }
-                        // 🎯 KUNCI VISUAL: Jika 0 maka Hijau, Jika > 0 maka Kuning (Amber)
                         color={
                             stats.pendingVerify > 0
                                 ? "bg-amber-500"
@@ -186,7 +183,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                                                 fill: "#94a3b8",
                                                 fontSize: 11,
                                             }}
-                                            // 🎯 KUNCI: Paksa skala minimal dari 0 sampai 10 Juta agar labelnya tidak "Rp 1, Rp 2"
                                             domain={[0, 10000000]}
                                             // Menentukan kelipatan label yang muncul (0, 5jt, 10jt)
                                             ticks={[

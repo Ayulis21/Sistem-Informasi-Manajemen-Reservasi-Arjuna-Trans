@@ -37,7 +37,6 @@ const ModalHistory: React.FC<ModalHistoryProps> = ({
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-[480px] rounded-[2.5rem] shadow-2xl p-8 space-y-6 text-left border border-slate-100 animate-in zoom-in-95 duration-200">
-                {/* Header */}
                 <div className="flex justify-between items-start border-b border-slate-50 pb-4">
                     <div className="flex items-center gap-3">
                         <div className="w-1 h-8 bg-[#5346F1] rounded-full"></div>
@@ -58,7 +57,7 @@ const ModalHistory: React.FC<ModalHistoryProps> = ({
                     </button>
                 </div>
 
-                {/* 🎯 LIST CICILAN DINAMIS */}
+                {/* LIST CICILAN*/}
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                     {historyList.length > 0 ? (
                         historyList.map((item, index) => (

@@ -22,7 +22,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            {/* 🎯 KUNCI UTAMA: Menggunakan max-w-5xl agar boks modal melebar penuh ke samping sesuai gambar */}
             <div className="bg-white rounded-[2rem] w-full max-w-5xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] overflow-hidden max-h-[95vh] flex flex-col">
                 {/* HEADER KEPALA MODAL ASLI */}
                 <div className="flex justify-between items-center border-b border-slate-100 p-6 bg-white flex-shrink-0">
@@ -46,7 +45,6 @@ const ModalOrder: React.FC<ModalOrderProps> = ({
                         <XCircle size={32} />
                     </button>
                 </div>
-
                 {/* AREA JALUR ISI FORMULIR */}
                 <div className="p-6 overflow-y-auto flex-1 bg-white scrollbar-thin">
                     {children}

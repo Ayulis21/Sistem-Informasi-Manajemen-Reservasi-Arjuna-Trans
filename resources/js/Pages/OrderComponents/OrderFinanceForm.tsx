@@ -4,7 +4,7 @@ import { Eye, Plus, Upload, ShieldCheck, Trash2 } from "lucide-react";
 interface OrderFinanceFormProps {
     formData: any;
     setFormData: (data: any) => void;
-    setPreviewUrl: any; // 🎯 KUNCI UTAMA: Mengubah tipe menjadi 'any' kaku agar TypeScript melepas semua kuncian dummy!
+    setPreviewUrl: any;
 }
 
 const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
@@ -15,7 +15,7 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
     const totalHarga = Number(formData.totalPrice || 0);
     const totalBayar = (formData.payments || []).reduce(
         (acc: number, curr: any) => {
-            // KUNCI ABSOLUT: Uang sewa HANYA berkurang jika status pembayaran BENAR-BENAR sudah "Disetujui"
+            // Uang sewa HANYA berkurang jika status pembayaran BENAR-BENAR sudah "Disetujui"
             const apakahSahDiacc = curr.paymentStatus === "Disetujui";
             return acc + (apakahSahDiacc ? Number(curr.amount || 0) : 0);
         },
@@ -93,7 +93,6 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                     </label>
                     <input
                         type="date"
-                        /* Gunakan trim() untuk memastikan tidak ada spasi liar */
                         value={
                             formData.dueDate
                                 ? String(formData.dueDate)

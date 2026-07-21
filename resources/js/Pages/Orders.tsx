@@ -21,7 +21,7 @@ import axios from "axios";
 
 const Orders: React.FC = () => {
     const { props } = usePage<any>();
-    const armada = props.armada || []; // <── 🚀 SUNTIKKAN SAKRAL INDUK: Ambil data master armada dari Laravel!
+    const armada = props.armada || [];
 
     const [orders, setOrders] = useState<any[]>([]);
     const [isOpenModal, setIsOpenModal] = useState(false);
@@ -121,7 +121,7 @@ const Orders: React.FC = () => {
         const tglBerangkat = new Date(formData.departureDate);
         const tglPulang = new Date(formData.returnDate);
 
-        // 🎯 KUNCI VALIDASI: Cek rincian pembayaran satu per satu
+        // Cek rincian pembayaran satu per satu
         const adaPembayaranTanpaBukti = formData.payments.some((p: any) => {
             const nominal = Number(p.amount || 0);
             // Jika nominal diisi (> 0) tapi file baru kosong DAN file lama juga default/kosong
@@ -143,7 +143,7 @@ const Orders: React.FC = () => {
             alert(
                 "❌ GAGAL SIMPAN: Terdapat rincian pembayaran yang nominalnya sudah diisi tapi BELUM UPLOAD bukti transfer. Harap lampirkan bukti terlebih dahulu!",
             );
-            return; // Hentikan proses simpan
+            return;
         }
 
         if (
@@ -216,7 +216,6 @@ const Orders: React.FC = () => {
                         bukti_transfer: p.bukti_transfer || "bukti_default.jpg",
                         paymentStatus: p.paymentStatus || "Pending",
                     };
-                    // 🎯 KUNCI 2: JANGAN masukkan 'evidenceFile' ke sini agar JSON tidak rusak/biner
                 },
             );
 
@@ -305,7 +304,6 @@ const Orders: React.FC = () => {
     };
 
     const ordersTersaring = React.useMemo(() => {
-        // 1. Jaring pengaman data
         const dataMentah = Array.isArray(orders) ? orders : [];
         const sekarang = new Date();
         const kataKunci = kataKunciPencarian.toLowerCase().trim();
@@ -455,9 +453,6 @@ const Orders: React.FC = () => {
                                         <option value="Sedang Jalan">
                                             Sedang Jalan
                                         </option>
-                                        {/* <option value="Menunggu Selesai">
-                                            Menunggu Selesai
-                                        </option> */}
                                         <option value="Selesai">
                                             Selesai (Tuntas)
                                         </option>
@@ -560,13 +555,13 @@ const Orders: React.FC = () => {
                 <div className="space-y-3">
                     {ordersTersaring.length > 0 ? (
                         ordersTersaring.map((o: any, idx: number) => {
-                            // 🎯 1. DEFINISIKAN VARIABEL DASAR
+                            // 1. DEFINISIKAN VARIABEL DASAR
                             const totalHarga = Number(o.harga_sewa || 0);
                             const statusSkrg = o.status_pesanan || o.status;
                             const tglBerangkat = new Date(o.tgl_berangkat);
                             const tglSelesai = new Date(o.tgl_selesai);
 
-                            // 🎯 2. HITUNG PEMBAYARAN & PERLU ACC
+                            // 2. HITUNG PEMBAYARAN & PERLU ACC
                             let totalBayar = 0;
                             let adakahPembayaranBelumAcc = false;
 
@@ -613,12 +608,12 @@ const Orders: React.FC = () => {
                                 );
                             }
 
-                            // 🎯 3. DEFINISIKAN isLunas (Agar error Ln 647 & 769 Hilang)
+                            // 3. DEFINISIKAN isLunas
                             const isLunas =
                                 totalHarga > 0 && totalBayar >= totalHarga;
 
                             // 🎯 4. LOGIKA LABEL KIRI (Baru, Perlu ACC, Selesai)
-                            let labelKomponen = null; // (Agar error Ln 689 Hilang)
+                            let labelKomponen = null;
                             if (adakahPembayaranBelumAcc) {
                                 labelKomponen = (
                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-amber-500 text-white rounded-md uppercase tracking-wider animate-pulse">
@@ -639,7 +634,7 @@ const Orders: React.FC = () => {
                                 );
                             }
 
-                            // 🎯 5. LOGIKA BADGE KANAN (Status Operasional)
+                            // 5. LOGIKA BADGE KANAN (Status Operasional)
                             let badgeKanan = null;
                             if (statusSkrg === "Batal") {
                                 badgeKanan = (
@@ -685,7 +680,7 @@ const Orders: React.FC = () => {
                                             } else if (
                                                 statusSkrg === "Selesai"
                                             ) {
-                                                // 3. 🎯 SELESAI -> CENTANG HIJAU (Hanya muncul jika status tuntas)
+                                                // 3. SELESAI -> CENTANG HIJAU (Hanya muncul jika status tuntas)
                                                 bgBoks = "bg-emerald-50";
                                                 warnaIkon = "text-emerald-600";
                                                 KomponenIkon = Check;
@@ -813,7 +808,6 @@ const Orders: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
-                                        {/* 1. TOMBOL EDIT (Paling Kiri) */}
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1066,8 +1060,6 @@ const Orders: React.FC = () => {
                                                 className="stroke-[2.5]"
                                             />
                                         </button>
-
-                                        {/* 4. 🎯 TOMBOL TELEPON (Di Kanannya Status) */}
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1102,7 +1094,6 @@ const Orders: React.FC = () => {
                                                 className="stroke-[2.5]"
                                             />
                                         </button>
-                                        {/* 2. TOMBOL PRINT */}
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1133,7 +1124,6 @@ const Orders: React.FC = () => {
                                                 } catch (e) {
                                                     kantongSaringanBiner = [];
                                                 }
-
                                                 const payloadOrderMurni = {
                                                     id: o.id_pesanan || "",
                                                     customerName:
@@ -1206,8 +1196,6 @@ const Orders: React.FC = () => {
                                         >
                                             <Printer size={16} />
                                         </button>
-
-                                        {/* 3. 🎯 BADGE STATUS (Sekarang di Kanannya Print) */}
                                         {statusSkrg === "Batal" && (
                                             <span className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase border border-rose-100">
                                                 Batal
@@ -1225,7 +1213,7 @@ const Orders: React.FC = () => {
                                                 Selesai
                                             </span>
                                         )}
-                                        {/* 5. TOMBOL AKSI UTAMA (Setujui / Plotting / Selesai / Ubah Plot) */}
+                                        {/* TOMBOL AKSI UTAMA (Setujui / Plotting / Selesai / Ubah Plot) */}
                                         <div className="flex gap-1.5 ml-1">
                                             {statusSkrg === "Pending" && (
                                                 <>
@@ -1285,7 +1273,7 @@ const Orders: React.FC = () => {
                                                     ) : (
                                                         <button
                                                             onClick={() => {
-                                                                // 🎯 LOGIKA PERINGATAN DARURAT
+                                                                // LOGIKA PERINGATAN DARURAT
                                                                 if (
                                                                     sekarang >=
                                                                         tglBerangkat &&
@@ -1328,7 +1316,7 @@ const Orders: React.FC = () => {
                 onClose={() => setIsOpenModal(false)}
                 isEditMode={isEditMode}
                 formData={formData}
-                armada={armada} // <── 🚀 SAKRAL INDUK: PASANG KEMBALI DI SINI AGAR ERROR TS(2741) MATI TOTAL!
+                armada={armada}
             >
                 <form onSubmit={handleSaveOrder} className="space-y-6">
                     <OrderMainForm
@@ -1341,7 +1329,6 @@ const Orders: React.FC = () => {
                         setFormData={setFormData}
                         setPreviewUrl={setPreviewUrl}
                     />
-                    {/* BARIS FOOTER AKSI SEJAJAR KAKU DI BAWAH */}
                     <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100 flex-shrink-0 bg-white">
                         <button
                             type="button"
@@ -1402,7 +1389,7 @@ const Orders: React.FC = () => {
                         armada: [
                             {
                                 id: "0",
-                                plateNumber: "S 7123 UA",
+                                plateNumber: "-",
                                 name:
                                     activeInvoiceOrder.fleetRequirements?.[0]
                                         ?.type || "Bus",

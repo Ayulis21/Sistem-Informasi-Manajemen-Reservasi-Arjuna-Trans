@@ -10,7 +10,6 @@ interface FleetRow {
 }
 
 const CustomerOrder: React.FC = () => {
-    // State Pengendali Form Isian Pelanggan
     const [bookingData, setBookingData] = useState({
         name: "",
         whatsapp: "",
@@ -21,8 +20,6 @@ const CustomerOrder: React.FC = () => {
         destination: "",
         routeNotes: "",
     });
-
-    // Mengubah kebutuhan armada menjadi array dinamis (Mula-mula berisi 1 baris default)
     const [fleets, setFleets] = useState<FleetRow[]>([
         { id: `row-${Date.now()}`, type: "Bus Pariwisata", count: 1 },
     ]);
@@ -182,7 +179,7 @@ const CustomerOrder: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                            <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 text-[9px] font-bold text-amber-600 leading-normal italic tracking-wide normal-case rounded-[1.25rem]">
+                            <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 text-[9px] font-bold text-amber-600 leading-normal italic tracking-wide normal-case">
                                 * Estimasi harga akan dikalkulasi oleh Admin
                                 Arjuna Trans berdasarkan rute dan ketersediaan
                                 unit. Konfirmasi final akan dikirim melalui
