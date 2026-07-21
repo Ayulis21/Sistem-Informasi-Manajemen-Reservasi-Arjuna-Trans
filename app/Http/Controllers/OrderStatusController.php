@@ -110,30 +110,72 @@ class OrderStatusController extends Controller
     // C. FUNGSI UPLOAD BUKTI (Sisi Pelanggan)
     public function uploadBuktiBayar(Request $request)
     {
-        $request->validate([
-            'id_pesanan' => 'required',
-            'nominal' => 'required|numeric|min:1000',
-            'bukti_transfer' => 'required|image|max:2048', // Maks 2MB
-        ]);
+        try {
+            $idPesanan = $request->id_pesanan;
+            $nominalBaru = floatval($request->nominal);
 
-        if ($request->hasFile('bukti_transfer')) {
+            // 1. Cari baris pembayaran milik pesanan ini (ID 32)
+            $row = DB::table('riwayat_pembayaran')->where('id_pesanan', $idPesanan)->first();
+
+            // 2. Olah File Bukti Transfer
+            if (!$request->hasFile('bukti_transfer')) {
+                return response()->json(['message' => 'File bukti transfer tidak ditemukan.'], 400);
+            }
+
             $file = $request->file('bukti_transfer');
-            $namaFile = 'BUKTI-USER-' . time() . '-' . Str::random(5) . '.' . $file->getClientOriginalExtension();
+            $namaFile = 'BUKTI-CLIENT-' . time() . '-' . \Illuminate\Support\Str::random(5) . '.' . $file->getClientOriginalExtension();
             $file->move(public_path('uploads/bukti_transfer'), $namaFile);
 
-            DB::table('riwayat_pembayaran')->insert([
-                'id_pesanan' => $request->id_pesanan,
-                'nominal' => $request->nominal,
-                'tgl_bayar' => $request->tgl_bayar ?: now(),
-                'tipe_keterangan' => $request->tipe_keterangan ?: 'Cicil',
-                'bukti_transfer' => $namaFile,
-                'status_pembayaran' => 'Pending', // <--- Penting: Harus Pending agar Admin ACC
-                'catatan_pembayaran' => 'Input mandiri oleh pelanggan.',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            // 3. LOGIKA MERGER (Gabungkan ke baris yang sudah ada)
+            if ($row) {
+                // Bongkar riwayat lama dari JSON
+                $history = json_decode($row->catatan_pembayaran, true) ?: [];
 
-            return response()->json(['message' => 'Sukses!']);
+                // Tambahkan baris cicilan baru dari pelanggan
+                $history[] = [
+                    'type'           => $request->tipe_keterangan ?: 'Cicil',
+                    'amount'         => $nominalBaru,
+                    'date'           => $request->tgl_bayar ?: date('Y-m-d'),
+                    'notes'          => 'Input mandiri oleh pelanggan via Portal.',
+                    'paymentStatus'  => 'Pending', // Agar Admin harus Verifikasi lagi
+                    'bukti_transfer' => $namaFile
+                ];
+
+                // Update baris yang sama
+                DB::table('riwayat_pembayaran')->where('id_pesanan', $idPesanan)->update([
+                    'nominal'            => $row->nominal + $nominalBaru, // Akumulasi nominal
+                    'catatan_pembayaran' => json_encode($history),
+                    'status_pembayaran'  => 'Pending', // Nyalakan notif "PERLU ACC" di Admin
+                    'updated_at'         => now()
+                ]);
+            } else {
+                // Jika benar-benar belum ada data pembayaran sama sekali (Baris baru)
+                $newHistory = [[
+                    'type' => 'DP',
+                    'amount' => $nominalBaru,
+                    'date' => $request->tgl_bayar ?: date('Y-m-d'),
+                    'notes' => 'Input mandiri pelanggan',
+                    'paymentStatus' => 'Pending',
+                    'bukti_transfer' => $namaFile
+                ]];
+
+                DB::table('riwayat_pembayaran')->insert([
+                    'id_pesanan'         => $idPesanan,
+                    'nominal'            => $nominalBaru,
+                    'tgl_bayar'          => now(),
+                    'tipe_keterangan'    => 'DP',
+                    'bukti_transfer'     => $namaFile,
+                    'status_pembayaran'  => 'Pending',
+                    'catatan_pembayaran' => json_encode($newHistory),
+                    'created_at'         => now(),
+                    'updated_at'         => now()
+                ]);
+            }
+
+            return response()->json(['message' => 'Bukti pembayaran berhasil diunggah!'], 200);
+        } catch (\Exception $e) {
+            // Jika ada error (DB mati, file error, dll) kirim pesan ke React
+            return response()->json(['message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
     }
 }

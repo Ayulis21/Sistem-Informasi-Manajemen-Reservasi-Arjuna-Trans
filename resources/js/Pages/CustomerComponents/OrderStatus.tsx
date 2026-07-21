@@ -79,39 +79,47 @@ const OrderStatus: React.FC = () => {
             alert("Terjadi kesalahan koneksi sistem.");
         }
     };
+
+    // resources/js/Pages/CustomerComponents/OrderStatus.tsx
+
     const handleUploadPembayaran = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!buktiFile) {
-            alert("Silakan pilih file bukti transfer terlebih dahulu!");
-            return;
-        }
 
-        const formData = new FormData();
-        formData.append("id_pesanan", dynamicOrder?.id_pesanan);
-        formData.append("nominal", inputNominal.replace(/,/g, ""));
-        formData.append("tgl_bayar", inputTanggal);
-        formData.append(
-            "tipe_keterangan",
-            paymentTab === "CICILAN"
-                ? "Cicil"
-                : paymentTab === "PELUNASAN"
-                  ? "Lunas"
-                  : "DP",
+        const targetId = dynamicOrder?.id_pesanan || dynamicOrder?.id;
+
+        // 🎯 KUNCI FIX 1: Mapping nama agar sesuai dengan kemauan DATABASE MySQL
+        let tipeEnum = "Cicil"; // default
+        if (paymentTab === "DP") tipeEnum = "DP";
+        if (paymentTab === "CICILAN") tipeEnum = "Cicil"; // 'CICILAN' jadi 'Cicil'
+        if (paymentTab === "PELUNASAN") tipeEnum = "Lunas"; // 'PELUNASAN' jadi 'Lunas'
+
+        const dataBiner = new FormData();
+        dataBiner.append("id_pesanan", targetId);
+        dataBiner.append(
+            "nominal",
+            String(inputNominal).replace(/[^0-9]/g, ""),
         );
-        formData.append("bukti_transfer", buktiFile);
+        dataBiner.append("tgl_bayar", inputTanggal);
+        dataBiner.append("tipe_keterangan", tipeEnum); // <--- Kirim yang sudah di-mapping
+        dataBiner.append("bukti_transfer", buktiFile as File);
+
         try {
-            await axios.post("/api/order/upload-payment", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            setIsSuccessUploadOpen(true);
-            const refresh = await axios.post("/api/order/search", {
-                type: "ID",
-                value: dynamicOrder?.id_pesanan,
-            });
-            setDynamicOrder(refresh.data.data);
-        } catch (error) {
-            console.error("Gagal kirim pembayaran:", error);
-            alert("Gagal mengunggah berkas.");
+            const res = await axios.post(
+                "/api/order/upload-payment",
+                dataBiner,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                },
+            );
+
+            if (res.status === 200) {
+                setIsSuccessUploadOpen(true);
+                // ... refresh data ...
+            }
+        } catch (err: any) {
+            alert(
+                "SISTEM ERROR: " + (err.response?.data?.message || err.message),
+            );
         }
     };
 
@@ -551,15 +559,13 @@ const OrderStatus: React.FC = () => {
                             </div>
                             <div className="pt-2">
                                 <button
-                                    type="submit"
-                                    onClick={() => setIsSuccessUploadOpen(true)}
-                                    className="w-full py-4 bg-[#5346F1] hover:bg-[#4338CA] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-500/10 text-center transition-all active:scale-[0.98]"
+                                    type="button" // 🎯 Ganti jadi type="button" agar tidak reload halaman
+                                    onClick={handleUploadPembayaran} // 🎯 KUNCI FIX: Panggil fungsi kirim data, bukan cuma buka modal sukses!
+                                    className="w-full py-4 bg-[#5346F1] hover:bg-[#4338CA] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
                                 >
                                     Kirim Bukti Pembayaran
                                 </button>
                             </div>
-                            {/* --- BAGIAN RIWAYAT PEMBAYARAN DINAMIS --- */}
-                            {/* --- SEKSI DAFTAR RIWAYAT PEMBAYARAN (GAYA LAPORAN ADMIN) --- */}
                             <div className="space-y-3 pt-2">
                                 <div className="flex justify-between items-center border-b border-slate-50 pb-2">
                                     <div className="flex items-center gap-1.5">

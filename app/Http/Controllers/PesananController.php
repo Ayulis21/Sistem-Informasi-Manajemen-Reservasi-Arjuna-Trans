@@ -122,31 +122,48 @@ class PesananController extends Controller
         $pesanan = DB::table('pesanan')
             ->select(
                 'pesanan.*',
-                // 🚀 KUNCI SAKRAL: Panggil secara eksplisit agar kolom jatuh_tempo dipaksa ikut keluar ke JSON!
                 'pesanan.jatuh_tempo as jatuh_tempo',
-                DB::raw('(SELECT SUM(nominal) FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan) as total_terbayar'),
-                DB::raw('(SELECT bukti_transfer FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as bukti_transfer'),
+                // Kita ambil data pembayaran (Baris tunggal per pesanan)
+                DB::raw('(SELECT catatan_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as catatan_pembayaran_raw'),
                 DB::raw('(SELECT status_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as status_pembayaran'),
-                DB::raw('(SELECT catatan_pembayaran FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as catatan_pembayaran'),
-                DB::raw('(SELECT tipe_keterangan FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tipe_keterangan'),
                 DB::raw('(SELECT tgl_bayar FROM riwayat_pembayaran WHERE riwayat_pembayaran.id_pesanan = pesanan.id_pesanan LIMIT 1) as tgl_bayar')
             )
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($order) {
-                // 🚀 KUNCI SAKRAL: Menarik data dari tabel anak yang terbukti sukses menyimpan data Anda!
+                // 1. OLAH DATA PEMBAYARAN (Bongkar JSON)
+                $order->payments = [];
+                $totalTerbayarValid = 0;
+
+                if ($order->catatan_pembayaran_raw) {
+                    $decoded = json_decode($order->catatan_pembayaran_raw, true);
+                    if (is_array($decoded)) {
+                        $order->payments = $decoded;
+
+                        // 🎯 KUNCI SAKRAL: Hitung total bayar HANYA dari yang sudah 'Disetujui'
+                        // Ini agar angka Sisa Piutang di List Admin Akurat!
+                        foreach ($decoded as $pay) {
+                            if (($pay['paymentStatus'] ?? '') === 'Disetujui') {
+                                $totalTerbayarValid += floatval($pay['amount'] ?? 0);
+                            }
+                        }
+                    }
+                }
+
+                // Masukkan hasil hitungan ke property untuk dibaca List Admin
+                $order->total_terbayar = $totalTerbayarValid;
+                $order->catatan_pembayaran = $order->catatan_pembayaran_raw; // Backup teks mentah
+
+                // 2. OLAH DETAIL ARMADA (Sesuai kode asli Mas)
                 $detailArmada = DB::table('pesanan_detail_armada')
                     ->where('id_pesanan', $order->id_pesanan)
                     ->get();
 
                 $order->fleetRequirements = $detailArmada->map(function ($item) {
-                    $masterArmada = DB::table('armada')
-                        ->where('tipe_armada', $item->tipe_armada)
-                        ->first();
-
+                    $masterArmada = DB::table('armada')->where('tipe_armada', $item->tipe_armada)->first();
                     return [
                         'armada_id'   => $masterArmada ? $masterArmada->id_armada : "",
-                        'tipe_armada' => $item->tipe_armada, // 🎯 WAJIB ADA agar React tidak bingung
+                        'tipe_armada' => $item->tipe_armada,
                         'qty'         => (int)$item->qty
                     ];
                 });
