@@ -34,45 +34,77 @@ class OrderStatusController extends Controller
     // B. FORMAT DATA (Agar sinkron dengan React)
     private function formatOrderData(object $order)
     {
-        // 1. Hitung Duit yang sudah di-ACC (Disetujui)
-        $paid = DB::table('riwayat_pembayaran')
+        // 1. Ambil semua baris dari tabel riwayat_pembayaran
+        $rows = DB::table('riwayat_pembayaran')
             ->where('id_pesanan', $order->id_pesanan)
+            ->get();
+
+        $allPayments = [];
+
+        // 2. 🎯 KUNCI SAKRAL: Bongkar isi JSON di setiap baris
+        foreach ($rows as $row) {
+            $isiCatatan = $row->catatan_pembayaran;
+
+            // Cek apakah kolom catatan isinya JSON Array (Data lama yang menumpuk)
+            if (str_starts_with($isiCatatan, '[')) {
+                $decoded = json_decode($isiCatatan, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $item) {
+                        $allPayments[] = [
+                            'tipe_keterangan'   => $item['type'] ?? 'Cicil',
+                            'nominal'           => (float)($item['amount'] ?? 0),
+                            'tgl_bayar'         => $item['date'] ?? $row->tgl_bayar,
+                            'status_pembayaran' => $item['paymentStatus'] ?? 'Pending',
+                            'catatan_pembayaran' => $item['notes'] ?? ''
+                        ];
+                    }
+                }
+            } else {
+                // Jika data baru (bukan JSON), masukkan sebagai 1 baris biasa
+                $allPayments[] = [
+                    'tipe_keterangan'   => $row->tipe_keterangan,
+                    'nominal'           => (float)$row->nominal,
+                    'tgl_bayar'         => $row->tgl_bayar,
+                    'status_pembayaran' => $row->status_pembayaran,
+                    'catatan_pembayaran' => $row->catatan_pembayaran
+                ];
+            }
+        }
+
+        // 3. Hitung total yang sudah ACC (Hanya untuk sisa piutang)
+        $totalPaidValid = collect($allPayments)
             ->where('status_pembayaran', 'Disetujui')
             ->sum('nominal');
 
-        // 2. Ambil Riwayat Pembayaran (Semua: Pending/ACC/Tolak)
-        $history = DB::table('riwayat_pembayaran')
-            ->where('id_pesanan', $order->id_pesanan)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        return [
+            'id'               => $order->id_pesanan,
+            'customerName'     => $order->nama_pemesan,
+            'totalPrice'       => (int)$order->harga_sewa,
+            'downPayment'      => (int)$totalPaidValid,
+            'remainingBalance' => (int)$order->harga_sewa - $totalPaidValid,
+            'departureTime'    => $order->tgl_berangkat,
+            'whatsapp'         => $order->no_telp,
+            'destination'      => $order->tujuan_main,
+            // 🎯 INI YANG BIKIN REACT MUNCUL BANYAK KOTAK:
+            'paymentHistory'   => $allPayments,
+            'fleets'           => $this->getAssignedFleets($order->id_pesanan)
+        ];
+    }
 
-        // 3. Ambil Armada yang ditugaskan (Jika status sudah Terjadwal/Jalan)
-        $fleets = DB::table('penugasan')
+    // Fungsi tambahan untuk ambil armada (biar rapi)
+    private function getAssignedFleets(string $idPesanan)
+    {
+        return DB::table('penugasan')
             ->leftJoin('armada', 'penugasan.id_armada', '=', 'armada.id_armada')
-            ->where('penugasan.id_pesanan', $order->id_pesanan)
+            ->where('penugasan.id_pesanan', $idPesanan)
             ->select('armada.nama_armada as name', 'armada.nopol as plate', 'penugasan.plat_mitra', 'penugasan.nama_po_mitra')
             ->get()
             ->map(function ($f) {
                 return [
-                    'name' => $f->name ?: $f->nama_po_mitra,
+                    'name'  => $f->name ?: $f->nama_po_mitra,
                     'plate' => $f->plate ?: $f->plat_mitra
                 ];
             });
-
-        return [
-            'id' => $order->id_pesanan,
-            'id_pesanan' => $order->id_pesanan,
-            'customerName' => $order->nama_pemesan,
-            'destination' => $order->tujuan_main,
-            'departureTime' => $order->tgl_berangkat,
-            'whatsapp' => $order->no_telp,
-            'totalPrice' => (int)$order->harga_sewa,
-            'downPayment' => (int)$paid,
-            'remainingBalance' => (int)$order->harga_sewa - $paid,
-            'status' => $order->status_pesanan,
-            'fleets' => $fleets,
-            'paymentHistory' => $history
-        ];
     }
 
     // C. FUNGSI UPLOAD BUKTI (Sisi Pelanggan)
