@@ -16,6 +16,9 @@ import {
     Phone,
     MapPin,
     Bus,
+    Eye,
+    AlertCircle,
+    XCircle,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -41,6 +44,7 @@ const OrderStatus: React.FC = () => {
     const [inputNominal, setInputNominal] = useState("");
     const [inputCatatan, setInputCatatan] = useState("");
     const [buktiFile, setBuktiFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
 
     // Dummy data cadangan aman agar link WA tidak putus saat inisialisasi awal
     const backupOrder = { id: "ORD", customerName: "Pelanggan" };
@@ -160,6 +164,7 @@ const OrderStatus: React.FC = () => {
             console.error("Gagal cetak PDF resmi:", error);
         }
     };
+
     const handlePrint = async (
         event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
     ): Promise<void> => {
@@ -189,6 +194,7 @@ const OrderStatus: React.FC = () => {
         }
     };
     const staticOrder: any = dynamicOrder || { fleets: [] };
+
     return (
         <div className="bg-[#F8FAFC] min-h-screen font-sans pb-20 text-left select-none animate-in fade-in duration-500 relative">
             {/* 1. Header Navigasi Atas (Logo Terpusat Kunci Mati) */}
@@ -564,8 +570,8 @@ const OrderStatus: React.FC = () => {
                             </div>
                             <div className="pt-2">
                                 <button
-                                    type="button" // 🎯 Ganti jadi type="button" agar tidak reload halaman
-                                    onClick={handleUploadPembayaran} // 🎯 KUNCI FIX: Panggil fungsi kirim data, bukan cuma buka modal sukses!
+                                    type="button"
+                                    onClick={handleUploadPembayaran}
                                     className="w-full py-4 bg-[#5346F1] hover:bg-[#4338CA] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
                                 >
                                     Kirim Bukti Pembayaran
@@ -601,52 +607,44 @@ const OrderStatus: React.FC = () => {
                                                 const isDitolak =
                                                     pay.status_pembayaran ===
                                                     "Ditolak";
-
                                                 return (
                                                     <div
                                                         key={idx}
-                                                        className="bg-white border border-slate-100 rounded-[1.25rem] p-4 flex items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-indigo-100 transition-all group"
+                                                        className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm mb-3"
                                                     >
-                                                        <div className="flex items-center gap-4">
-                                                            {/* Ikon Kiri ala Admin */}
-                                                            <div
-                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                                                                    isDisetujui
-                                                                        ? "bg-emerald-50 text-emerald-500"
-                                                                        : isDitolak
-                                                                          ? "bg-rose-50 text-rose-500"
-                                                                          : "bg-amber-50 text-amber-500"
-                                                                }`}
-                                                            >
-                                                                <Receipt
-                                                                    size={18}
-                                                                />
-                                                            </div>
-
-                                                            <div className="text-left space-y-0.5">
-                                                                <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight">
-                                                                    {
-                                                                        pay.tipe_keterangan
-                                                                    }
-                                                                    <span className="mx-2 text-slate-200">
-                                                                        |
-                                                                    </span>
-                                                                    <span className="text-[#5346F1]">
-                                                                        Rp{" "}
-                                                                        {Number(
-                                                                            pay.nominal,
-                                                                        ).toLocaleString(
-                                                                            "id-ID",
-                                                                        )}
-                                                                    </span>
-                                                                </p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-[8px] font-bold text-slate-400 flex items-center gap-1">
-                                                                        <Calendar
-                                                                            size={
-                                                                                10
-                                                                            }
-                                                                        />
+                                                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                                                            <div className="flex items-center gap-4">
+                                                                <div
+                                                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                                                                        pay.status_pembayaran ===
+                                                                        "Disetujui"
+                                                                            ? "bg-emerald-50 text-emerald-500"
+                                                                            : pay.status_pembayaran ===
+                                                                                "Ditolak"
+                                                                              ? "bg-rose-50 text-rose-500"
+                                                                              : "bg-amber-50 text-amber-500"
+                                                                    }`}
+                                                                >
+                                                                    <Receipt
+                                                                        size={
+                                                                            24
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <p className="text-sm font-black text-slate-800 uppercase">
+                                                                        {
+                                                                            pay.tipe_keterangan
+                                                                        }{" "}
+                                                                        |{" "}
+                                                                        <span className="text-[#5346F1]">
+                                                                            Rp{" "}
+                                                                            {pay.nominal.toLocaleString(
+                                                                                "id-ID",
+                                                                            )}
+                                                                        </span>
+                                                                    </p>
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">
                                                                         {new Date(
                                                                             pay.tgl_bayar,
                                                                         ).toLocaleDateString(
@@ -658,35 +656,62 @@ const OrderStatus: React.FC = () => {
                                                                             },
                                                                         )}
                                                                     </p>
-                                                                    <span
-                                                                        className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                                                                            isDisetujui
-                                                                                ? "bg-emerald-100 text-emerald-600"
-                                                                                : isDitolak
-                                                                                  ? "bg-rose-100 text-rose-600"
-                                                                                  : "bg-amber-100 text-amber-600"
-                                                                        }`}
-                                                                    >
-                                                                        {
-                                                                            pay.status_pembayaran
-                                                                        }
-                                                                    </span>
                                                                 </div>
                                                             </div>
-                                                        </div>
 
-                                                        {/* Jika Ditolak, tampilkan alasan penolakan dari admin */}
+                                                            <div className="flex items-center gap-3 justify-between md:justify-end">
+                                                                {/* 🎯 TOMBOL LIHAT BUKTI (Transparansi) */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setPreviewUrl(
+                                                                            pay.bukti_transfer,
+                                                                        )
+                                                                    }
+                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-black uppercase transition-all"
+                                                                >
+                                                                    <Eye
+                                                                        size={
+                                                                            12
+                                                                        }
+                                                                    />{" "}
+                                                                    Bukti Anda
+                                                                </button>
+
+                                                                <span
+                                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${
+                                                                        pay.status_pembayaran ===
+                                                                        "Disetujui"
+                                                                            ? "bg-emerald-100 text-emerald-600"
+                                                                            : pay.status_pembayaran ===
+                                                                                "Ditolak"
+                                                                              ? "bg-rose-100 text-rose-600"
+                                                                              : "bg-amber-100 text-amber-600"
+                                                                    }`}
+                                                                >
+                                                                    {
+                                                                        pay.status_pembayaran
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                         {isDitolak && (
-                                                            <div className="hidden md:block max-w-[150px]">
-                                                                <div className="bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                                                                    <p className="text-[7px] font-black text-rose-500 uppercase leading-none mb-1">
+                                                            <div className="mt-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-2">
+                                                                <AlertCircle
+                                                                    size={14}
+                                                                    className="text-rose-500 shrink-0 mt-0.5"
+                                                                />
+                                                                <div className="text-left">
+                                                                    <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">
                                                                         Alasan
-                                                                        Penolakan:
+                                                                        Penolakan
+                                                                        Admin:
                                                                     </p>
-                                                                    <p className="text-[8px] font-bold text-rose-400 leading-tight italic truncate">
+                                                                    {/* 🎯 KUNCI FIX: Pastikan memanggil pay.alasan_admin */}
+                                                                    <p className="text-[11px] font-bold text-rose-400 italic">
                                                                         "
-                                                                        {pay.catatan_pembayaran ||
-                                                                            "Bukti kurang jelas"}
+                                                                        {pay.alasan_admin ||
+                                                                            "Mohon hubungi admin untuk detail penolakan."}
                                                                         "
                                                                     </p>
                                                                 </div>
@@ -727,6 +752,41 @@ const OrderStatus: React.FC = () => {
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* MODAL ZOOM GAMBAR - PASTI JALAN */}
+            {previewUrl && (
+                <div
+                    className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[500] flex flex-col items-center justify-center p-4"
+                    onClick={() => setPreviewUrl(null)}
+                >
+                    {/* Tombol Tutup Melayang di Atas */}
+                    <button className="mb-4 text-white font-black uppercase text-[10px] flex items-center gap-2">
+                        Tutup Preview <XCircle size={20} />
+                    </button>
+
+                    <div
+                        className="bg-white p-3 rounded-[2.5rem] max-w-md w-full shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={`/uploads/bukti_transfer/${previewUrl}`}
+                            className="w-full h-auto rounded-[1.5rem] shadow-sm max-h-[70vh] object-contain"
+                            alt="Bukti Transfer"
+                            onError={(e) => {
+                                e.currentTarget.src =
+                                    "https://placehold.co/400x600?text=Gambar+Tidak+Ditemukan";
+                            }}
+                        />
+                        <div className="py-4 text-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Arsip Bukti Transfer Pelanggan
+                            </p>
+                            <p className="text-[9px] font-bold text-indigo-500 uppercase mt-1">
+                                PO. Arjuna Trans Mojokerto
+                            </p>
                         </div>
                     </div>
                 </div>

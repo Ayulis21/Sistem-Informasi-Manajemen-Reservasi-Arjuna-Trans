@@ -234,11 +234,13 @@ class PesananController extends Controller
 
             foreach ($paymentsArray as $index => $p) {
                 // $totalPaidCalculated += floatval($p['amount'] ?? 0);
+                $totalPaidValid += (($p['paymentStatus'] ?? '') === 'Disetujui') ? floatval($p['amount'] ?? 0) : 0;
                 $tipeTerakhir = $p['type'] ?? 'DP';
                 if (($p['paymentStatus'] ?? '') === 'Disetujui') {
                     $totalPaidValid += floatval($p['amount'] ?? 0);
                 }
 
+                $paymentsArray[$index]['rejection_reason'] = ($p['paymentStatus'] === 'Ditolak') ? ($p['rejection_reason'] ?? '') : '';
                 $statusTerakhir = $p['paymentStatus'] ?? 'Pending';
 
                 if ($request->hasFile("evidenceFile_{$index}")) {
@@ -257,7 +259,7 @@ class PesananController extends Controller
                 ['id_pesanan' => $id],
                 [
                     'nominal'            => $totalPaidValid, // Pastikan nominal masuk (Biar gak 0.00)
-                    'status_pembayaran'  => $statusTerakhir,     // UPDATE STATUS NYATA (Biar Dashboard jadi 0)
+                    'status_pembayaran'  => end($paymentsArray)['paymentStatus'] ?? 'Pending',
                     'tgl_bayar'          => now(),
                     'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
                     'catatan_pembayaran' => $stringPembayaranJson,
@@ -269,55 +271,44 @@ class PesananController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
     }
 
-    // Memproses tombol verifikasi "SESUAI" atau "TOLAK" beserta perekaman teks alasan dari admin
     public function verifikasiPembayaran(Request $request, string $id)
     {
         $request->validate([
             'status_pembayaran'  => 'required|in:Disetujui,Ditolak',
-            'catatan_pembayaran' => 'required|string|max:255' // Ini adalah alasan dari Admin
+            'catatan_pembayaran' => 'required|string|max:255' // Ini alasan admin
         ]);
 
-        // 1. Ambil data lama dulu
         $row = DB::table('riwayat_pembayaran')->where('id_pembayaran', $id)->first();
 
-        if (!$row) {
-            return response()->json(['message' => 'Data pembayaran tidak ditemukan.'], 404);
-        }
-
-        // 2. Bongkar JSON catatan_pembayaran
+        // 1. Bongkar JSON
         $history = json_decode($row->catatan_pembayaran, true) ?: [];
 
         if (count($history) > 0) {
-            // 3. Update baris terakhir (asumsi ini adalah transaksi yang sedang diverifikasi)
             $lastIdx = count($history) - 1;
+
+            // 2. Update status baris terakhir
             $history[$lastIdx]['paymentStatus'] = $request->status_pembayaran;
 
-            // Jika ditolak, masukkan alasan admin ke field 'notes' di dalam JSON agar permanen
+            // 🎯 KUNCI UTAMA: Masukkan alasan ke field 'rejection_reason' DALAM JSON
             if ($request->status_pembayaran === 'Ditolak') {
-                $history[$lastIdx]['notes'] = $request->catatan_pembayaran;
+                $history[$lastIdx]['rejection_reason'] = $request->catatan_pembayaran;
+            } else {
+                $history[$lastIdx]['rejection_reason'] = '';
             }
         }
 
-        // 4. HITUNG ULANG NOMINAL SAH (Hanya yang statusnya 'Disetujui')
-        // Ini memastikan jika ditolak, kolom 'nominal' MySQL akan berkurang/tidak bertambah
-        $newNominalValid = collect($history)
-            ->where('paymentStatus', 'Disetujui')
-            ->sum('amount');
+        // 3. Hitung ulang nominal sah (Ditolak tidak dihitung)
+        $newNominalValid = collect($history)->where('paymentStatus', 'Disetujui')->sum('amount');
 
-        // 5. UPDATE SEKALIGUS (Hanya 1 Query ke Database)
-        DB::table('riwayat_pembayaran')
-            ->where('id_pembayaran', $id)
-            ->update([
-                'status_pembayaran'  => $request->status_pembayaran, // Status Utama
-                'nominal'            => $newNominalValid,           // Nominal Riil (Sah)
-                'catatan_pembayaran' => json_encode($history),      // Data Lengkap JSON
-                'updated_at'         => now()
-            ]);
-
-        return response()->json([
-            'message' => 'Validasi berhasil: Pembayaran ' . $request->status_pembayaran,
-            'new_nominal' => $newNominalValid
+        // 4. Simpan kembali sebagai JSON UTUH ke database
+        DB::table('riwayat_pembayaran')->where('id_pembayaran', $id)->update([
+            'status_pembayaran'  => $request->status_pembayaran,
+            'nominal'            => $newNominalValid,
+            'catatan_pembayaran' => json_encode($history), // <--- JSON TETAP JSON
+            'updated_at'         => now()
         ]);
+
+        return response()->json(['message' => 'Berhasil']);
     }
 
     public function updateStatus(Request $request, string $id)

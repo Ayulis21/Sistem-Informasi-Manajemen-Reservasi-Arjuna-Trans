@@ -40,33 +40,30 @@ class OrderStatusController extends Controller
             ->get();
 
         $allPayments = [];
-
-        // 2. 🎯 KUNCI SAKRAL: Bongkar isi JSON di setiap baris
         foreach ($rows as $row) {
-            $isiCatatan = $row->catatan_pembayaran;
+            $rawCatatan = $row->catatan_pembayaran;
 
-            // Cek apakah kolom catatan isinya JSON Array (Data lama yang menumpuk)
-            if (str_starts_with($isiCatatan, '[')) {
-                $decoded = json_decode($isiCatatan, true);
-                if (is_array($decoded)) {
-                    foreach ($decoded as $item) {
-                        $allPayments[] = [
-                            'tipe_keterangan'   => $item['type'] ?? 'Cicil',
-                            'nominal'           => (float)($item['amount'] ?? 0),
-                            'tgl_bayar'         => $item['date'] ?? $row->tgl_bayar,
-                            'status_pembayaran' => $item['paymentStatus'] ?? 'Pending',
-                            'catatan_pembayaran' => $item['notes'] ?? ''
-                        ];
-                    }
+            if (str_starts_with($rawCatatan, '[')) {
+                $decoded = json_decode($rawCatatan, true);
+                foreach ($decoded as $item) {
+                    $allPayments[] = [
+                        'tipe_keterangan'   => $item['type'] ?? 'Cicil',
+                        'nominal'           => (float)($item['amount'] ?? 0),
+                        'tgl_bayar'         => $item['date'] ?? $row->tgl_bayar,
+                        'status_pembayaran' => $item['paymentStatus'] ?? 'Pending',
+                        'alasan_admin'      => $item['rejection_reason'] ?? '',
+                        'bukti_transfer'    => $item['bukti_transfer'] ?? $row->bukti_transfer
+                    ];
                 }
             } else {
-                // Jika data baru (bukan JSON), masukkan sebagai 1 baris biasa
+                $isRejected = $row->status_pembayaran === 'Ditolak';
                 $allPayments[] = [
                     'tipe_keterangan'   => $row->tipe_keterangan,
                     'nominal'           => (float)$row->nominal,
                     'tgl_bayar'         => $row->tgl_bayar,
                     'status_pembayaran' => $row->status_pembayaran,
-                    'catatan_pembayaran' => $row->catatan_pembayaran
+                    'alasan_admin'      => $isRejected ? $row->catatan_pembayaran : '',
+                    'bukti_transfer'    => $row->bukti_transfer
                 ];
             }
         }
@@ -85,7 +82,6 @@ class OrderStatusController extends Controller
             'departureTime'    => $order->tgl_berangkat,
             'whatsapp'         => $order->no_telp,
             'destination'      => $order->tujuan_main,
-            // 🎯 INI YANG BIKIN REACT MUNCUL BANYAK KOTAK:
             'paymentHistory'   => $allPayments,
             'fleets'           => $this->getAssignedFleets($order->id_pesanan)
         ];
@@ -175,7 +171,6 @@ class OrderStatusController extends Controller
 
             return response()->json(['message' => 'Bukti pembayaran berhasil diunggah!'], 200);
         } catch (\Exception $e) {
-            // Jika ada error (DB mati, file error, dll) kirim pesan ke React
             return response()->json(['message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
     }
