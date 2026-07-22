@@ -1096,100 +1096,81 @@ const Orders: React.FC = () => {
                                         </button>
                                         <button
                                             type="button"
+                                            // resources/js/Pages/Orders.tsx (Di dalam fungsi onClick Printer)
+
                                             onClick={() => {
-                                                let kantongSaringanBiner: any[] =
-                                                    [];
-                                                try {
-                                                    if (
-                                                        o.catatan_pembayaran &&
-                                                        String(
-                                                            o.catatan_pembayaran,
-                                                        )
-                                                            .trim()
-                                                            .startsWith("[")
-                                                    ) {
-                                                        const hasilBongkar =
-                                                            JSON.parse(
-                                                                o.catatan_pembayaran,
-                                                            );
-                                                        if (
-                                                            Array.isArray(
-                                                                hasilBongkar,
-                                                            )
-                                                        ) {
-                                                            kantongSaringanBiner =
-                                                                hasilBongkar;
-                                                        }
-                                                    }
-                                                } catch (e) {
-                                                    kantongSaringanBiner = [];
-                                                }
-                                                const payloadOrderMurni = {
-                                                    id: o.id_pesanan || "",
+                                                // 1. Hitung Duit Sah
+                                                const totalACC = (
+                                                    o.payments || []
+                                                ).reduce(
+                                                    (acc: number, p: any) => {
+                                                        return (
+                                                            acc +
+                                                            (p.paymentStatus ===
+                                                            "Disetujui"
+                                                                ? Number(
+                                                                      p.amount ||
+                                                                          0,
+                                                                  )
+                                                                : 0)
+                                                        );
+                                                    },
+                                                    0,
+                                                );
+
+                                                const payload = {
+                                                    ...o,
+                                                    id: o.id_pesanan,
                                                     customerName:
-                                                        o.nama_pemesan ||
-                                                        "Tanpa Nama",
+                                                        o.nama_pemesan,
                                                     customerAddress:
                                                         o.alamat || "-",
                                                     route:
                                                         o.rute ||
                                                         o.tujuan_main ||
                                                         "-",
-                                                    destination:
-                                                        o.tujuan_main || "-",
-                                                    departureTime:
-                                                        o.tgl_berangkat ||
-                                                        new Date().toISOString(),
                                                     pickupAddress:
                                                         o.alamat_penjemputan ||
                                                         "-",
+                                                    departureTime:
+                                                        o.tgl_berangkat,
                                                     totalPrice: Number(
                                                         o.harga_sewa || 0,
                                                     ),
-                                                    downPayment: Number(
-                                                        kantongSaringanBiner.find(
-                                                            (p: any) =>
-                                                                p.type ===
-                                                                    "DP" &&
-                                                                p.paymentStatus ===
-                                                                    "Disetujui",
-                                                        )?.amount || 0,
-                                                    ),
+                                                    downPayment: totalACC,
                                                     remainingBalance:
                                                         Number(
                                                             o.harga_sewa || 0,
-                                                        ) - totalBayar,
-                                                    fleetRequirements:
-                                                        o.tipe_unit_diminta
-                                                            ? [
-                                                                  {
-                                                                      type: o.tipe_unit_diminta,
-                                                                      count: Number(
-                                                                          o.jumlah_unit_diminta ||
-                                                                              1,
-                                                                      ),
-                                                                  },
-                                                              ]
-                                                            : [
-                                                                  {
-                                                                      type: "Bus",
-                                                                      count: 1,
-                                                                  },
-                                                              ],
-                                                    assignments: [
-                                                        {
-                                                            armadaId: "0",
-                                                            assetType:
-                                                                "Internal",
-                                                            plateNumber:
-                                                                "S 7123 UA",
-                                                        },
-                                                    ],
+                                                        ) - totalACC,
                                                     notes: o.lain_lain || "-",
+
+                                                    fleetRequirements: (
+                                                        o.fleetRequirements ||
+                                                        []
+                                                    ).map((fr: any) => ({
+                                                        type: fr.tipe_armada,
+                                                        count: fr.qty,
+                                                    })),
+
+                                                    // 🎯 KUNCI FIX 1: Paksa 'internal' menjadi 'Internal' agar dibaca Documents.tsx
+                                                    assignments: (
+                                                        o.assignments || []
+                                                    ).map((as: any) => ({
+                                                        armadaId: String(
+                                                            as.armadaId,
+                                                        ),
+                                                        assetType:
+                                                            String(
+                                                                as.assetType,
+                                                            ).toLowerCase() ===
+                                                            "internal"
+                                                                ? "Internal"
+                                                                : "Rekanan",
+                                                        platLuar: as.platLuar,
+                                                    })),
                                                 };
-                                                setActiveInvoiceOrder(
-                                                    payloadOrderMurni,
-                                                );
+
+                                                setActiveInvoiceOrder(payload);
                                             }}
                                             className="w-10 h-10 bg-slate-950 text-white rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-slate-900 transition-colors print:hidden"
                                             title="Buka Lembar Invoice"
@@ -1378,31 +1359,16 @@ const Orders: React.FC = () => {
             )}
             {activeInvoiceOrder && (
                 <Documents
-                    order={{
-                        ...activeInvoiceOrder,
-                        notes: activeInvoiceOrder.notes || "-",
-                    }}
+                    order={activeInvoiceOrder}
                     onClose={() => setActiveInvoiceOrder(null)}
                     state={{
                         orders: [],
                         crew: [],
-                        armada: [
-                            {
-                                id: "0",
-                                plateNumber: "-",
-                                name:
-                                    activeInvoiceOrder.fleetRequirements?.[0]
-                                        ?.type || "Bus",
-                                type:
-                                    activeInvoiceOrder.fleetRequirements?.[0]
-                                        ?.type === "Medium Bus"
-                                        ? "Medium Bus"
-                                        : "Big Bus",
-                                capacity: 50,
-                                facilities: ["AC", "TV", "Karaoke"],
-                                status: "Ready",
-                            },
-                        ],
+                        // 🎯 KUNCI FIX 2: Translate data master ke bahasa yang dimengerti Documents.tsx
+                        armada: armada.map((a: any) => ({
+                            id: String(a.id_armada), // 'id_armada' diterjemahkan jadi 'id'
+                            plateNumber: a.nopol, // 'nopol' diterjemahkan jadi 'plateNumber'
+                        })),
                     }}
                 />
             )}

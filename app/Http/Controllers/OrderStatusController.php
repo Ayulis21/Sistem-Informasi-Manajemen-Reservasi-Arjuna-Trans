@@ -90,22 +90,6 @@ class OrderStatusController extends Controller
         ];
     }
 
-    // Fungsi tambahan untuk ambil armada (biar rapi)
-    private function getAssignedFleets(string $idPesanan)
-    {
-        return DB::table('penugasan')
-            ->leftJoin('armada', 'penugasan.id_armada', '=', 'armada.id_armada')
-            ->where('penugasan.id_pesanan', $idPesanan)
-            ->select('armada.nama_armada as name', 'armada.nopol as plate', 'penugasan.plat_mitra', 'penugasan.nama_po_mitra')
-            ->get()
-            ->map(function ($f) {
-                return [
-                    'name'  => $f->name ?: $f->nama_po_mitra,
-                    'plate' => $f->plate ?: $f->plat_mitra
-                ];
-            });
-    }
-
     // C. FUNGSI UPLOAD BUKTI (Sisi Pelanggan)
     public function uploadBuktiBayar(Request $request)
     {
@@ -176,5 +160,31 @@ class OrderStatusController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
+    }
+
+    // app/Http/Controllers/OrderStatusController.php
+
+    // app/Http/Controllers/OrderStatusController.php
+
+    private function getAssignedFleets(string $idPesanan)
+    {
+        return DB::table('penugasan')
+            ->leftJoin('armada', 'penugasan.id_armada', '=', 'armada.id_armada')
+            ->where('penugasan.id_pesanan', $idPesanan)
+            ->select(
+                // 🎯 KUNCI FIX: Ganti nama_armada menjadi tipe_armada
+                'armada.tipe_armada as type',
+                'armada.nopol as plate',
+                'penugasan.plat_mitra',
+                'penugasan.nama_po_mitra'
+            )
+            ->get()
+            ->map(function ($f) {
+                return [
+                    // 🎯 KUNCI FIX: 'name' sekarang berisi Tipe (Big Bus, Medium, dll)
+                    'name'  => $f->type ?: 'Bus Mitra',
+                    'plate' => $f->plate ?: $f->plat_mitra
+                ];
+            });
     }
 }

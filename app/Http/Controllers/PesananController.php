@@ -166,6 +166,11 @@ class PesananController extends Controller
                     ];
                 });
 
+                $order->assignments = DB::table('penugasan')
+                    ->where('id_pesanan', $order->id_pesanan)
+                    ->select('id_armada as armadaId', 'jenis_aset as assetType', 'plat_mitra as platLuar')
+                    ->get();
+
                 return $order;
             });
 

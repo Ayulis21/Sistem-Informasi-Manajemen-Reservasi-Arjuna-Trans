@@ -87,18 +87,15 @@ const OrderStatus: React.FC = () => {
         }
     };
 
-    // resources/js/Pages/CustomerComponents/OrderStatus.tsx
-
     const handleUploadPembayaran = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const targetId = dynamicOrder?.id_pesanan || dynamicOrder?.id;
 
-        // 🎯 KUNCI FIX 1: Mapping nama agar sesuai dengan kemauan DATABASE MySQL
         let tipeEnum = "Cicil"; // default
         if (paymentTab === "DP") tipeEnum = "DP";
-        if (paymentTab === "CICILAN") tipeEnum = "Cicil"; // 'CICILAN' jadi 'Cicil'
-        if (paymentTab === "PELUNASAN") tipeEnum = "Lunas"; // 'PELUNASAN' jadi 'Lunas'
+        if (paymentTab === "CICILAN") tipeEnum = "Cicil";
+        if (paymentTab === "PELUNASAN") tipeEnum = "Lunas";
 
         const dataBiner = new FormData();
         dataBiner.append("id_pesanan", targetId);
@@ -132,10 +129,15 @@ const OrderStatus: React.FC = () => {
 
     const executeWAOpen = () => {
         const currentId = dynamicOrder?.id_pesanan || backupOrder.id;
+        const orderId = dynamicOrder?.id_pesanan || dynamicOrder?.id;
+        const namaPelanggan = dynamicOrder?.customerName || "Pelanggan";
+        const nomorAdmin = "6281938845765";
         const message = encodeURIComponent(
-            `Halo Admin Arjuna Trans, saya ingin melakukan Konfirmasi & Nego untuk pesanan dengan ID: ${currentId}.`,
+            `Halo Admin Arjuna Trans, saya ingin melakukan Konfirmasi & Nego untuk pesanan dengan\n\n` +
+                `• ID Pesanan: ${orderId}\n` +
+                `• Atas Nama: ${namaPelanggan}\n\n.`,
         );
-        window.open(`https://wa.me{message}`, "_blank");
+        window.open(`https://wa.me/${nomorAdmin}?text=${message}`, "_blank");
         setIsWAConfirmOpen(false);
     };
 
@@ -344,7 +346,7 @@ const OrderStatus: React.FC = () => {
                                     <Printer size={13} strokeWidth={2.5} />
                                 </button>
                                 <button
-                                    onClick={() => setIsWAConfirmOpen(true)}
+                                    onClick={executeWAOpen}
                                     type="button"
                                     className="bg-[#00BFA5] text-white text-[8px] font-black uppercase px-3 py-2 rounded-xl shadow-md"
                                 >
@@ -795,27 +797,13 @@ const OrderStatus: React.FC = () => {
             )}
             {/* resources/js/Pages/CustomerComponents/OrderStatus.tsx */}
 
+            {/* resources/js/Pages/CustomerComponents/OrderStatus.tsx */}
+
             {isInvoiceOpen && dynamicOrder && (
                 <Documents
                     onClose={() => setIsInvoiceOpen(false)}
                     order={{
-                        id: dynamicOrder.id,
-                        customerName: dynamicOrder.customerName,
-
-                        // 🎯 KUNCI FIX 2: Sambungkan data dari dynamicOrder
-                        customerAddress: dynamicOrder.customerAddress || "-",
-                        pickupAddress: dynamicOrder.pickupAddress || "-", // Ini Pemberangkatan
-                        notes: dynamicOrder.notes || "-", // Ini Lain-lain
-
-                        whatsapp: dynamicOrder.whatsapp || "-",
-                        route: dynamicOrder.destination,
-                        destination: dynamicOrder.destination,
-                        departureTime: dynamicOrder.departureTime,
-                        returnTime: dynamicOrder.departureTime,
-                        status: dynamicOrder.status || "Pending",
-                        totalPrice: dynamicOrder.totalPrice,
-                        downPayment: dynamicOrder.downPayment,
-                        remainingBalance: dynamicOrder.remainingBalance,
+                        ...dynamicOrder, // Ambil semua data dasar
                         fleetRequirements:
                             dynamicOrder.fleets?.map((f: any) => ({
                                 type: f.name,
@@ -823,23 +811,20 @@ const OrderStatus: React.FC = () => {
                             })) || [],
                         assignments:
                             dynamicOrder.fleets?.map((f: any) => ({
-                                armadaId: "0",
-                                assetType: "Internal",
-                                plateNumber: f.plate,
+                                armadaId: "999",
+                                assetType: "Rekanan",
+                                platLuar: f.plate,
                             })) || [],
+
                         paymentHistory: dynamicOrder.paymentHistory || [],
                     }}
-                    state={{ armada: [], orders: [], crew: [] }}
+                    state={{
+                        armada: [], // Biarkan kosong, tidak masalah karena sudah pakai trik 'Rekanan'
+                        orders: [],
+                        crew: [],
+                    }}
                 />
             )}
-
-            {/* <ModalConfirmWA
-                isOpen={isWAConfirmOpen}
-                onClose={() => setIsWAConfirmOpen(false)}
-                onConfirm={executeWAOpen}
-                customerName={staticOrder.customerName}
-                orderId={staticOrder.id}
-            /> */}
             <ModalSuccessPayment
                 isOpen={isSuccessUploadOpen}
                 onClose={() => setIsSuccessUploadOpen(false)}

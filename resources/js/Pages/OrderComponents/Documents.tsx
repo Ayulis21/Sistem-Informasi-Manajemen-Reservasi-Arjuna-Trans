@@ -159,9 +159,11 @@ const Documents: React.FC<DocumentsProps> = ({ order, onClose, state }) => {
                                         value: order.pickupAddress,
                                     },
                                     {
-                                        label: "Jumlah Bus",
+                                        label: "Jumlah Armada",
                                         value: order.fleetRequirements
-                                            .map((r) => `${r.count} ${r.type}`)
+                                            .map(
+                                                (r) => `(${r.count}) ${r.type}`,
+                                            )
                                             .join(", "),
                                     },
                                     {
