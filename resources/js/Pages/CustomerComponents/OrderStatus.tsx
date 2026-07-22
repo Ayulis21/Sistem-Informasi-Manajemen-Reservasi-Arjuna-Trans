@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
 import ModalSuccessPayment from "../ReportComponents/ModalSuccessPayment";
+import Documents from "../OrderComponents/Documents";
 import axios from "axios";
 import {
     ArrowLeft,
@@ -34,6 +35,7 @@ const OrderStatus: React.FC = () => {
     >("DP");
     const [isWAConfirmOpen, setIsWAConfirmOpen] = useState(false);
     const [isSuccessUploadOpen, setIsSuccessUploadOpen] = useState(false);
+    const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
     // KUNCI SAKRAL 2: Gunakan satu nama penampung database dinamis 'dynamicOrder'
     const [dynamicOrder, setDynamicOrder] = useState<any>(null);
@@ -335,7 +337,7 @@ const OrderStatus: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                                 <button
-                                    onClick={handlePrint}
+                                    onClick={() => setIsInvoiceOpen(true)} // 🎯 KUNCI: Klik ini maka Invoice muncul
                                     type="button"
                                     className="w-8 h-8 bg-slate-950 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-transform"
                                 >
@@ -790,6 +792,44 @@ const OrderStatus: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {isInvoiceOpen && dynamicOrder && (
+                <Documents
+                    onClose={() => setIsInvoiceOpen(false)}
+                    order={{
+                        id: dynamicOrder.id,
+                        customerName: dynamicOrder.customerName,
+                        customerAddress: dynamicOrder.customerAddress || "-",
+                        whatsapp: dynamicOrder.whatsapp || "-", // 🎯 TAMBAHKAN INI
+                        route: dynamicOrder.destination,
+                        destination: dynamicOrder.destination,
+                        departureTime: dynamicOrder.departureTime,
+                        returnTime: dynamicOrder.departureTime, // 🎯 TAMBAHKAN INI (Gunakan departure sebagai default)
+                        status: dynamicOrder.status || "Pending", // 🎯 TAMBAHKAN INI
+                        pickupAddress: dynamicOrder.pickupAddress || "-",
+                        totalPrice: dynamicOrder.totalPrice,
+                        downPayment: dynamicOrder.downPayment,
+                        remainingBalance: dynamicOrder.remainingBalance,
+                        fleetRequirements:
+                            dynamicOrder.fleets?.map((f: any) => ({
+                                type: f.name,
+                                count: 1,
+                            })) || [],
+                        assignments:
+                            dynamicOrder.fleets?.map((f: any) => ({
+                                armadaId: "0",
+                                assetType: "Internal",
+                                plateNumber: f.plate,
+                            })) || [],
+                        paymentHistory: dynamicOrder.paymentHistory || [], // 🎯 TAMBAHKAN INI
+                        notes: dynamicOrder.notes || "-",
+                    }}
+                    state={{
+                        armada: [],
+                        orders: [],
+                        crew: [],
+                    }}
+                />
             )}
 
             {/* <ModalConfirmWA
