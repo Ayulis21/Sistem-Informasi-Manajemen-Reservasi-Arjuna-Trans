@@ -793,20 +793,26 @@ const OrderStatus: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* resources/js/Pages/CustomerComponents/OrderStatus.tsx */}
+
             {isInvoiceOpen && dynamicOrder && (
                 <Documents
                     onClose={() => setIsInvoiceOpen(false)}
                     order={{
                         id: dynamicOrder.id,
                         customerName: dynamicOrder.customerName,
+
+                        // 🎯 KUNCI FIX 2: Sambungkan data dari dynamicOrder
                         customerAddress: dynamicOrder.customerAddress || "-",
-                        whatsapp: dynamicOrder.whatsapp || "-", // 🎯 TAMBAHKAN INI
+                        pickupAddress: dynamicOrder.pickupAddress || "-", // Ini Pemberangkatan
+                        notes: dynamicOrder.notes || "-", // Ini Lain-lain
+
+                        whatsapp: dynamicOrder.whatsapp || "-",
                         route: dynamicOrder.destination,
                         destination: dynamicOrder.destination,
                         departureTime: dynamicOrder.departureTime,
-                        returnTime: dynamicOrder.departureTime, // 🎯 TAMBAHKAN INI (Gunakan departure sebagai default)
-                        status: dynamicOrder.status || "Pending", // 🎯 TAMBAHKAN INI
-                        pickupAddress: dynamicOrder.pickupAddress || "-",
+                        returnTime: dynamicOrder.departureTime,
+                        status: dynamicOrder.status || "Pending",
                         totalPrice: dynamicOrder.totalPrice,
                         downPayment: dynamicOrder.downPayment,
                         remainingBalance: dynamicOrder.remainingBalance,
@@ -821,14 +827,9 @@ const OrderStatus: React.FC = () => {
                                 assetType: "Internal",
                                 plateNumber: f.plate,
                             })) || [],
-                        paymentHistory: dynamicOrder.paymentHistory || [], // 🎯 TAMBAHKAN INI
-                        notes: dynamicOrder.notes || "-",
+                        paymentHistory: dynamicOrder.paymentHistory || [],
                     }}
-                    state={{
-                        armada: [],
-                        orders: [],
-                        crew: [],
-                    }}
+                    state={{ armada: [], orders: [], crew: [] }}
                 />
             )}
 

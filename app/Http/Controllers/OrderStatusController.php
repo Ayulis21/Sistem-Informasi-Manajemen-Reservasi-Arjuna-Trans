@@ -76,6 +76,9 @@ class OrderStatusController extends Controller
         return [
             'id'               => $order->id_pesanan,
             'customerName'     => $order->nama_pemesan,
+            'customerAddress'  => $order->alamat,
+            'pickupAddress'    => $order->alamat_penjemputan,
+            'notes'            => $order->lain_lain,
             'totalPrice'       => (int)$order->harga_sewa,
             'downPayment'      => (int)$totalPaidValid,
             'remainingBalance' => (int)$order->harga_sewa - $totalPaidValid,
