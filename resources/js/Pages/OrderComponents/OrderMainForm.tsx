@@ -224,15 +224,14 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                 </div>
                                 <div className="flex gap-2 items-center">
                                     <select
-                                        value={
-                                            f.armada_id
-                                                ? String(f.armada_id)
-                                                : ""
-                                        }
+                                        // Gunakan tipe_armada (atau armada_id yang sekarang isinya string tipe)
+                                        value={f.armada_id || ""}
                                         onChange={(e) => {
                                             const update = [...armadaList];
                                             update[index].armada_id =
                                                 e.target.value;
+                                            update[index].tipe_armada =
+                                                e.target.value; // sinkronkan
                                             setFormData({
                                                 ...formData,
                                                 fleetRequirements: update,
@@ -244,8 +243,8 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                             -- Pilih Tipe --
                                         </option>
 
-                                        {/* 1. Ambil data Tipe Unik (Hanya 4 Tipe) */}
                                         {armada
+                                            // Ambil list unik berdasarkan tipe_armada
                                             ?.filter(
                                                 (obj, idx, self) =>
                                                     idx ===
@@ -256,49 +255,22 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                                     ),
                                             )
                                             .map((a: any) => {
-                                                // 2. Cek apakah tipe ini sudah dipilih di baris LAIN
+                                                // Logika cek apakah tipe ini sudah dipilih di baris lain
                                                 const isTypeTaken =
                                                     armadaList.some(
                                                         (
-                                                            item: {
-                                                                armada_id: any;
-                                                            },
+                                                            item: any,
                                                             itemIdx: number,
-                                                        ) => {
-                                                            // Jangan cek baris yang sedang kita edit sekarang
-                                                            if (
-                                                                itemIdx ===
-                                                                index
-                                                            )
-                                                                return false;
-
-                                                            // Cari data master dari ID yang sudah dipilih di baris lain
-                                                            const selectedMaster =
-                                                                armada.find(
-                                                                    (m) =>
-                                                                        String(
-                                                                            m.id_armada,
-                                                                        ) ===
-                                                                        String(
-                                                                            item.armada_id,
-                                                                        ),
-                                                                );
-                                                            return (
-                                                                selectedMaster?.tipe_armada ===
-                                                                a.tipe_armada
-                                                            );
-                                                        },
+                                                        ) =>
+                                                            itemIdx !== index &&
+                                                            item.armada_id ===
+                                                                a.tipe_armada,
                                                     );
 
                                                 return (
                                                     <option
-                                                        key={String(
-                                                            a.id_armada,
-                                                        )}
-                                                        value={String(
-                                                            a.id_armada,
-                                                        )}
-                                                        /* Jika tipe sudah ada di baris lain, matikan pilihannya */
+                                                        key={a.tipe_armada} // Gunakan tipe sebagai key
+                                                        value={a.tipe_armada} // Value adalah STRING "Big Bus", "Elf", dll
                                                         disabled={isTypeTaken}
                                                     >
                                                         {a.tipe_armada}{" "}
@@ -313,7 +285,7 @@ const OrderMainForm: React.FC<OrderMainFormProps> = ({
                                         type="text"
                                         inputMode="numeric"
                                         placeholder="0"
-                                        value={f.qty === 0 ? "" : f.qty || ""}
+                                        value={f.qty === "" ? "" : f.qty || ""}
                                         onChange={(e) => {
                                             const hanyaAngka =
                                                 e.target.value.replace(

@@ -30,9 +30,7 @@ const OrderStatus: React.FC = () => {
     const [inputValue, setInputValue] = useState("");
     const [showList, setShowResultList] = useState(false);
     const [showDetail, setShowResultDetail] = useState(false);
-    const [paymentTab, setPaymentTab] = useState<
-        "DP" | "CICILAN" | "PELUNASAN"
-    >("DP");
+    const [paymentTab, setPaymentTab] = useState<string>("DP");
     const [isWAConfirmOpen, setIsWAConfirmOpen] = useState(false);
     const [isSuccessUploadOpen, setIsSuccessUploadOpen] = useState(false);
     const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
@@ -116,7 +114,7 @@ const OrderStatus: React.FC = () => {
         }
 
         // C. Aturan CICILAN (Minimal 10% - Solusi pertanyaan dosen)
-        if (paymentTab === "CICILAN") {
+        if (paymentTab === "Ccilan") {
             const minCicil = totalHargaSewa * 0.1; // Minimal 10%
             if (nominalInput < minCicil) {
                 alert(
@@ -249,6 +247,11 @@ const OrderStatus: React.FC = () => {
         staticOrder.totalPrice > 0 && staticOrder.remainingBalance <= 0;
     const minDPPercent = 0.3;
     const minDPAmount = staticOrder.totalPrice * minDPPercent;
+    const listKategoriBayar = [
+        { id: "DP", label: "DP" },
+        { id: "Cicil", label: "Cicilan" },
+        { id: "Lunas", label: "Pelunasan" },
+    ];
 
     return (
         <div className="bg-[#F8FAFC] min-h-screen font-sans pb-20 text-left select-none animate-in fade-in duration-500 relative">
@@ -443,10 +446,10 @@ const OrderStatus: React.FC = () => {
 
                         {/* --- 2. NOTIFIKASI PENTING (DESAIN ASLI) --- */}
                         <div className="bg-amber-50/40 border border-amber-100 rounded-2xl p-4 text-left space-y-1">
-                            <p className="text-[8px] font-black text-amber-600 uppercase tracking-wider flex items-center gap-1">
+                            <p className="text-[11px] font-black text-amber-600 uppercase tracking-wider flex items-center gap-1">
                                 ⚠️ PENTING: KONFIRMASI WHATSAPP DIPERLUKAN!
                             </p>
-                            <p className="text-[9px] font-semibold text-amber-600/90 leading-relaxed italic">
+                            <p className="text-[12px] font-semibold text-amber-600/90 leading-relaxed italic">
                                 Pesanan Anda telah kami terima dengan status
                                 Baru (Pending). Silakan klik tombol "Konfirmasi
                                 & Nego (WA)" di atas untuk mendiskusikan harga
@@ -572,20 +575,22 @@ const OrderStatus: React.FC = () => {
                                                 value={paymentTab}
                                                 onChange={(e) =>
                                                     setPaymentTab(
-                                                        e.target.value as any,
+                                                        e.target.value,
                                                     )
                                                 }
                                                 className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] shadow-sm"
                                             >
-                                                <option value="DP">
-                                                    DP (UANG MUKA)
-                                                </option>
-                                                <option value="CICILAN">
-                                                    CICILAN
-                                                </option>
-                                                <option value="PELUNASAN">
-                                                    PELUNASAN
-                                                </option>
+                                                {/* Mapping Dinamis dari variabel listKategoriBayar */}
+                                                {listKategoriBayar.map(
+                                                    (item) => (
+                                                        <option
+                                                            key={item.id}
+                                                            value={item.id}
+                                                        >
+                                                            {item.label}
+                                                        </option>
+                                                    ),
+                                                )}
                                             </select>
                                         </div>
                                         <div className="space-y-1">
@@ -643,15 +648,17 @@ const OrderStatus: React.FC = () => {
                                                         <p className="text-[8px] text-amber-600 font-bold italic">
                                                             * Minimal DP (30%):
                                                             Rp{" "}
-                                                            {minDPAmount.toLocaleString(
+                                                            {(
+                                                                staticOrder.totalPrice *
+                                                                0.3
+                                                            ).toLocaleString(
                                                                 "id-ID",
                                                             )}
                                                         </p>
                                                     )}
 
-                                                    {/* 2. Jika pilih CICILAN (Logika 10% sesuai diskusi tadi) */}
-                                                    {paymentTab ===
-                                                        "CICILAN" && (
+                                                    {/* 2. Jika pilih Cicil (Sebelumnya "CICILAN") */}
+                                                    {paymentTab === "Cicil" && (
                                                         <p className="text-[8px] text-amber-600 font-bold italic">
                                                             * Minimal Cicilan
                                                             (10%): Rp{" "}
@@ -664,9 +671,8 @@ const OrderStatus: React.FC = () => {
                                                         </p>
                                                     )}
 
-                                                    {/* 3. Jika pilih PELUNASAN */}
-                                                    {paymentTab ===
-                                                        "PELUNASAN" && (
+                                                    {/* 3. Jika pilih Lunas (Sebelumnya "PELUNASAN") */}
+                                                    {paymentTab === "Lunas" && (
                                                         <p className="text-[8px] text-emerald-600 font-bold italic">
                                                             * Masukkan sisa
                                                             tagihan: Rp{" "}
@@ -742,15 +748,32 @@ const OrderStatus: React.FC = () => {
                                     <Receipt size={12} /> Riwayat Pembayaran
                                 </span>
                                 <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full uppercase">
-                                    {staticOrder.paymentHistory?.length || 0}{" "}
+                                    {staticOrder.paymentHistory?.filter(
+                                        (p: any) => Number(p.nominal) > 0,
+                                    ).length || 0}{" "}
                                     Transaksi
                                 </span>
                             </div>
 
                             <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
-                                {staticOrder.paymentHistory?.length > 0 ? (
-                                    staticOrder.paymentHistory.map(
-                                        (pay: any, idx: number) => {
+                                {staticOrder.paymentHistory?.filter(
+                                    (pay: any) => {
+                                        return !(
+                                            Number(pay.nominal) === 0 &&
+                                            pay.status_pembayaran === "Pending"
+                                        );
+                                    },
+                                ).length > 0 ? (
+                                    staticOrder.paymentHistory
+                                        .filter(
+                                            (pay: any) =>
+                                                !(
+                                                    Number(pay.nominal) === 0 &&
+                                                    pay.status_pembayaran ===
+                                                        "Pending"
+                                                ),
+                                        )
+                                        .map((pay: any, idx: number) => {
                                             const isDitolak =
                                                 pay.status_pembayaran ===
                                                 "Ditolak";
@@ -830,8 +853,7 @@ const OrderStatus: React.FC = () => {
                                                     )}
                                                 </div>
                                             );
-                                        },
-                                    )
+                                        })
                                 ) : (
                                     <p className="text-center text-[10px] text-slate-300 py-6 italic uppercase font-black tracking-widest">
                                         Belum ada riwayat pembayaran

@@ -12,6 +12,11 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
     setFormData,
     setPreviewUrl,
 }) => {
+    const opsiBayar = [
+        { id: "DP", label: "DP" },
+        { id: "Cicil", label: "Cicilan" },
+        { id: "Lunas", label: "Pelunasan" },
+    ];
     const totalHarga = Number(formData.totalPrice || 0);
     const totalBayar = (formData.payments || []).reduce(
         (acc: number, curr: any) => {
@@ -159,14 +164,12 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                         const isApproved =
                                             p.paymentStatus === "Disetujui";
                                         return (
-                                            <tr
-                                                key={index}
-                                                className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors font-bold text-slate-700"
-                                            >
+                                            <tr key={index} className="...">
                                                 <td className="p-2 text-center text-slate-400">
                                                     {index + 1}
                                                 </td>
                                                 <td className="p-2">
+                                                    {/* 🎯 DROPDOWN DINAMIS */}
                                                     <select
                                                         value={p.type || "DP"}
                                                         disabled={isApproved}
@@ -181,17 +184,22 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                                 payments: u,
                                                             });
                                                         }}
-                                                        className="w-full p-1 bg-white border border-slate-200 rounded-lg text-[11px] outline-none cursor-pointer"
+                                                        className="w-full p-1 bg-white border border-slate-200 rounded-lg text-[11px] outline-none cursor-pointer font-bold"
                                                     >
-                                                        <option value="DP">
-                                                            DP
-                                                        </option>
-                                                        <option value="Cicil">
-                                                            Cicil
-                                                        </option>
-                                                        <option value="Lunas">
-                                                            Lunas
-                                                        </option>
+                                                        {opsiBayar.map(
+                                                            (opsi) => (
+                                                                <option
+                                                                    key={
+                                                                        opsi.id
+                                                                    }
+                                                                    value={
+                                                                        opsi.id
+                                                                    }
+                                                                >
+                                                                    {opsi.label}
+                                                                </option>
+                                                            ),
+                                                        )}
                                                     </select>
                                                 </td>
                                                 <td className="p-2">
@@ -505,9 +513,7 @@ const OrderFinanceForm: React.FC<OrderFinanceFormProps> = ({
                                                                     />
                                                                 </button>
                                                             ) : (
-                                                                <span className="text-slate-200 select-none text-[8px] font-black">
-                                                                    🔒
-                                                                </span>
+                                                                <span className="text-slate-200 select-none text-[8px] font-black"></span>
                                                             )}
                                                         </div>
                                                     </div>
