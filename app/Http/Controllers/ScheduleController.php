@@ -18,27 +18,35 @@ class ScheduleController extends Controller
             ->whereIn('status_pesanan', ['Disetujui', 'Terjadwal', 'Selesai'])
             ->get()
             ->map(function ($order) {
-                // Ambil armada (Internal/Mitra)
-                $order->buses = DB::table('penugasan')
+                // 🎯 KUNCI: Ambil data penugasan sebagai objek lengkap, bukan cuma nama
+                $order->assignments = DB::table('penugasan')
                     ->leftJoin('armada', 'penugasan.id_armada', '=', 'armada.id_armada')
                     ->where('id_pesanan', $order->id_pesanan)
-                    ->select(DB::raw("IF(jenis_aset = 'internal', armada.nama_armada, nama_po_mitra) as nama_unit"))
-                    ->pluck('nama_unit');
+                    ->select(
+                        'penugasan.jenis_aset as assetType',
+                        'penugasan.id_armada as armadaId',
+                        'penugasan.plat_mitra as platLuar',
+                        'penugasan.nama_po_mitra as namaMitra',
+                        'armada.nama_armada as namaInternal'
+                    )
+                    ->get()
+                    ->map(function ($a) {
+                        // Berikan nama unit yang seragam untuk ditampilkan di UI
+                        $a->nama_tampilan = ($a->assetType === 'internal')
+                            ? $a->namaInternal
+                            : ($a->namaMitra . " (" . $a->platLuar . ")");
+                        return $a;
+                    });
                 return $order;
             });
 
         $totalFleet = DB::table('armada')->count();
 
         return Inertia::render('Schedule', [
-            'dbOrders' => $orders,    // 🎯 Sesuai props di Schedule.tsx
+            'dbOrders'   => $orders,
             'totalFleet' => $totalFleet
         ]);
     }
-
-    // app/Http/Controllers/ScheduleController.php
-
-    // app/Http/Controllers/ScheduleController.php
-
     public function getPublicSchedule()
     {
         // 1. Ambil data pesanan yang SAH (bukan batal/pending baru)

@@ -16,17 +16,12 @@ use App\Models\Armada;
 use App\Models\Kru;
 use App\Models\Pesanan;
 
-
 // Halaman Utama / Landing Page
 Route::get('/', function () {
     return Inertia::render('Landing');
 });
 
-// Route::get('/customer-order', function () {
-//     return Inertia::render('CustomerComponents/CustomerOrder');
-// })->name('customer-order');
 Route::get('/customer-order', [PesananController::class, 'showOrderForm'])->name('customer-order');
-
 
 // Route untuk proses simpan (API)
 Route::post('/api/customer/booking', [PesananController::class, 'storePublic']);
@@ -46,19 +41,12 @@ Route::get('/order-status', function () {
 Route::post('/api/order/search', [OrderStatusController::class, 'search']);
 Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
 
-
 Route::get('/jadwal-bus', function () {
     return Inertia::render('CustomerComponents/CustomerSchedule');
 })->name('customer.schedule');
 Route::get('/api/public-schedule', [App\Http\Controllers\ScheduleController::class, 'getPublicSchedule']);
 
 Route::get('/booking', [PesananController::class, 'showOrderForm']);
-
-
-
-
-
-
 
 // route login
 Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');

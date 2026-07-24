@@ -41,21 +41,29 @@ const Schedule: React.FC<ScheduleProps> = ({
 
     // 3. LOGIKA FILTER PESANAN PER HARI (Support Multi-Day)
     const getOrdersForDay = (day: number) => {
+        // Format tanggal kalender ke "YYYY-MM-DD"
+        const targetDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
         return dbOrders.filter((o) => {
-            const dateToCheck = new Date(year, month, day).getTime();
-            const start = new Date(o.tgl_berangkat.substring(0, 10)).getTime();
-            const end = new Date(o.tgl_selesai.substring(0, 10)).getTime();
-            return dateToCheck >= start && dateToCheck <= end;
+            // Ambil hanya bagian tanggal dari data DB
+            const start = o.tgl_berangkat.substring(0, 10); // "2026-07-24"
+            const end = o.tgl_selesai.substring(0, 10); // "2026-07-24"
+
+            return targetDateStr >= start && targetDateStr <= end;
         });
     };
 
     const selectedOrders = getOrdersForDay(selectedDay);
 
-    // Hitung armada yang jalan di hari yang dipilih
-    const activeBusesCount = selectedOrders.reduce(
-        (sum, o) => sum + (o.buses?.length || 0),
-        0,
-    );
+    const activeBusesCount = useMemo(() => {
+        return selectedOrders.reduce((total, order) => {
+            // Hanya hitung penugasan yang jenis asetnya 'internal'
+            const internalCount = (order.assignments || []).filter(
+                (a: any) => a.assetType === "internal",
+            ).length;
+            return total + internalCount;
+        }, 0);
+    }, [selectedOrders]);
 
     const changeMonth = (offset: number) => {
         setViewDate(new Date(year, month + offset, 1));
@@ -136,6 +144,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                                                 >
                                                     {day}
                                                 </span>
+                                                {/* Di dalam grid kalender days.map */}
                                                 <div className="flex-1 flex flex-col justify-end space-y-0.5 mt-2 mb-2 overflow-hidden">
                                                     {orders
                                                         .slice(0, 3)
@@ -147,13 +156,8 @@ const Schedule: React.FC<ScheduleProps> = ({
                                                                 {o.nama_pemesan}
                                                             </p>
                                                         ))}
-                                                    {orders.length > 3 && (
-                                                        <p className="text-[6px] font-black text-indigo-400">
-                                                            +{orders.length - 3}{" "}
-                                                            LAINNYA
-                                                        </p>
-                                                    )}
                                                 </div>
+                                                {/* Indikator titik hijau di bawah sel */}
                                                 {orders.length > 0 && (
                                                     <div className="h-1 w-4 bg-emerald-400 rounded-full mx-1"></div>
                                                 )}
@@ -233,24 +237,44 @@ const Schedule: React.FC<ScheduleProps> = ({
                                                 {o.tujuan_main}
                                             </p>
                                         </div>
+                                        {/* 🎯 CARI BAGIAN "ARMADA TERPLOT" DI PANEL KANAN DAN GANTI ISINYA: */}
                                         <div className="pt-2 border-t border-slate-200">
                                             <p className="text-[7px] font-black text-slate-400 uppercase mb-1.5">
-                                                Armada:
+                                                Armada Terplot:
                                             </p>
                                             <div className="space-y-1">
-                                                {o.buses?.map(
-                                                    (b: string, i: number) => (
-                                                        <div
-                                                            key={i}
-                                                            className="flex items-center gap-2 text-[8px] font-black uppercase text-slate-600 bg-white p-1.5 rounded-lg border border-slate-100"
-                                                        >
-                                                            <Bus
-                                                                size={10}
-                                                                className="text-indigo-500"
-                                                            />{" "}
-                                                            {b}
-                                                        </div>
-                                                    ),
+                                                {o.assignments &&
+                                                o.assignments.length > 0 ? (
+                                                    o.assignments.map(
+                                                        (
+                                                            asn: any,
+                                                            i: number,
+                                                        ) => (
+                                                            <div
+                                                                key={i}
+                                                                className={`flex items-center gap-2 text-[8px] font-black uppercase p-1.5 rounded-lg border ${
+                                                                    asn.assetType ===
+                                                                    "internal"
+                                                                        ? "text-indigo-600 bg-white border-slate-100"
+                                                                        : "text-amber-600 bg-amber-50 border-amber-100"
+                                                                }`}
+                                                            >
+                                                                <Bus
+                                                                    size={10}
+                                                                />
+                                                                <span>
+                                                                    {
+                                                                        asn.nama_tampilan
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        ),
+                                                    )
+                                                ) : (
+                                                    <p className="text-[7px] italic text-slate-400">
+                                                        Belum ada unit
+                                                        ditugaskan.
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
