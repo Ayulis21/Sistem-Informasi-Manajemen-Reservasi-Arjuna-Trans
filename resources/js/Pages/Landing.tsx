@@ -101,7 +101,7 @@ const Landing: React.FC = () => {
                         </Link>
 
                         <Link
-                            href="/schedule"
+                            href="/jadwal-bus"
                             className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-100/50 hover:border-indigo-500 transition-all text-left relative overflow-hidden sm:col-span-2 lg:col-span-1"
                         >
                             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -186,7 +186,7 @@ const Landing: React.FC = () => {
             </section>
 
             {/* Perbaikan: Menyempurnakan Footer yang terpotong */}
-            <footer className="py-12 bg-indigo-600 text-white mt-auto">
+            <footer className="py-6 bg-indigo-600 text-white mt-auto">
                 <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center text-white">

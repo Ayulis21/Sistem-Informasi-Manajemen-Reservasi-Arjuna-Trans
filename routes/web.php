@@ -1,17 +1,15 @@
 <?php
 
-
-
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ArmadaController;
 use App\Http\Controllers\KruController;
 use App\Http\Controllers\PesananController;
 use App\Http\Controllers\OrderStatusController;
 use App\Http\Controllers\PlottingController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use App\Models\Armada;
@@ -24,17 +22,18 @@ Route::get('/', function () {
     return Inertia::render('Landing');
 });
 
-Route::get('/customer-order', function () {
-    // 🎯 Ganti 'OrderComponents' menjadi 'CustomerComponents'
-    return Inertia::render('CustomerComponents/CustomerOrder');
-})->name('customer-order');
+// Route::get('/customer-order', function () {
+//     return Inertia::render('CustomerComponents/CustomerOrder');
+// })->name('customer-order');
+Route::get('/customer-order', [PesananController::class, 'showOrderForm'])->name('customer-order');
+
 
 // Route untuk proses simpan (API)
 Route::post('/api/customer/booking', [PesananController::class, 'storePublic']);
 
 Route::get('/booking-success/{id}', function ($id) {
     return Inertia::render('CustomerComponents/OrderSuccess', [
-        'id' => $id // 🎯 KUNCI: Namanya harus 'id' agar dibaca oleh React di atas
+        'id' => $id
     ]);
 })->name('booking.success');
 
@@ -48,12 +47,18 @@ Route::post('/api/order/search', [OrderStatusController::class, 'search']);
 Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
 
 
-// Route::get('/booking-success', function () {
-//     return Inertia::render('OrderSuccess');
-// })->name('booking.success');
-// Route::get('/order-status', function () {
-//     return Inertia::render('OrderStatus');
-// })->name('order-status');
+Route::get('/jadwal-bus', function () {
+    return Inertia::render('CustomerComponents/CustomerSchedule');
+})->name('customer.schedule');
+Route::get('/api/public-schedule', [App\Http\Controllers\ScheduleController::class, 'getPublicSchedule']);
+
+Route::get('/booking', [PesananController::class, 'showOrderForm']);
+
+
+
+
+
+
 
 // route login
 Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
@@ -108,19 +113,3 @@ Route::middleware(['auth'])->group(function () {
     // route logout
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
-
-
-
-
-
-// Rute Halaman Portal Pelanggan Arjuna Trans
-// Route::get('/order-status', [OrderStatusController::class, 'index'])->name('order.status');
-
-// Rute API: Pencarian Pesanan via ID / WhatsApp (Form Pencarian)
-// Route::post('/api/order/search', [OrderStatusController::class, 'search']);
-
-// Rute API: Aksi Kirim Bukti Transfer Pelanggan (Tombol Kirim Bukti Pembayaran)
-// Route::post('/api/order/upload-payment', [OrderStatusController::class, 'uploadBuktiBayar']);
-
-// Rute API: Mengambil Data Jadwal Bus Aktif (Kalender Pelanggan)
-// Route::get('/api/customer-schedule', [ScheduleController::class, 'getSchedule']);

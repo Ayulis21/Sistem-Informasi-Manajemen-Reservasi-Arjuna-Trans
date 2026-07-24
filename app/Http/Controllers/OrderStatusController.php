@@ -11,29 +11,38 @@ class OrderStatusController extends Controller
     // A. FUNGSI CARI PESANAN (Via ID atau WhatsApp)
     public function search(Request $request)
     {
-        $type = $request->type; // 'ID' atau 'WA'
+        $type = $request->type;
         $val = trim($request->value);
 
         if ($type === 'ID') {
             // Cari 1 data spesifik
             $order = DB::table('pesanan')->where('id_pesanan', $val)->first();
-            if (!$order) return response()->json(['data' => null], 404);
-
+            if (!$order) {
+                return response()->json(['data' => null]);
+            }
             return response()->json(['data' => $this->formatOrderData($order)]);
         } else {
-            // Cari daftar pesanan berdasarkan nomor WA
+            if (!is_numeric($val)) {
+                return response()->json(['data' => []]);
+            }
+
             $list = DB::table('pesanan')
                 ->where('no_telp', 'like', "%$val%")
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return response()->json(['data' => $list]);
+            // Format semua item agar seragam
+            $formattedList = $list->map(function ($order) {
+                return $this->formatOrderData($order);
+            });
+
+            return response()->json(['data' => $formattedList]);
         }
     }
 
-    // B. FORMAT DATA (Agar sinkron dengan React)
     private function formatOrderData(object $order)
     {
+        $isApproved = in_array($order->status_pesanan, ['Disetujui', 'Terjadwal', 'Selesai']);
         // 1. Ambil semua baris dari tabel riwayat_pembayaran
         $rows = DB::table('riwayat_pembayaran')
             ->where('id_pesanan', $order->id_pesanan)
@@ -79,6 +88,8 @@ class OrderStatusController extends Controller
             'customerAddress'  => $order->alamat,
             'pickupAddress'    => $order->alamat_penjemputan,
             'notes'            => $order->lain_lain,
+            'status'           => $order->status_pesanan, // Tambahkan ini
+            'isApproved'       => $isApproved,
             'totalPrice'       => (int)$order->harga_sewa,
             'downPayment'      => (int)$totalPaidValid,
             'remainingBalance' => (int)$order->harga_sewa - $totalPaidValid,
@@ -155,16 +166,11 @@ class OrderStatusController extends Controller
                     'updated_at'         => now()
                 ]);
             }
-
             return response()->json(['message' => 'Bukti pembayaran berhasil diunggah!'], 200);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
     }
-
-    // app/Http/Controllers/OrderStatusController.php
-
-    // app/Http/Controllers/OrderStatusController.php
 
     private function getAssignedFleets(string $idPesanan)
     {
@@ -172,19 +178,37 @@ class OrderStatusController extends Controller
             ->leftJoin('armada', 'penugasan.id_armada', '=', 'armada.id_armada')
             ->where('penugasan.id_pesanan', $idPesanan)
             ->select(
-                // 🎯 KUNCI FIX: Ganti nama_armada menjadi tipe_armada
                 'armada.tipe_armada as type',
                 'armada.nopol as plate',
                 'penugasan.plat_mitra',
-                'penugasan.nama_po_mitra'
+                'penugasan.nama_po_mitra',
+                'penugasan.kapasitas_mitra',
+                'penugasan.jenis_aset'
             )
             ->get()
             ->map(function ($f) {
-                return [
-                    // 🎯 KUNCI FIX: 'name' sekarang berisi Tipe (Big Bus, Medium, dll)
-                    'name'  => $f->type ?: 'Bus Mitra',
-                    'plate' => $f->plate ?: $f->plat_mitra
-                ];
+                if ($f->jenis_aset === 'internal') {
+                    // Jika armada milik sendiri
+                    return [
+                        'name' => $f->type ?: 'Armada',
+                        'plate' => $f->plate
+                    ];
+                } else {
+                    $labelMitra = 'Bus Mitra';
+
+                    if ($f->kapasitas_mitra <= 19) {
+                        $labelMitra = 'Elf Mitra';
+                    }
+
+                    if ($f->kapasitas_mitra <= 7) {
+                        $labelMitra = 'Mobil Mitra';
+                    }
+
+                    return [
+                        'name' => $labelMitra,
+                        'plate' => $f->plat_mitra ?: '-'
+                    ];
+                }
             });
     }
 }

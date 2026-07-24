@@ -89,8 +89,21 @@ const OrderStatus: React.FC = () => {
 
     const handleUploadPembayaran = async (e: React.FormEvent) => {
         e.preventDefault();
+        const nominalInput = Number(
+            String(inputNominal).replace(/[^0-9]/g, ""),
+        );
+        const minDPNeeded = staticOrder.totalPrice * 0.3; // 30%
+
+        // Jika yang diinput adalah DP, cek apakah sudah memenuhi minimal
+        if (paymentTab === "DP" && nominalInput < minDPNeeded) {
+            alert(
+                `Maaf, pembayaran DP minimal adalah 30% dari total sewa (Rp ${minDPNeeded.toLocaleString("id-ID")})`,
+            );
+            return;
+        }
 
         const targetId = dynamicOrder?.id_pesanan || dynamicOrder?.id;
+        if (!targetId) return;
 
         let tipeEnum = "Cicil"; // default
         if (paymentTab === "DP") tipeEnum = "DP";
@@ -104,7 +117,8 @@ const OrderStatus: React.FC = () => {
             String(inputNominal).replace(/[^0-9]/g, ""),
         );
         dataBiner.append("tgl_bayar", inputTanggal);
-        dataBiner.append("catatan", inputCatatan);
+        dataBiner.append("tipe_keterangan", paymentTab);
+        dataBiner.append("catatan", inputCatatan); // Masukkan state catatan
         dataBiner.append("bukti_transfer", buktiFile as File);
 
         try {
@@ -118,7 +132,14 @@ const OrderStatus: React.FC = () => {
 
             if (res.status === 200) {
                 setIsSuccessUploadOpen(true);
-                // ... refresh data ...
+                const refresh = await axios.post("/api/order/search", {
+                    type: "ID",
+                    value: targetId,
+                });
+                setDynamicOrder(refresh.data.data);
+                setBuktiFile(null);
+                setInputNominal("");
+                setInputCatatan("");
             }
         } catch (err: any) {
             alert(
@@ -198,6 +219,10 @@ const OrderStatus: React.FC = () => {
         }
     };
     const staticOrder: any = dynamicOrder || { fleets: [] };
+    const isLunas =
+        staticOrder.totalPrice > 0 && staticOrder.remainingBalance <= 0;
+    const minDPPercent = 0.3;
+    const minDPAmount = staticOrder.totalPrice * minDPPercent;
 
     return (
         <div className="bg-[#F8FAFC] min-h-screen font-sans pb-20 text-left select-none animate-in fade-in duration-500 relative">
@@ -240,8 +265,10 @@ const OrderStatus: React.FC = () => {
                         <button
                             onClick={() => {
                                 setSearchTab("ID");
+                                setDynamicOrder(null);
                                 setShowResultList(false);
                                 setShowResultDetail(false);
+                                setInputValue("");
                             }}
                             type="button"
                             className={`py-3.5 rounded-2xl transition-all ${searchTab === "ID" ? "bg-[#5346F1] text-white" : "bg-slate-50 text-slate-400"}`}
@@ -270,11 +297,23 @@ const OrderStatus: React.FC = () => {
                                 type="text"
                                 placeholder={
                                     searchTab === "ID"
-                                        ? "ORD-8392-WEB"
-                                        : "Contoh: 081234567890"
+                                        ? "Contoh: ORD-8392-WEB"
+                                        : "Masukkan Nomor WhatsApp (Hanya Angka)"
                                 }
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
+                                // TAMBAHKAN INI:
+                                inputMode={
+                                    searchTab === "WA" ? "numeric" : "text"
+                                }
+                                onKeyPress={(e) => {
+                                    if (
+                                        searchTab === "WA" &&
+                                        !/[0-9]/.test(e.key)
+                                    ) {
+                                        e.preventDefault(); // User gak akan bisa ngetik huruf kalau di tab WA
+                                    }
+                                }}
                                 className="w-full pl-11 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-bold text-slate-800 outline-none"
                                 required
                             />
@@ -291,38 +330,57 @@ const OrderStatus: React.FC = () => {
             {showList && (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-5 text-left space-y-2.5">
                     <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.2em] pl-2 block">
-                        Daftar Pesanan Anda (1)
+                        Daftar Pesanan Anda ({dynamicList.length})
                     </span>
-                    <div
-                        onClick={() => setShowResultDetail(!showDetail)}
-                        className={`bg-white rounded-[1.75rem] border p-5 flex items-center justify-between gap-4 cursor-pointer hover:shadow-md ${showDetail ? "border-indigo-500 ring-2 ring-indigo-500/10" : "border-slate-100"}`}
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-slate-50 border border-slate-100 text-indigo-600 font-black text-xs rounded-xl flex items-center justify-center">
-                                ORD
+
+                    {/* KUNCI: Kita harus melakukan mapping/looping pada dynamicList */}
+                    {dynamicList.map((item: any, idx: number) => (
+                        <div
+                            key={idx}
+                            onClick={() => {
+                                // 1. Masukkan data item yang diklik ke dalam dynamicOrder
+                                setDynamicOrder(item);
+                                // 2. Tampilkan area detail
+                                setShowResultDetail(true);
+                                // 3. (Opsional) Sembunyikan list agar fokus ke detail
+                                setShowResultList(false);
+                            }}
+                            className="bg-white rounded-[1.75rem] border border-slate-100 p-5 flex items-center justify-between gap-4 cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all mb-2"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-slate-50 border border-slate-100 text-indigo-600 font-black text-xs rounded-xl flex items-center justify-center">
+                                    ORD
+                                </div>
+                                <div className="text-left">
+                                    <h4 className="text-sm font-black text-slate-800 leading-none uppercase">
+                                        {item.customerName}
+                                    </h4>
+                                    <span className="text-[9px] font-bold text-slate-400 block mt-1">
+                                        {item.id}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="text-left">
-                                <h4 className="text-sm font-black text-slate-800 leading-none">
-                                    {staticOrder.customerName}
-                                </h4>
-                                <span className="text-[9px] font-bold text-slate-400 block mt-1">
-                                    {staticOrder.id}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[8px] font-black px-2 py-1 bg-slate-100 text-slate-400 rounded-md uppercase">
+                                    {item.status}
                                 </span>
+                                <ArrowRight
+                                    size={14}
+                                    className="text-slate-300"
+                                />
                             </div>
                         </div>
-                        <ArrowRight
-                            size={14}
-                            className={`text-slate-300 transition-transform ${showDetail ? "rotate-90" : ""}`}
-                        />
-                    </div>
+                    ))}
                 </div>
             )}
-            {showDetail && (
+            {/* DETAIL PESANAN */}
+            {showDetail && dynamicOrder && (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-4 animate-in slide-in-from-bottom-6 duration-500">
                     <div
                         id="invoice-print-area"
                         className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-slate-100/90 shadow-sm space-y-6"
                     >
+                        {/* --- 1. HEADER DETAIL (DESAIN ASLI) --- */}
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <span className="text-lg font-black text-indigo-600 bg-slate-50 border px-2.5 py-1 rounded-xl">
@@ -338,13 +396,15 @@ const OrderStatus: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                <button
-                                    onClick={() => setIsInvoiceOpen(true)} // 🎯 KUNCI: Klik ini maka Invoice muncul
-                                    type="button"
-                                    className="w-8 h-8 bg-slate-950 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-transform"
-                                >
-                                    <Printer size={13} strokeWidth={2.5} />
-                                </button>
+                                {staticOrder.totalPrice > 0 && (
+                                    <button
+                                        onClick={() => setIsInvoiceOpen(true)}
+                                        type="button"
+                                        className="w-8 h-8 bg-slate-950 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                                    >
+                                        <Printer size={13} strokeWidth={2.5} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={executeWAOpen}
                                     type="button"
@@ -354,6 +414,8 @@ const OrderStatus: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+
+                        {/* --- 2. NOTIFIKASI PENTING (DESAIN ASLI) --- */}
                         <div className="bg-amber-50/40 border border-amber-100 rounded-2xl p-4 text-left space-y-1">
                             <p className="text-[8px] font-black text-amber-600 uppercase tracking-wider flex items-center gap-1">
                                 ⚠️ PENTING: KONFIRMASI WHATSAPP DIPERLUKAN!
@@ -366,8 +428,10 @@ const OrderStatus: React.FC = () => {
                                 armada dari admin kami.
                             </p>
                         </div>
+
+                        {/* --- 3. GRID INFORMASI & PEMBAYARAN (DESAIN ASLI) --- */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-                            <div className="space-y-3">
+                            <div className="space-y-3 text-left">
                                 <h4 className="text-[9px] font-black text-indigo-600 uppercase tracking-widest border-b pb-1.5">
                                     Informasi Perjalanan
                                 </h4>
@@ -393,29 +457,45 @@ const OrderStatus: React.FC = () => {
                                         />{" "}
                                         {staticOrder.whatsapp}
                                     </p>
+
+                                    {/* Info armada yang dipesan */}
+                                    <div className="pt-2 mt-2 border-t border-slate-50">
+                                        {staticOrder.fleetRequirements?.map(
+                                            (f: any, i: number) => (
+                                                <p
+                                                    key={i}
+                                                    className="text-indigo-600 flex items-center gap-1.5"
+                                                >
+                                                    <Bus size={10} /> {f.qty}{" "}
+                                                    {f.tipe_armada}
+                                                </p>
+                                            ),
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+
                             <div className="space-y-3 bg-slate-50/50 p-5 rounded-[1.75rem] border border-slate-100/80">
                                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b pb-1.5 flex items-center gap-1">
                                     <Receipt size={11} /> DETAIL PEMBAYARAN
                                 </h4>
-                                <div className="space-y-1.5 text-xs font-bold text-slate-500">
+                                <div className="space-y-1.5 text-xs font-bold text-slate-500 text-left">
                                     <div className="flex justify-between">
                                         <span>Total Sewa</span>
                                         <span className="text-slate-800 font-black">
                                             Rp{" "}
-                                            {staticOrder.totalPrice.toLocaleString(
-                                                "id-ID",
-                                            )}
+                                            {(
+                                                staticOrder.totalPrice || 0
+                                            ).toLocaleString("id-ID")}
                                         </span>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-50 pb-2">
-                                        <span>DP Dibayar</span>
+                                        <span>Terbayar</span>
                                         <span className="text-indigo-600 font-bold">
                                             Rp{" "}
-                                            {staticOrder.downPayment.toLocaleString(
-                                                "id-ID",
-                                            )}
+                                            {(
+                                                staticOrder.downPayment || 0
+                                            ).toLocaleString("id-ID")}
                                         </span>
                                     </div>
                                 </div>
@@ -425,13 +505,15 @@ const OrderStatus: React.FC = () => {
                                     </span>
                                     <span className="text-lg font-black text-red-500">
                                         Rp{" "}
-                                        {staticOrder.remainingBalance.toLocaleString(
-                                            "id-ID",
-                                        )}
+                                        {(
+                                            staticOrder.remainingBalance || 0
+                                        ).toLocaleString("id-ID")}
                                     </span>
                                 </div>
                             </div>
                         </div>
+
+                        {/* --- 4. AKSI PEMBAYARAN (DENGAN LOGIKA LUNAS) --- */}
                         <div className="pt-4 border-t border-slate-100 space-y-4 text-left">
                             <div className="flex items-center gap-2 pb-1 border-b border-slate-50">
                                 <Receipt size={12} className="text-[#5346F1]" />
@@ -440,306 +522,273 @@ const OrderStatus: React.FC = () => {
                                 </h4>
                             </div>
 
-                            {/* GRID INPUT: Tipe, Tanggal, dan Nominal */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
-                                        Jenis Pembayaran
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={paymentTab}
-                                            onChange={(e) =>
-                                                setPaymentTab(
-                                                    e.target.value as any,
-                                                )
-                                            }
-                                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm appearance-none cursor-pointer"
-                                        >
-                                            <option value="DP">
-                                                DP (UANG MUKA)
-                                            </option>
-                                            <option value="CICILAN">
-                                                CICILAN
-                                            </option>
-                                            <option value="PELUNASAN">
-                                                PELUNASAN
-                                            </option>
-                                        </select>
-                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300 text-[8px]">
-                                            ▼
+                            {isLunas ? (
+                                <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2rem] text-center space-y-2">
+                                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <Receipt size={24} />
+                                    </div>
+                                    <h5 className="text-sm font-black text-emerald-800 uppercase">
+                                        Tagihan Telah Lunas
+                                    </h5>
+                                    <p className="text-[10px] text-emerald-600/80 font-bold italic">
+                                        Terima kasih, pembayaran pesanan ini
+                                        sudah selesai.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase pl-1">
+                                                Jenis Pembayaran
+                                            </label>
+                                            <select
+                                                value={paymentTab}
+                                                onChange={(e) =>
+                                                    setPaymentTab(
+                                                        e.target.value as any,
+                                                    )
+                                                }
+                                                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] shadow-sm"
+                                            >
+                                                <option value="DP">
+                                                    DP (UANG MUKA)
+                                                </option>
+                                                <option value="CICILAN">
+                                                    CICILAN
+                                                </option>
+                                                <option value="PELUNASAN">
+                                                    PELUNASAN
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase pl-1">
+                                                Tanggal Transfer
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={inputTanggal}
+                                                onChange={(e) =>
+                                                    setInputTanggal(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] shadow-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase pl-1">
+                                                Nominal (Rp)
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    value={
+                                                        inputNominal
+                                                            ? Number(
+                                                                  inputNominal,
+                                                              ).toLocaleString(
+                                                                  "id-ID",
+                                                              )
+                                                            : ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        setInputNominal(
+                                                            e.target.value.replace(
+                                                                /\D/g,
+                                                                "",
+                                                            ),
+                                                        )
+                                                    }
+                                                    className="w-full p-2.5 pl-8 bg-white border border-slate-200 rounded-xl font-black text-[#5346F1] text-xs outline-none focus:border-[#5346F1] shadow-sm"
+                                                    placeholder="0"
+                                                />
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">
+                                                    Rp
+                                                </span>
+                                            </div>
+                                            {paymentTab === "DP" &&
+                                                staticOrder.totalPrice > 0 && (
+                                                    <p className="text-[8px] text-indigo-500 font-bold italic">
+                                                        * Minimal DP: Rp{" "}
+                                                        {minDPAmount.toLocaleString(
+                                                            "id-ID",
+                                                        )}{" "}
+                                                        (30%)
+                                                    </p>
+                                                )}
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* 2. TANGGAL PEMBAYARAN */}
-                                <div className="space-y-1">
-                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
-                                        Tanggal Transfer
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={inputTanggal}
-                                        onChange={(e) =>
-                                            setInputTanggal(e.target.value)
-                                        }
-                                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm cursor-pointer"
-                                    />
-                                </div>
-                                {/* 3. NOMINAL */}
-                                <div className="space-y-1">
-                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
-                                        Nominal (Rp)
-                                    </label>
-                                    <div className="relative">
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-black text-slate-400 uppercase pl-1">
+                                            Keterangan Transfer
+                                        </label>
                                         <input
                                             type="text"
-                                            inputMode="numeric"
-                                            placeholder="0"
-                                            value={
-                                                inputNominal
-                                                    ? Number(
-                                                          inputNominal,
-                                                      ).toLocaleString("id-ID")
-                                                    : ""
-                                            }
+                                            placeholder="Contoh: Transfer Mandiri an. Ahmad"
+                                            value={inputCatatan}
                                             onChange={(e) =>
-                                                setInputNominal(
-                                                    e.target.value.replace(
-                                                        /[^0-9]/g,
-                                                        "",
-                                                    ),
+                                                setInputCatatan(e.target.value)
+                                            }
+                                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] shadow-sm"
+                                        />
+                                    </div>
+                                    <div
+                                        onClick={() =>
+                                            document
+                                                .getElementById(
+                                                    "hidden-file-input",
+                                                )
+                                                ?.click()
+                                        }
+                                        className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/30 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all"
+                                    >
+                                        <UploadCloud
+                                            size={16}
+                                            className="text-indigo-600 mb-1"
+                                        />
+                                        <input
+                                            id="hidden-file-input"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) =>
+                                                setBuktiFile(
+                                                    e.target.files?.[0] || null,
                                                 )
                                             }
-                                            className="w-full p-2.5 pl-8 bg-white border border-slate-200 rounded-xl font-black text-[#5346F1] text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm"
                                         />
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">
-                                            Rp
-                                        </span>
+                                        <p className="text-[9px] font-black text-[#5346F1] uppercase">
+                                            {buktiFile
+                                                ? `BERKAS: ${buktiFile.name.toUpperCase()}`
+                                                : `LAMPIRKAN BUKTI ${paymentTab}`}
+                                        </p>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleUploadPembayaran}
+                                        className="w-full py-4 bg-[#5346F1] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg transition-all active:scale-95"
+                                    >
+                                        Kirim Bukti Pembayaran
+                                    </button>
                                 </div>
+                            )}
+                        </div>
 
-                                {/* 4. KETERANGAN PEMBAYARAN (Full Width) */}
-                                <div className="space-y-1 md:col-span-3">
-                                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider pl-1">
-                                        Keterangan / Catatan Transfer
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Contoh: Transfer via m-banking Mandiri an. Ahmad"
-                                        onChange={(e) =>
-                                            setInputCatatan(e.target.value)
-                                        }
-                                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs outline-none focus:border-[#5346F1] transition-all shadow-sm"
-                                    />
-                                </div>
+                        {/* --- 5. RIWAYAT PEMBAYARAN (DENGAN SCROLL) --- */}
+                        <div className="space-y-3 pt-2">
+                            <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5">
+                                    <Receipt size={12} /> Riwayat Pembayaran
+                                </span>
+                                <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full uppercase">
+                                    {staticOrder.paymentHistory?.length || 0}{" "}
+                                    Transaksi
+                                </span>
                             </div>
-                            <div
-                                onClick={() =>
-                                    document
-                                        .getElementById("hidden-file-input")
-                                        ?.click()
-                                }
-                                className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/30 flex flex-col items-center justify-center space-y-1.5 cursor-pointer hover:bg-slate-50 relative"
-                            >
-                                <div className="w-9 h-9 bg-white text-indigo-600 border border-slate-100 rounded-xl flex items-center justify-center shadow-sm">
-                                    <UploadCloud size={16} />
-                                </div>
-                                <input
-                                    id="hidden-file-input"
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (
-                                            e.target.files &&
-                                            e.target.files[0]
-                                        ) {
-                                            setBuktiFile(e.target.files[0]);
-                                            // Opsional: memberi tahu pengguna bahwa file sudah tersangkut di sistem
-                                            alert(
-                                                `Berkas ${e.target.files[0].name} berhasil terlampir!`,
-                                            );
-                                        }
-                                    }}
-                                />
-                                <p className="text-[9px] font-black text-[#5346F1] uppercase tracking-wider mt-1">
-                                    {buktiFile
-                                        ? `BERKAS TERPILIH: ${buktiFile.name.toUpperCase()}`
-                                        : `LAMPIRKAN BUKTI ${paymentTab}`}
-                                </p>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                    Format: JPG, PNG (Maks 5MB)
-                                </p>
-                            </div>
-                            <div className="pt-2">
-                                <button
-                                    type="button"
-                                    onClick={handleUploadPembayaran}
-                                    className="w-full py-4 bg-[#5346F1] hover:bg-[#4338CA] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98]"
-                                >
-                                    Kirim Bukti Pembayaran
-                                </button>
-                            </div>
-                            <div className="space-y-3 pt-2">
-                                <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-                                    <div className="flex items-center gap-1.5">
-                                        <Receipt
-                                            size={12}
-                                            className="text-slate-400"
-                                        />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Riwayat Pembayaran
-                                        </span>
-                                    </div>
-                                    <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full uppercase">
-                                        {dynamicOrder?.paymentHistory?.length ||
-                                            0}{" "}
-                                        Transaksi
-                                    </span>
-                                </div>
 
-                                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
-                                    {dynamicOrder?.paymentHistory &&
-                                    dynamicOrder.paymentHistory.length > 0 ? (
-                                        dynamicOrder.paymentHistory.map(
-                                            (pay: any, idx: number) => {
-                                                // Tentukan warna berdasarkan status
-                                                const isDisetujui =
-                                                    pay.status_pembayaran ===
-                                                    "Disetujui";
-                                                const isDitolak =
-                                                    pay.status_pembayaran ===
-                                                    "Ditolak";
-                                                return (
-                                                    <div
-                                                        key={idx}
-                                                        className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm mb-3"
-                                                    >
-                                                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                                                            <div className="flex items-center gap-4">
-                                                                <div
-                                                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                                                                        pay.status_pembayaran ===
-                                                                        "Disetujui"
-                                                                            ? "bg-emerald-50 text-emerald-500"
-                                                                            : pay.status_pembayaran ===
-                                                                                "Ditolak"
-                                                                              ? "bg-rose-50 text-rose-500"
-                                                                              : "bg-amber-50 text-amber-500"
-                                                                    }`}
-                                                                >
-                                                                    <Receipt
-                                                                        size={
-                                                                            24
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <p className="text-sm font-black text-slate-800 uppercase">
-                                                                        {
-                                                                            pay.tipe_keterangan
-                                                                        }{" "}
-                                                                        |{" "}
-                                                                        <span className="text-[#5346F1]">
-                                                                            Rp{" "}
-                                                                            {pay.nominal.toLocaleString(
-                                                                                "id-ID",
-                                                                            )}
-                                                                        </span>
-                                                                    </p>
-                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">
-                                                                        {new Date(
-                                                                            pay.tgl_bayar,
-                                                                        ).toLocaleDateString(
-                                                                            "id-ID",
-                                                                            {
-                                                                                day: "numeric",
-                                                                                month: "long",
-                                                                                year: "numeric",
-                                                                            },
-                                                                        )}
-                                                                    </p>
-                                                                </div>
+                            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                                {staticOrder.paymentHistory?.length > 0 ? (
+                                    staticOrder.paymentHistory.map(
+                                        (pay: any, idx: number) => {
+                                            const isDitolak =
+                                                pay.status_pembayaran ===
+                                                "Ditolak";
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm mb-2 text-left"
+                                                >
+                                                    <div className="flex flex-col md:flex-row justify-between gap-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center ${pay.status_pembayaran === "Disetujui" ? "bg-emerald-50 text-emerald-500" : isDitolak ? "bg-rose-50 text-rose-500" : "bg-amber-50 text-amber-500"}`}
+                                                            >
+                                                                <Receipt
+                                                                    size={20}
+                                                                />
                                                             </div>
-
-                                                            <div className="flex items-center gap-3 justify-between md:justify-end">
-                                                                {/* 🎯 TOMBOL LIHAT BUKTI (Transparansi) */}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setPreviewUrl(
-                                                                            pay.bukti_transfer,
-                                                                        )
-                                                                    }
-                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-black uppercase transition-all"
-                                                                >
-                                                                    <Eye
-                                                                        size={
-                                                                            12
-                                                                        }
-                                                                    />{" "}
-                                                                    Bukti Anda
-                                                                </button>
-
-                                                                <span
-                                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${
-                                                                        pay.status_pembayaran ===
-                                                                        "Disetujui"
-                                                                            ? "bg-emerald-100 text-emerald-600"
-                                                                            : pay.status_pembayaran ===
-                                                                                "Ditolak"
-                                                                              ? "bg-rose-100 text-rose-600"
-                                                                              : "bg-amber-100 text-amber-600"
-                                                                    }`}
-                                                                >
+                                                            <div className="text-left">
+                                                                <p className="text-xs font-black uppercase">
                                                                     {
-                                                                        pay.status_pembayaran
+                                                                        pay.tipe_keterangan
+                                                                    }{" "}
+                                                                    |{" "}
+                                                                    <span className="text-[#5346F1]">
+                                                                        Rp{" "}
+                                                                        {(
+                                                                            pay.nominal ||
+                                                                            0
+                                                                        ).toLocaleString(
+                                                                            "id-ID",
+                                                                        )}
+                                                                    </span>
+                                                                </p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                                    {
+                                                                        pay.tgl_bayar
                                                                     }
-                                                                </span>
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                        {isDitolak && (
-                                                            <div className="mt-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-2">
-                                                                <AlertCircle
-                                                                    size={14}
-                                                                    className="text-rose-500 shrink-0 mt-0.5"
-                                                                />
-                                                                <div className="text-left">
-                                                                    <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">
-                                                                        Alasan
-                                                                        Penolakan
-                                                                        Admin:
-                                                                    </p>
-                                                                    {/* 🎯 KUNCI FIX: Pastikan memanggil pay.alasan_admin */}
-                                                                    <p className="text-[11px] font-bold text-rose-400 italic">
-                                                                        "
-                                                                        {pay.alasan_admin ||
-                                                                            "Mohon hubungi admin untuk detail penolakan."}
-                                                                        "
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                onClick={() =>
+                                                                    setPreviewUrl(
+                                                                        pay.bukti_transfer,
+                                                                    )
+                                                                }
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase transition-all"
+                                                            >
+                                                                <Eye
+                                                                    size={12}
+                                                                />{" "}
+                                                                Bukti
+                                                            </button>
+                                                            <span
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase ${pay.status_pembayaran === "Disetujui" ? "bg-emerald-100 text-emerald-600" : isDitolak ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"}`}
+                                                            >
+                                                                {
+                                                                    pay.status_pembayaran
+                                                                }
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                );
-                                            },
-                                        )
-                                    ) : (
-                                        <div className="py-12 text-center bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
-                                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
-                                                Belum ada riwayat pembayaran
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
+                                                    {isDitolak && (
+                                                        <div className="mt-3 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-2">
+                                                            <AlertCircle
+                                                                size={14}
+                                                                className="text-rose-500 shrink-0 mt-0.5"
+                                                            />
+                                                            <p className="text-[11px] font-bold text-rose-400 italic">
+                                                                "
+                                                                {pay.alasan_admin ||
+                                                                    "Mohon hubungi admin."}
+                                                                "
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        },
+                                    )
+                                ) : (
+                                    <p className="text-center text-[10px] text-slate-300 py-6 italic uppercase font-black tracking-widest">
+                                        Belum ada riwayat pembayaran
+                                    </p>
+                                )}
                             </div>
-                            <div className="bg-[#5346F1] rounded-[1.75rem] p-5 text-white text-left space-y-3 shadow-md shadow-indigo-100">
-                                <h4 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-90 flex items-center gap-1.5">
-                                    <Bus size={12} /> ARMADA & SUPIR DITUGASKAN
-                                </h4>
-                                <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-wider">
-                                    {staticOrder?.fleets?.map(
+                        </div>
+
+                        {/* --- 6. ARMADA DITUGASKAN (DESAIN ASLI INDIGO) --- */}
+                        <div className="bg-[#5346F1] rounded-[1.75rem] p-5 text-white text-left space-y-3 shadow-md shadow-indigo-100">
+                            <h4 className="text-[9px] font-black uppercase tracking-[0.2em] opacity-90 flex items-center gap-1.5">
+                                <Bus size={12} /> ARMADA & SUPIR DITUGASKAN
+                            </h4>
+                            <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-wider">
+                                {staticOrder?.fleets?.length > 0 ? (
+                                    staticOrder.fleets.map(
                                         (fleet: any, fIdx: any) => (
                                             <div
                                                 key={fIdx}
@@ -753,8 +802,12 @@ const OrderStatus: React.FC = () => {
                                                 </p>
                                             </div>
                                         ),
-                                    )}
-                                </div>
+                                    )
+                                ) : (
+                                    <p className="text-[10px] italic opacity-60">
+                                        Menunggu konfirmasi unit oleh admin...
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -795,9 +848,6 @@ const OrderStatus: React.FC = () => {
                     </div>
                 </div>
             )}
-            {/* resources/js/Pages/CustomerComponents/OrderStatus.tsx */}
-
-            {/* resources/js/Pages/CustomerComponents/OrderStatus.tsx */}
 
             {isInvoiceOpen && dynamicOrder && (
                 <Documents

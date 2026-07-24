@@ -1096,8 +1096,6 @@ const Orders: React.FC = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            // resources/js/Pages/Orders.tsx (Di dalam fungsi onClick Printer)
-
                                             onClick={() => {
                                                 // 1. Hitung Duit Sah
                                                 const totalACC = (

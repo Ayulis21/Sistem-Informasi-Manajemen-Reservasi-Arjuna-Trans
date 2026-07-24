@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -183,107 +184,116 @@ class PesananController extends Controller
      */
     public function updateFull(Request $request, string $id)
     {
-        // 1. Validasi Input Dasar
+        // 1. Validasi Input Dasar agar tidak ada data kosong yang lolos
         $request->validate([
-            'customerName' => 'required|string|max:255',
-            'totalPrice'   => 'required|numeric',
+            'customerName' => 'required',
+            'totalPrice'   => 'required',
             'departureDate' => 'required',
         ]);
 
-        DB::transaction(function () use ($request, $id) {
-            // 2. Update Tabel Utama Pesanan
-            DB::table('pesanan')
-                ->where('id_pesanan', $id)
-                ->update([
-                    'nama_pemesan'       => $request->customerName,
-                    'alamat'             => $request->alamat ?: '-',
-                    'no_telp'            => $request->whatsapp ?: '-',
-                    'tgl_berangkat'      => date('Y-m-d H:i:s', strtotime($request->departureDate)),
-                    'tgl_selesai'        => $request->returnDate ? date('Y-m-d H:i:s', strtotime($request->returnDate)) : now(),
-                    'alamat_penjemputan' => $request->pickup ?: '-',
-                    'tujuan_main'        => $request->destination ?: '-',
-                    'rute'               => $request->routeNotes ?: '-',
-                    'estimasi_jarak'     => intval($request->distance ?: 0),
-                    'harga_sewa'         => floatval($request->totalPrice ?: 0),
-                    'jatuh_tempo'        => $request->dueDate,
-                    'lain_lain'          => $request->lain_lain ?: '-',
-                    'updated_at'         => now(),
-                ]);
+        try {
+            DB::transaction(function () use ($request, $id) {
+                // 2. Update Tabel Utama Pesanan
+                // Gunakan map manual agar nama field di React dan Database tidak tertukar
+                DB::table('pesanan')
+                    ->where('id_pesanan', $id)
+                    ->update([
+                        'nama_pemesan'       => $request->customerName,
+                        'alamat'             => $request->alamat ?: ($request->customerAddress ?: '-'),
+                        'no_telp'            => $request->whatsapp ?: ($request->no_telp ?: '-'),
+                        'tgl_berangkat'      => date('Y-m-d H:i:s', strtotime($request->departureDate)),
+                        'tgl_selesai'        => $request->returnDate ? date('Y-m-d H:i:s', strtotime($request->returnDate)) : now(),
+                        'alamat_penjemputan' => $request->pickup ?: ($request->pickupAddress ?: '-'),
+                        'tujuan_main'        => $request->destination ?: '-',
+                        'rute'               => $request->routeNotes ?: '-',
+                        'estimasi_jarak'     => intval($request->distance ?: 0),
+                        'harga_sewa'         => floatval($request->totalPrice ?: 0),
+                        'jatuh_tempo'        => $request->dueDate,
+                        'lain_lain'          => $request->lain_lain ?: '-',
+                        'updated_at'         => now(),
+                    ]);
 
-            // 3. Update Detail Armada (Hapus lalu isi ulang)
-            $fleetInput = $request->fleetRequirements;
-            $fleet = is_string($fleetInput) ? json_decode($fleetInput, true) : ($fleetInput ?? []);
-            DB::table('pesanan_detail_armada')->where('id_pesanan', $id)->delete();
+                // 3. Update Detail Armada (Hapus lalu isi ulang)
+                $fleetInput = $request->fleetRequirements;
+                $fleet = is_string($fleetInput) ? json_decode($fleetInput, true) : ($fleetInput ?? []);
 
-            foreach ($fleet as $item) {
-                if (!empty($item['armada_id'])) {
-                    $armada = DB::table('armada')->where('id_armada', $item['armada_id'])->first();
-                    if ($armada) {
-                        DB::table('pesanan_detail_armada')->insert([
-                            'id_pesanan' => $id,
-                            'tipe_armada' => $armada->tipe_armada,
-                            'qty' => $item['qty'] ?? 1,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
+                DB::table('pesanan_detail_armada')->where('id_pesanan', $id)->delete();
+
+                if (is_array($fleet)) {
+                    foreach ($fleet as $item) {
+                        // Cari tipe armada dari master (PENTING: Jangan langsung akses ->tipe_armada)
+                        $armadaMaster = null;
+                        if (!empty($item['armada_id'])) {
+                            $armadaMaster = DB::table('armada')->where('id_armada', $item['armada_id'])->first();
+                        }
+
+                        // Jika ID tidak ketemu, coba cari berdasarkan Tipe
+                        if (!$armadaMaster && !empty($item['tipe_armada'])) {
+                            $armadaMaster = DB::table('armada')->where('tipe_armada', $item['tipe_armada'])->first();
+                        }
+
+                        if ($armadaMaster) {
+                            DB::table('pesanan_detail_armada')->insert([
+                                'id_pesanan'  => $id,
+                                'tipe_armada' => $armadaMaster->tipe_armada,
+                                'qty'         => intval($item['qty'] ?? 1),
+                                'created_at'  => now(),
+                                'updated_at'  => now()
+                            ]);
+                        }
                     }
                 }
-            }
-            $paymentsInput = $request->paymentsData;
-            $paymentsArray = is_string($paymentsInput) ? json_decode($paymentsInput, true) : ($paymentsInput ?? []);
 
-            $totalPaidValid = 0;
-            // $totalPaidCalculated = 0;
-            $tipeTerakhir = 'DP';
-            $statusTerakhir = 'Pending';
+                // 4. Update Pembayaran (Jika ada data paymentsData)
+                if ($request->has('paymentsData')) {
+                    $payInput = $request->paymentsData;
+                    $payments = is_string($payInput) ? json_decode($payInput, true) : ($payInput ?? []);
 
-            foreach ($paymentsArray as $index => $p) {
-                // $totalPaidCalculated += floatval($p['amount'] ?? 0);
-                $totalPaidValid += (($p['paymentStatus'] ?? '') === 'Disetujui') ? floatval($p['amount'] ?? 0) : 0;
-                $tipeTerakhir = $p['type'] ?? 'DP';
-                if (($p['paymentStatus'] ?? '') === 'Disetujui') {
-                    $totalPaidValid += floatval($p['amount'] ?? 0);
+                    if (is_array($payments)) {
+                        $totalSah = 0;
+                        foreach ($payments as $p) {
+                            if (($p['paymentStatus'] ?? '') === 'Disetujui') {
+                                $totalSah += floatval($p['amount'] ?? 0);
+                            }
+                        }
+
+                        // Update di tabel riwayat_pembayaran agar nominal fisik & JSON sinkron
+                        DB::table('riwayat_pembayaran')
+                            ->where('id_pesanan', $id)
+                            ->update([
+                                'nominal' => $totalSah,
+                                'catatan_pembayaran' => json_encode($payments),
+                                'updated_at' => now()
+                            ]);
+                    }
                 }
+            });
 
-                $paymentsArray[$index]['rejection_reason'] = ($p['paymentStatus'] === 'Ditolak') ? ($p['rejection_reason'] ?? '') : '';
-                $statusTerakhir = $p['paymentStatus'] ?? 'Pending';
-
-                if ($request->hasFile("evidenceFile_{$index}")) {
-                    $file = $request->file("evidenceFile_{$index}");
-                    $namaFoto = 'BUKTI-' . time() . '-' . \Illuminate\Support\Str::random(5) . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/bukti_transfer'), $namaFoto);
-                    $paymentsArray[$index]['bukti_transfer'] = $namaFoto;
-                }
-            }
-
-            // Simpan JSON yang sudah bersih
-            $stringPembayaranJson = json_encode($paymentsArray);
-
-            // 🎯 KUNCI FIX 2: Update kolom fisik status_pembayaran dan nominal
-            DB::table('riwayat_pembayaran')->updateOrInsert(
-                ['id_pesanan' => $id],
-                [
-                    'nominal'            => $totalPaidValid, // Pastikan nominal masuk (Biar gak 0.00)
-                    'status_pembayaran'  => end($paymentsArray)['paymentStatus'] ?? 'Pending',
-                    'tgl_bayar'          => now(),
-                    'tipe_keterangan'    => in_array($tipeTerakhir, ['DP', 'Cicil', 'Lunas']) ? $tipeTerakhir : 'DP',
-                    'catatan_pembayaran' => $stringPembayaranJson,
-                    'updated_at'         => now(),
-                ]
-            );
-        });
-
-        return response()->json(['status' => 'success', 'message' => 'Detail data pesanan dan riwayat pembayaran berhasil diperbarui secara permanen!']);
+            return response()->json(['status' => 'success', 'message' => 'Berhasil diperbarui']);
+        } catch (\Exception $e) {
+            // Jika error, kirim pesan error spesifik agar kita tahu penyebabnya
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal simpan: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
+    // app/Http/Controllers/PesananController.php
 
     public function verifikasiPembayaran(Request $request, string $id)
     {
         $request->validate([
-            'status_pembayaran'  => 'required|in:Disetujui,Ditolak',
+            'status_pembayaran' => 'required|in:Disetujui,Ditolak',
             'catatan_pembayaran' => 'required|string|max:255' // Ini alasan admin
         ]);
 
+        // Cari baris pembayaran (ID 35)
         $row = DB::table('riwayat_pembayaran')->where('id_pembayaran', $id)->first();
+
+        if (!$row) {
+            return response()->json(['message' => 'Data tidak ditemukan'], 404);
+        }
 
         // 1. Bongkar JSON
         $history = json_decode($row->catatan_pembayaran, true) ?: [];
@@ -291,10 +301,9 @@ class PesananController extends Controller
         if (count($history) > 0) {
             $lastIdx = count($history) - 1;
 
-            // 2. Update status baris terakhir
+            // 2. Update status di DALAM JSON
             $history[$lastIdx]['paymentStatus'] = $request->status_pembayaran;
 
-            // 🎯 KUNCI UTAMA: Masukkan alasan ke field 'rejection_reason' DALAM JSON
             if ($request->status_pembayaran === 'Ditolak') {
                 $history[$lastIdx]['rejection_reason'] = $request->catatan_pembayaran;
             } else {
@@ -302,18 +311,21 @@ class PesananController extends Controller
             }
         }
 
-        // 3. Hitung ulang nominal sah (Ditolak tidak dihitung)
-        $newNominalValid = collect($history)->where('paymentStatus', 'Disetujui')->sum('amount');
+        // 3. Hitung ulang nominal sah (Hanya yang 'Disetujui' yang dihitung)
+        $newNominalValid = collect($history)
+            ->where('paymentStatus', 'Disetujui')
+            ->sum('amount');
 
-        // 4. Simpan kembali sebagai JSON UTUH ke database
+        // 4. SIMPAN KEMBALI KE DATABASE (Update kolom fisik)
         DB::table('riwayat_pembayaran')->where('id_pembayaran', $id)->update([
+            // KUNCI: Pastikan kolom status_pembayaran di-update sesuai request
             'status_pembayaran'  => $request->status_pembayaran,
             'nominal'            => $newNominalValid,
-            'catatan_pembayaran' => json_encode($history), // <--- JSON TETAP JSON
+            'catatan_pembayaran' => json_encode($history),
             'updated_at'         => now()
         ]);
 
-        return response()->json(['message' => 'Berhasil']);
+        return response()->json(['message' => 'Status pembayaran berhasil diperbarui menjadi ' . $request->status_pembayaran]);
     }
 
     public function updateStatus(Request $request, string $id)
@@ -337,40 +349,85 @@ class PesananController extends Controller
         ]);
     }
 
+    public function createPublic()
+    {
+        $masterArmada = DB::table('armada')
+            ->select('tipe_armada', 'kapasitas')
+            ->groupBy('tipe_armada', 'kapasitas')
+            ->get();
+
+        return Inertia::render('CustomerOrder', [
+            'masterArmada' => $masterArmada
+        ]);
+    }
+
+    public function showOrderForm()
+    {
+        $masterArmada = DB::table('armada')
+            ->select('tipe_armada', 'kapasitas')
+            ->groupBy('tipe_armada', 'kapasitas')
+            ->get();
+
+        // Pastikan path render-nya benar: 'CustomerComponents/CustomerOrder'
+        return \Inertia\Inertia::render('CustomerComponents/CustomerOrder', [
+            'masterArmada' => $masterArmada
+        ]);
+    }
+
     public function storePublic(Request $request)
     {
-        // 1. Validasi Input Pelanggan
+        // 1. Validasi Input
         $request->validate([
             'name' => 'required|string|max:255',
             'whatsapp' => 'required',
+            'departDate' => 'required',
+            'returnDate' => 'required',
             'destination' => 'required',
-            'departDate' => 'required|date',
-            'returnDate' => 'required|date',
+            'fleetRequirements' => 'required|array|min:1', // Pastikan armada ada
         ]);
 
-        // 2. Buat ID Pesanan Unik
-        $idPesanan = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+        // Gunakan Transaction agar jika salah satu gagal, semua dibatalkan (Data Aman)
+        DB::transaction(function () use ($request, &$idPesanan) {
 
-        // 3. Simpan ke Database
-        DB::table('pesanan')->insert([
-            'id_pesanan' => $idPesanan,
-            'nama_pemesan' => $request->name,
-            'alamat' => $request->address ?: '-',
-            'no_telp' => $request->whatsapp,
-            'tgl_berangkat' => str_replace('T', ' ', $request->departDate),
-            'tgl_selesai'   => str_replace('T', ' ', $request->returnDate),
-            'alamat_penjemputan' => $request->pickup ?: '-',
-            'tujuan_main' => $request->destination,
-            'rute' => $request->routeNotes ?: '-',
-            'estimasi_jarak' => 0, // Admin yang isi nanti
-            'harga_sewa' => 0,      // Admin yang isi nanti
-            'status_pesanan' => 'Pending', // Default masuk ke antrean Baru
-            'token_akses' => \Illuminate\Support\Str::random(32),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            // 2. Buat ID Pesanan Unik
+            $idPesanan = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
 
-        // 4. Redirect ke halaman sukses
+            // 3. Simpan ke Tabel Induk (pesanan)
+            DB::table('pesanan')->insert([
+                'id_pesanan' => $idPesanan,
+                'nama_pemesan' => $request->name,
+                'alamat' => $request->address ?: '-',
+                'no_telp' => $request->whatsapp,
+                'tgl_berangkat' => str_replace('T', ' ', $request->departDate),
+                'tgl_selesai' => str_replace('T', ' ', $request->returnDate),
+                'alamat_penjemputan' => $request->pickup ?: '-',
+                'tujuan_main' => $request->destination,
+                'rute' => $request->routeNotes ?: '-',
+                'lain_lain'          => $request->lain_lain ?: '-',
+                'estimasi_jarak' => 0,
+                'harga_sewa' => 0,
+                'status_pesanan' => 'Pending',
+                'token_akses' => Str::random(32),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 4. 🎯 KUNCI FIX: Simpan ke Tabel Anak (pesanan_detail_armada)
+            // Kita looping setiap tipe bus yang dipilih pelanggan
+            foreach ($request->fleetRequirements as $fleet) {
+                if (!empty($fleet['type'])) {
+                    DB::table('pesanan_detail_armada')->insert([
+                        'id_pesanan' => $idPesanan,
+                        'tipe_armada' => $fleet['type'],
+                        'qty' => $fleet['qty'] ?: 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        });
+
+        // 5. Redirect ke halaman sukses dengan ID asli
         return redirect()->route('booking.success', ['id' => $idPesanan]);
     }
 }
