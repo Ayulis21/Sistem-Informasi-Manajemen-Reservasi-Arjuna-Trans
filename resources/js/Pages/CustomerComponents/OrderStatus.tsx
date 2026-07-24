@@ -89,36 +89,62 @@ const OrderStatus: React.FC = () => {
 
     const handleUploadPembayaran = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // 1. Ambil data dasar
         const nominalInput = Number(
             String(inputNominal).replace(/[^0-9]/g, ""),
         );
-        const minDPNeeded = staticOrder.totalPrice * 0.3; // 30%
+        const totalHargaSewa = staticOrder.totalPrice || 0;
+        const sisaPiutang = staticOrder.remainingBalance || 0;
 
-        // Jika yang diinput adalah DP, cek apakah sudah memenuhi minimal
-        if (paymentTab === "DP" && nominalInput < minDPNeeded) {
+        // --- 🎯 LOGIKA VALIDASI BISNIS (UNTUK BIMBINGAN) ---
+
+        // A. Validasi Kelengkapan Dasar
+        if (!inputTanggal) return alert("Silakan pilih tanggal transfer.");
+        if (nominalInput <= 0) return alert("Nominal pembayaran tidak valid.");
+        if (!buktiFile) return alert("Silakan lampirkan foto bukti transfer.");
+
+        // B. Aturan DP (Minimal 30%)
+        if (paymentTab === "DP") {
+            const minDP = totalHargaSewa * 0.3;
+            if (nominalInput < minDP) {
+                alert(
+                    `⚠️ PEMBAYARAN DITOLAK: \nMinimal DP adalah 30% dari total sewa (Rp ${minDP.toLocaleString("id-ID")}).`,
+                );
+                return;
+            }
+        }
+
+        // C. Aturan CICILAN (Minimal 10% - Solusi pertanyaan dosen)
+        if (paymentTab === "CICILAN") {
+            const minCicil = totalHargaSewa * 0.1; // Minimal 10%
+            if (nominalInput < minCicil) {
+                alert(
+                    `⚠️ PEMBAYARAN DITOLAK: \nCicilan minimal adalah 10% dari total sewa (Rp ${minCicil.toLocaleString("id-ID")}). \n\nJika ingin membayar sisa tagihan yang kecil, silakan pilih kategori 'PELUNASAN'.`,
+                );
+                return;
+            }
+        }
+
+        // D. Cek Kelebihan Bayar (Pencegahan Error)
+        if (nominalInput > sisaPiutang) {
             alert(
-                `Maaf, pembayaran DP minimal adalah 30% dari total sewa (Rp ${minDPNeeded.toLocaleString("id-ID")})`,
+                `⚠️ NOMINAL BERLEBIH: \nNominal yang Anda masukkan (Rp ${nominalInput.toLocaleString("id-ID")}) melebihi sisa tagihan Anda (Rp ${sisaPiutang.toLocaleString("id-ID")}).`,
             );
             return;
         }
 
+        // --- 🚀 PROSES KIRIM DATA (JALAN JIKA LOLOS VALIDASI) ---
+
         const targetId = dynamicOrder?.id_pesanan || dynamicOrder?.id;
         if (!targetId) return;
 
-        let tipeEnum = "Cicil"; // default
-        if (paymentTab === "DP") tipeEnum = "DP";
-        if (paymentTab === "CICILAN") tipeEnum = "Cicil";
-        if (paymentTab === "PELUNASAN") tipeEnum = "Lunas";
-
         const dataBiner = new FormData();
         dataBiner.append("id_pesanan", targetId);
-        dataBiner.append(
-            "nominal",
-            String(inputNominal).replace(/[^0-9]/g, ""),
-        );
+        dataBiner.append("nominal", String(nominalInput));
         dataBiner.append("tgl_bayar", inputTanggal);
         dataBiner.append("tipe_keterangan", paymentTab);
-        dataBiner.append("catatan", inputCatatan); // Masukkan state catatan
+        dataBiner.append("catatan", inputCatatan);
         dataBiner.append("bukti_transfer", buktiFile as File);
 
         try {
@@ -608,16 +634,49 @@ const OrderStatus: React.FC = () => {
                                                     Rp
                                                 </span>
                                             </div>
-                                            {paymentTab === "DP" &&
-                                                staticOrder.totalPrice > 0 && (
-                                                    <p className="text-[8px] text-indigo-500 font-bold italic">
-                                                        * Minimal DP: Rp{" "}
-                                                        {minDPAmount.toLocaleString(
-                                                            "id-ID",
-                                                        )}{" "}
-                                                        (30%)
-                                                    </p>
-                                                )}
+
+                                            {/* --- PESAN PERINGATAN DINAMIS (KOREKSI) --- */}
+                                            {staticOrder.totalPrice > 0 && (
+                                                <div className="mt-1">
+                                                    {/* 1. Jika pilih DP */}
+                                                    {paymentTab === "DP" && (
+                                                        <p className="text-[8px] text-amber-600 font-bold italic">
+                                                            * Minimal DP (30%):
+                                                            Rp{" "}
+                                                            {minDPAmount.toLocaleString(
+                                                                "id-ID",
+                                                            )}
+                                                        </p>
+                                                    )}
+
+                                                    {/* 2. Jika pilih CICILAN (Logika 10% sesuai diskusi tadi) */}
+                                                    {paymentTab ===
+                                                        "CICILAN" && (
+                                                        <p className="text-[8px] text-amber-600 font-bold italic">
+                                                            * Minimal Cicilan
+                                                            (10%): Rp{" "}
+                                                            {(
+                                                                staticOrder.totalPrice *
+                                                                0.1
+                                                            ).toLocaleString(
+                                                                "id-ID",
+                                                            )}
+                                                        </p>
+                                                    )}
+
+                                                    {/* 3. Jika pilih PELUNASAN */}
+                                                    {paymentTab ===
+                                                        "PELUNASAN" && (
+                                                        <p className="text-[8px] text-emerald-600 font-bold italic">
+                                                            * Masukkan sisa
+                                                            tagihan: Rp{" "}
+                                                            {staticOrder.remainingBalance.toLocaleString(
+                                                                "id-ID",
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="space-y-1">
